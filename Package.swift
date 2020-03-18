@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "swift-service-lancher",
+    name: "swift-service-launcher",
     products: [
         .library(name: "Lifecycle", targets: ["Lifecycle"]),
     ],
