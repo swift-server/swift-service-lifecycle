@@ -6,7 +6,7 @@ version: "3"
 services:
 
   runtime-setup:
-    image: service-launcher:default
+    image: swift-service-launcher:default
     build:
       context: .
       dockerfile: Dockerfile
