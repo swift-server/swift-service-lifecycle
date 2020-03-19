@@ -212,98 +212,16 @@ public class Lifecycle {
 
 extension Lifecycle {
     internal struct Item: LifecycleItem {
-        public let name: String
-        private let _start: FunctionWithCallback?
-        private let _shutdown: FunctionWithCallback
-
-        init(name: String, start: FunctionWithCallback?, shutdown: @escaping FunctionWithCallback) {
-            self.name = name
-            self._start = start
-            self._shutdown = shutdown
-        }
-
-        init(name: String, start: FunctionWithCallback?, shutdown: @escaping ThrowingFunction) {
-            self.name = name
-            self._start = start
-            self._shutdown = Item.callback(shutdown)
-        }
-
-        init<Future, Value>(name: String, start: FunctionWithCallback?, shutdown: @escaping FutureProvider<Future, Value>) {
-            self.name = name
-            self._start = start
-            self._shutdown = Item.callback(shutdown)
-        }
-
-        init(name: String, start: ThrowingFunction?, shutdown: @escaping FunctionWithCallback) {
-            self.name = name
-            self._start = start.map(Item.callback)
-            self._shutdown = shutdown
-        }
-
-        init(name: String, start: ThrowingFunction?, shutdown: @escaping ThrowingFunction) {
-            self.name = name
-            self._start = start.map(Item.callback)
-            self._shutdown = Item.callback(shutdown)
-        }
-
-        init<Future, Value>(name: String, start: ThrowingFunction?, shutdown: @escaping FutureProvider<Future, Value>) {
-            self.name = name
-            self._start = start.map(Item.callback)
-            self._shutdown = Item.callback(shutdown)
-        }
-
-        init<Future, Value>(name: String, start: FutureProvider<Future, Value>?, shutdown: @escaping FunctionWithCallback) {
-            self.name = name
-            self._start = start.map(Item.callback)
-            self._shutdown = shutdown
-        }
-
-        init<Future, Value>(name: String, start: FutureProvider<Future, Value>?, shutdown: @escaping ThrowingFunction) {
-            self.name = name
-            self._start = start.map(Item.callback)
-            self._shutdown = Item.callback(shutdown)
-        }
-
-        init<Future, Value>(name: String, start: FutureProvider<Future, Value>?, shutdown: @escaping FutureProvider<Future, Value>) {
-            self.name = name
-            self._start = start.map(Item.callback)
-            self._shutdown = Item.callback(shutdown)
-        }
+        let name: String
+        let start: Handler
+        let shutdown: Handler
 
         func start(callback: @escaping (Error?) -> Void) {
-            if let body = self._start {
-                body(callback)
-            } else {
-                callback(nil)
-            }
+            self.start.run(callback)
         }
 
         func shutdown(callback: @escaping (Error?) -> Void) {
-            self._shutdown(callback)
-        }
-
-        private static func callback(_ body: @escaping ThrowingFunction) -> FunctionWithCallback {
-            return { callback in
-                do {
-                    try body()
-                    callback(nil)
-                } catch {
-                    callback(error)
-                }
-            }
-        }
-
-        private static func callback<Future, Value>(_ future: @escaping FutureProvider<Future, Value>) -> FunctionWithCallback {
-            return { callback in
-                future().whenComplete { result in
-                    switch result {
-                    case .success:
-                        callback(nil)
-                    case .failure(let error):
-                        callback(error)
-                    }
-                }
-            }
+            self.shutdown.run(callback)
         }
     }
 }
@@ -334,14 +252,14 @@ public extension Lifecycle {
     ///
     /// - parameters:
     ///    - items: one or more `LifecycleItem`.
-    internal func append(_ items: LifecycleItem...) {
+    func register(_ items: [LifecycleItem]) {
         self.stateSemaphore.lock {
             guard case .idle = self.state else {
                 preconditionFailure("invalid state, \(self.state)")
             }
         }
         self.itemsSemaphore.lock {
-            items.forEach { self.items.append($0) }
+            self.items.append(contentsOf: items)
         }
     }
 
@@ -349,8 +267,8 @@ public extension Lifecycle {
     ///
     /// - parameters:
     ///    - items: one or more `LifecycleItem`.
-    func append(_ items: [LifecycleItem]) {
-        items.forEach { self.append($0) }
+    internal func register(_ items: LifecycleItem...) {
+        self.register(items)
     }
 
     /// Add a `LifecycleItem` to a `LifecycleItems` collection.
@@ -359,8 +277,8 @@ public extension Lifecycle {
     ///    - name: name of the item, useful for debugging.
     ///    - start: closure to perform the startup.
     ///    - shutdown: closure to perform the shutdown.
-    func append(name: String, start: @escaping FunctionWithCallback, shutdown: @escaping FunctionWithCallback) {
-        self.append(Item(name: name, start: start, shutdown: shutdown))
+    func register(name: String, start: Handler, shutdown: Handler) {
+        self.register(Item(name: name, start: start, shutdown: shutdown))
     }
 
     /// Adds a `LifecycleItem` to a `LifecycleItems` collection.
@@ -368,27 +286,8 @@ public extension Lifecycle {
     /// - parameters:
     ///    - name: name of the item, useful for debugging.
     ///    - shutdown: closure to perform the shutdown.
-    func append(name: String, shutdown: @escaping FunctionWithCallback) {
-        self.append(Item(name: name, start: nil as FunctionWithCallback?, shutdown: shutdown))
-    }
-
-    /// Adds a `LifecycleItem` to a `LifecycleItems` collection.
-    ///
-    /// - parameters:
-    ///    - name: name of the item, useful for debugging.
-    ///    - start: closure to perform the startup.
-    ///    - shutdown: closure to perform the shutdown.
-    func append(name: String, start: @escaping FunctionWithCallback, shutdown: @escaping ThrowingFunction) {
-        self.append(Item(name: name, start: start, shutdown: shutdown))
-    }
-
-    /// Adds a `LifecycleItem` to a `LifecycleItems` collection.
-    ///
-    /// - parameters:
-    ///    - name: name of the item, useful for debugging.
-    ///    - shutdown: closure to perform the shutdown.
-    func append(name: String, shutdown: @escaping ThrowingFunction) {
-        self.append(Item(name: name, start: nil as ThrowingFunction?, shutdown: shutdown))
+    func registerShutdown(name: String, _ handler: Handler) {
+        self.register(name: name, start: .none, shutdown: handler)
     }
 
     /// Adds a `LifecycleItem` to a `LifecycleItems` collection.
@@ -397,8 +296,8 @@ public extension Lifecycle {
     ///    - name: name of the item, useful for debugging.
     ///    - start: closure to perform the startup.
     ///    - shutdown: closure to perform the shutdown.
-    func append<Future, Value>(name: String, start: @escaping FunctionWithCallback, shutdown: @escaping FutureProvider<Future, Value>) {
-        self.append(Item(name: name, start: start, shutdown: shutdown))
+    func register(name: String, start: @escaping (@escaping (Error?) -> Void) -> Void, shutdown: @escaping (@escaping (Error?) -> Void) -> Void) {
+        self.register(name: name, start: .async(start), shutdown: .async(shutdown))
     }
 
     /// Adds a `LifecycleItem` to a `LifecycleItems` collection.
@@ -406,37 +305,18 @@ public extension Lifecycle {
     /// - parameters:
     ///    - name: name of the item, useful for debugging.
     ///    - shutdown: closure to perform the shutdown.
-    func append<Future, Value>(name: String, shutdown: @escaping FutureProvider<Future, Value>) {
-        self.append(Item(name: name, start: nil as FutureProvider<Future, Value>?, shutdown: shutdown))
+    func registerShutdown(name: String, _ handler: @escaping (@escaping (Error?) -> Void) -> Void) {
+        self.register(name: name, start: .none, shutdown: .async(handler))
     }
 
     /// Adds a `LifecycleItem` to a `LifecycleItems` collection.
     ///
     /// - parameters:
     ///    - name: name of the item, useful for debugging.
-    ///    - start: closure to perform the startup.
+    ///    - start: closure to perform the shutdown.
     ///    - shutdown: closure to perform the shutdown.
-    func append(name: String, start: @escaping ThrowingFunction, shutdown: @escaping FunctionWithCallback) {
-        self.append(Item(name: name, start: start, shutdown: shutdown))
-    }
-
-    /// Adds a `LifecycleItem` to a `LifecycleItems` collection.
-    ///
-    /// - parameters:
-    ///    - name: name of the item, useful for debugging.
-    ///    - shutdown: closure to perform the shutdown.
-    func append(name: String, start: @escaping ThrowingFunction, shutdown: @escaping ThrowingFunction) {
-        self.append(Item(name: name, start: start, shutdown: shutdown))
-    }
-
-    /// Adds a `LifecycleItem` to a `LifecycleItems` collection.
-    ///
-    /// - parameters:
-    ///    - name: name of the item, useful for debugging.
-    ///    - start: closure to perform the startup.
-    ///    - shutdown: closure to perform the shutdown.
-    func append<Future, Value>(name: String, start: @escaping ThrowingFunction, shutdown: @escaping FutureProvider<Future, Value>) {
-        self.append(Item(name: name, start: start, shutdown: shutdown))
+    func register(name: String, start: @escaping () throws -> Void, shutdown: @escaping () throws -> Void) {
+        self.register(name: name, start: .sync(start), shutdown: .sync(shutdown))
     }
 
     /// Adds a `LifecycleItem` to a `LifecycleItems` collection.
@@ -444,43 +324,58 @@ public extension Lifecycle {
     /// - parameters:
     ///    - name: name of the item, useful for debugging.
     ///    - shutdown: closure to perform the shutdown.
-    func append<Future, Value>(name: String, start: @escaping FutureProvider<Future, Value>, shutdown: @escaping FunctionWithCallback) {
-        self.append(Item(name: name, start: start, shutdown: shutdown))
-    }
-
-    /// Add a `LifecycleItem` to a `LifecycleItems` collection.
-    ///
-    /// - parameters:
-    ///    - name: name of the item, useful for debugging.
-    ///    - start: closure to perform the startup.
-    ///    - shutdown: closure to perform the shutdown.
-    func append<Future, Value>(name: String, start: @escaping FutureProvider<Future, Value>, shutdown: @escaping ThrowingFunction) {
-        self.append(Item(name: name, start: start, shutdown: shutdown))
-    }
-
-    /// Adds a `LifecycleItem` to a `LifecycleItems` collection.
-    ///
-    /// - parameters:
-    ///    - name: name of the item, useful for debugging.
-    ///    - start: closure to perform the startup.
-    ///    - shutdown: closure to perform the shutdown.
-    func append<Future, Value>(name: String, start: @escaping FutureProvider<Future, Value>, shutdown: @escaping FutureProvider<Future, Value>) {
-        self.append(Item(name: name, start: start, shutdown: shutdown))
+    func registerShutdown(name: String, _ handler: @escaping () throws -> Void) {
+        self.register(name: name, start: .none, shutdown: .sync(handler))
     }
 }
 
 /// Supported startup and shutdown method styles
-
 public extension Lifecycle {
-    typealias FunctionWithCallback = (@escaping (Error?) -> Void) -> Void
-    typealias ThrowingFunction = () throws -> Void
-    typealias FutureProvider<Future: LifecycleFuture, Value> = () -> Future where Future.Value == Value
-}
+    struct Handler {
+        private let body: (@escaping (Error?) -> Void) -> Void
 
-public protocol LifecycleFuture {
-    associatedtype Value
+        /// Initialize a  `Lifecycle.Handler` based on a completion handler.
+        ///
+        /// - parameters:
+        ///    - callback: the underlying  completion handler
+        public init(_ callback: @escaping (@escaping (Error?) -> Void) -> Void) {
+            self.body = callback
+        }
 
-    func whenComplete(_ callback: @escaping (Result<Value, Error>) -> Void)
+        /// Asynchronous   `Lifecycle.Handler` based on a completion handler.
+        ///
+        /// - parameters:
+        ///    - callback: the underlying  completion handler
+        public static func async(_ callback: @escaping (@escaping (Error?) -> Void) -> Void) -> Handler {
+            return Handler(callback)
+        }
+
+        /// Asynchronous   `Lifecycle.Handler` based on a blocking, throwing function.
+        ///
+        /// - parameters:
+        ///    - body: the underlying  function
+        public static func sync(_ body: @escaping () throws -> Void) -> Handler {
+            return Handler { completionHandler in
+                do {
+                    try body()
+                    completionHandler(nil)
+                } catch {
+                    completionHandler(error)
+                }
+            }
+        }
+
+        /// Noop   `Lifecycle.Handler`.
+        public static var none: Handler {
+            return Handler { callback in
+                callback(nil)
+            }
+        }
+
+        internal func run(_ callback: @escaping (Error?) -> Void) {
+            self.body(callback)
+        }
+    }
 }
 
 /// Represents an item that can be started and shut down
