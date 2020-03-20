@@ -334,26 +334,26 @@ public extension Lifecycle {
     struct Handler {
         private let body: (@escaping (Error?) -> Void) -> Void
 
-        /// Initialize a  `Lifecycle.Handler` based on a completion handler.
+        /// Initialize a `Lifecycle.Handler` based on a completion handler.
         ///
         /// - parameters:
-        ///    - callback: the underlying  completion handler
+        ///    - callback: the underlying completion handler
         public init(_ callback: @escaping (@escaping (Error?) -> Void) -> Void) {
             self.body = callback
         }
 
-        /// Asynchronous   `Lifecycle.Handler` based on a completion handler.
+        /// Asynchronous `Lifecycle.Handler` based on a completion handler.
         ///
         /// - parameters:
-        ///    - callback: the underlying  completion handler
+        ///    - callback: the underlying completion handler
         public static func async(_ callback: @escaping (@escaping (Error?) -> Void) -> Void) -> Handler {
             return Handler(callback)
         }
 
-        /// Asynchronous   `Lifecycle.Handler` based on a blocking, throwing function.
+        /// Asynchronous `Lifecycle.Handler` based on a blocking, throwing function.
         ///
         /// - parameters:
-        ///    - body: the underlying  function
+        ///    - body: the underlying function
         public static func sync(_ body: @escaping () throws -> Void) -> Handler {
             return Handler { completionHandler in
                 do {
@@ -365,7 +365,7 @@ public extension Lifecycle {
             }
         }
 
-        /// Noop   `Lifecycle.Handler`.
+        /// Noop `Lifecycle.Handler`.
         public static var none: Handler {
             return Handler { callback in
                 callback(nil)

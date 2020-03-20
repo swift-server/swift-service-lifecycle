@@ -38,7 +38,7 @@ extension Lifecycle {
 }
 
 extension Lifecycle.Handler {
-    /// Asynchronous   `Lifecycle.Handler` based on an `EventLoopFuture`.
+    /// Asynchronous `Lifecycle.Handler` based on an `EventLoopFuture`.
     ///
     /// - parameters:
     ///    - future: the underlying `EventLoopFuture`
