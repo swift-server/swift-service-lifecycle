@@ -41,17 +41,6 @@ public class Lifecycle {
     /// Startup is performed in the order of items provided.
     ///
     /// - parameters:
-    ///    - shutdownSignal: Defines what, if any, signals to trap for invoking shutdown.
-    ///    - installBacktrace: Defines if to install a crash signal trap that prints backtraces.
-    @available(*, deprecated, message: "use startAndWait(configuration) instead")
-    public func startAndWait(shutdownSignal: [Signal]? = [.TERM, .INT], installBacktrace: Bool = true) throws {
-        try self.startAndWait(configuration: .init(shutdownSignal: shutdownSignal, installBacktrace: installBacktrace))
-    }
-
-    /// Starts the provided `LifecycleItem` array and waits (blocking) until a shutdown `Signal` is captured or `Lifecycle.shutdown` is called on another thread.
-    /// Startup is performed in the order of items provided.
-    ///
-    /// - parameters:
     ///    - configuration: Defines lifecycle `Configuration`
     public func startAndWait(configuration: Configuration) throws {
         let waitSemaphore = DispatchSemaphore(value: 0)
@@ -64,18 +53,6 @@ public class Lifecycle {
         waitSemaphore.wait()
         try startError.map { throw $0 }
         self.shutdownGroup.wait()
-    }
-
-    /// Starts the provided `LifecycleItem` array.
-    /// Startup is performed in the order of items provided.
-    ///
-    /// - parameters:
-    ///    - shutdownSignal: Defines what, if any, signals to trap for invoking shutdown.
-    ///    - installBacktrace: Defines if to install a crash signal trap that prints backtraces.
-    ///    - callback: The handler which is called after the start operation completes. The parameter will be `nil` on success and contain the `Error` otherwise.
-    @available(*, deprecated, message: "use start(configuration) instead")
-    public func start(shutdownSignal: [Signal]? = [.TERM, .INT], installBacktrace: Bool = true, callback: @escaping (Error?) -> Void) {
-        self.start(configuration: .init(shutdownSignal: shutdownSignal, installBacktrace: installBacktrace), callback: callback)
     }
 
     /// Starts the provided `LifecycleItem` array.
