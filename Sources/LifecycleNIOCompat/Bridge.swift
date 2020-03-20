@@ -44,8 +44,13 @@ extension Lifecycle.Handler {
     ///    - future: the underlying `EventLoopFuture`
     public static func async(_ future: @escaping () -> EventLoopFuture<Void>) -> Lifecycle.Handler {
         return Lifecycle.Handler { callback in
-            future().whenComplete { _ in
-                callback(nil)
+            future().whenComplete { result in
+                switch result {
+                case .success:
+                    callback(nil)
+                case .failure(let error):
+                    callback(error)
+                }
             }
         }
     }

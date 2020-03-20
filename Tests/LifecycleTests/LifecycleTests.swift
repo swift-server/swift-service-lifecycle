@@ -401,6 +401,21 @@ final class Tests: XCTestCase {
         lifecycle.wait()
         XCTAssert(item.state == .shutdown, "expected item to be shutdown, but \(item.state)")
     }
+
+    func testNIOFailure() {
+        let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+        let lifecycle = Lifecycle()
+
+        lifecycle.register(name: "test",
+                           start: .async { eventLoopGroup.next().makeFailedFuture(TestError()) },
+                           shutdown: .async { eventLoopGroup.next().makeSucceededFuture(()) })
+
+        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+            XCTAssert(error is TestError, "expected error to match")
+            lifecycle.shutdown()
+        }
+        lifecycle.wait()
+    }
 }
 
 private class GoodItem: LifecycleItem {

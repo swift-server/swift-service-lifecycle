@@ -41,6 +41,7 @@ extension Tests {
             ("testRegisterShutdownAsyncClosure", testRegisterShutdownAsyncClosure),
             ("testRegisterNIO", testRegisterNIO),
             ("testRegisterNIOClosure", testRegisterNIOClosure),
+            ("testNIOFailure", testNIOFailure),
         ]
     }
 }
