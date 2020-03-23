@@ -35,12 +35,16 @@ extension Tests {
             ("testSync", testSync),
             ("testAyncBarrier", testAyncBarrier),
             ("testConcurrncy", testConcurrncy),
+            ("testRegisterSync", testRegisterSync),
+            ("testRegisterShutdownSync", testRegisterShutdownSync),
             ("testRegisterAsync", testRegisterAsync),
-            ("testRegisterAsyncClosure", testRegisterAsyncClosure),
             ("testRegisterShutdownAsync", testRegisterShutdownAsync),
+            ("testRegisterAsyncClosure", testRegisterAsyncClosure),
             ("testRegisterShutdownAsyncClosure", testRegisterShutdownAsyncClosure),
             ("testRegisterNIO", testRegisterNIO),
+            ("testRegisterShutdownNIO", testRegisterShutdownNIO),
             ("testRegisterNIOClosure", testRegisterNIOClosure),
+            ("testRegisterShutdownNIOClosure", testRegisterShutdownNIOClosure),
             ("testNIOFailure", testNIOFailure),
         ]
     }

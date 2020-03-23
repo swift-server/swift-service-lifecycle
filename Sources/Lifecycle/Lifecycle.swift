@@ -294,25 +294,6 @@ public extension Lifecycle {
     ///
     /// - parameters:
     ///    - name: name of the item, useful for debugging.
-    ///    - start: closure to perform the startup.
-    ///    - shutdown: closure to perform the shutdown.
-    func register(name: String, start: @escaping (@escaping (Error?) -> Void) -> Void, shutdown: @escaping (@escaping (Error?) -> Void) -> Void) {
-        self.register(name: name, start: .async(start), shutdown: .async(shutdown))
-    }
-
-    /// Adds a `LifecycleItem` to a `LifecycleItems` collection.
-    ///
-    /// - parameters:
-    ///    - name: name of the item, useful for debugging.
-    ///    - shutdown: closure to perform the shutdown.
-    func registerShutdown(name: String, _ handler: @escaping (@escaping (Error?) -> Void) -> Void) {
-        self.register(name: name, start: .none, shutdown: .async(handler))
-    }
-
-    /// Adds a `LifecycleItem` to a `LifecycleItems` collection.
-    ///
-    /// - parameters:
-    ///    - name: name of the item, useful for debugging.
     ///    - start: closure to perform the shutdown.
     ///    - shutdown: closure to perform the shutdown.
     func register(name: String, start: @escaping () throws -> Void, shutdown: @escaping () throws -> Void) {
