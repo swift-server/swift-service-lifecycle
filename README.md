@@ -11,17 +11,16 @@ SwiftServiceLauncher is non-framework specific, designed to be integrated with a
 var lifecycle = Lifecycle()
 
 let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-lifecycle.append(
+lifecycle.registerShutdown(
     name: "eventLoopGroup",
-    shutdown: eventLoopGroup.syncShutdownGracefully
+    eventLoopGroup.syncShutdownGracefully
 )
 
 let httpClient = HTTPClient(eventLoopGroupProvider: .shared(eventLoopGroup))
-lifecycle.append(
+lifecycle.registerShutdown(
     name: "HTTPClient",
-    shutdown: httpClient.shutdown
+    httpClient.syncShutdown
 )
-
 
 lifecycle.start() { error in
     if let error = error {

@@ -15,6 +15,7 @@ let package = Package(
     ],
     targets: [
         .target(name: "Lifecycle", dependencies: ["Logging", "Metrics", "Backtrace"]),
-        .testTarget(name: "LifecycleTests", dependencies: ["Lifecycle", "NIO"]),
+        .target(name: "LifecycleNIOCompat", dependencies: ["Lifecycle", "NIO"]),
+        .testTarget(name: "LifecycleTests", dependencies: ["Lifecycle", "LifecycleNIOCompat"]),
     ]
 )
