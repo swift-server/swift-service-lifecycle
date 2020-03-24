@@ -6,6 +6,7 @@ let package = Package(
     name: "swift-service-launcher",
     products: [
         .library(name: "Lifecycle", targets: ["Lifecycle"]),
+        .library(name: "LifecycleNIOCompat", targets: ["LifecycleNIOCompat"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
