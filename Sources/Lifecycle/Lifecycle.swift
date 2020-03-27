@@ -42,7 +42,7 @@ public class Lifecycle {
     ///
     /// - parameters:
     ///    - configuration: Defines lifecycle `Configuration`
-    public func startAndWait(configuration: Configuration) throws {
+    public func startAndWait(configuration: Configuration = .init()) throws {
         let waitSemaphore = DispatchSemaphore(value: 0)
         var startError: Error?
         let items = self.itemsSemaphore.lock { self.items }
@@ -61,7 +61,7 @@ public class Lifecycle {
     /// - parameters:
     ///    - configuration: Defines lifecycle `Configuration`
     ///    - callback: The handler which is called after the start operation completes. The parameter will be `nil` on success and contain the `Error` otherwise.
-    public func start(configuration: Configuration, callback: @escaping (Error?) -> Void) {
+    public func start(configuration: Configuration = .init(), callback: @escaping (Error?) -> Void) {
         let items = self.itemsSemaphore.lock { self.items }
         self._start(configuration: configuration, items: items, callback: callback)
     }
