@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import Lifecycle
-import LifecycleNIOCompat
+@testable import ServiceLauncher
+import ServiceLauncherNIOCompat
 import NIO
 import NIOConcurrencyHelpers
 import XCTest
@@ -514,6 +514,56 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
+    }
+    
+    func testExternalState() {
+        enum State: Equatable {
+            case idle
+            case started(String)
+            case shutdown
+        }
+        
+        class Item {
+            let eventLoopGroup: EventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+
+            let data: String
+            init(_ data: String) {
+                self.data = data
+            }
+            
+            func start() -> EventLoopFuture<String> {
+                self.eventLoopGroup.next().makeSucceededFuture(self.data)
+            }
+
+            func shutdown() -> EventLoopFuture<Void> {
+                self.eventLoopGroup.next().makeSucceededFuture(())
+            }
+        }
+        
+        var state = State.idle
+        
+        let expectedData = UUID().uuidString
+        let item = Item(expectedData)
+        let lifecycle = Lifecycle()
+        lifecycle.register(name: "test",
+                            start: .async{
+                                item.start().map{ data -> Void in
+                                    state = .started(data)
+                                }
+                            },
+                            shutdown: .async{
+                                item.shutdown().map{ _ -> Void in
+                                    state = .shutdown
+                                }
+                            })
+
+        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+            XCTAssertNil(error, "not expecting error")
+            XCTAssert(state == .started(expectedData), "expected item to be shutdown, but \(state)")
+            lifecycle.shutdown()
+        }
+        lifecycle.wait()
+        XCTAssert(state == .shutdown, "expected item to be shutdown, but \(state)")
     }
 }
 

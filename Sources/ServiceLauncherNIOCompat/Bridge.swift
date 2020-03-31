@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Lifecycle
+import ServiceLauncher
 import NIO
 
 extension Lifecycle.Handler {
