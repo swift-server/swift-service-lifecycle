@@ -34,7 +34,7 @@ extension Tests {
             ("testShutdownInOrder", testShutdownInOrder),
             ("testSync", testSync),
             ("testAyncBarrier", testAyncBarrier),
-            ("testConcurrncy", testConcurrncy),
+            ("testConcurrency", testConcurrency),
             ("testRegisterSync", testRegisterSync),
             ("testRegisterShutdownSync", testRegisterShutdownSync),
             ("testRegisterAsync", testRegisterAsync),
@@ -46,6 +46,7 @@ extension Tests {
             ("testRegisterNIOClosure", testRegisterNIOClosure),
             ("testRegisterShutdownNIOClosure", testRegisterShutdownNIOClosure),
             ("testNIOFailure", testNIOFailure),
+            ("testExternalState", testExternalState),
         ]
     }
 }

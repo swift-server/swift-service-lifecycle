@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-import ServiceLauncher
 import NIO
+import ServiceLauncher
 
 extension Lifecycle.Handler {
     /// Asynchronous `Lifecycle.Handler` based on an `EventLoopFuture`.
