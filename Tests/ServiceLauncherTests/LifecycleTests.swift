@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-@testable import Lifecycle
-import LifecycleNIOCompat
 import NIO
 import NIOConcurrencyHelpers
+@testable import ServiceLauncher
+import ServiceLauncherNIOCompat
 import XCTest
 
 final class Tests: XCTestCase {
@@ -28,7 +28,7 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
-        items.forEach { XCTAssert($0.state == .shutdown, "expected item to be shutdown, but \($0.state)") }
+        items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
     }
 
     // FIXME: this test does not work in rio
@@ -43,7 +43,7 @@ final class Tests: XCTestCase {
             kill(getpid(), signal.rawValue)
         }
         lifecycle.wait()
-        items.forEach { XCTAssert($0.state == .shutdown, "expected item to be shutdown, but \($0.state)") }
+        items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
     }
 
     func testImmediateShutdown() {
@@ -53,7 +53,7 @@ final class Tests: XCTestCase {
         lifecycle.start(configuration: .init(shutdownSignal: nil)) { _ in }
         lifecycle.shutdown()
         lifecycle.wait()
-        items.forEach { XCTAssert($0.state == .shutdown, "expected item to be shutdown, but \($0.state)") }
+        items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
     }
 
     func testBadStartup() {
@@ -79,7 +79,7 @@ final class Tests: XCTestCase {
         }
         lifecycle.wait()
         let goodItems = items.compactMap { $0 as? GoodItem }
-        goodItems.forEach { XCTAssert($0.state == .shutdown, "expected item to be shutdown, but \($0.state)") }
+        goodItems.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
     }
 
     func testBadShutdown() {
@@ -105,7 +105,7 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
-        items.compactMap { $0 as? GoodItem }.forEach { XCTAssert($0.state == .shutdown, "expected item to be shutdown, but \($0.state)") }
+        items.compactMap { $0 as? GoodItem }.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
     }
 
     func testStartAndWait() {
@@ -247,7 +247,7 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
-        items.forEach { XCTAssert($0.state == .shutdown, "expected item to be shutdown, but \($0.state)") }
+        items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
     }
 
     func testAyncBarrier() {
@@ -269,10 +269,10 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
-        [item1, item2].forEach { XCTAssert($0.state == .shutdown, "expected item to be shutdown, but \($0.state)") }
+        [item1, item2].forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
     }
 
-    func testConcurrncy() {
+    func testConcurrency() {
         let lifecycle = Lifecycle()
         let items = (0 ... 50000).map { _ in GoodItem(startDelay: 0, shutdownDelay: 0) }
         let group = DispatchGroup()
@@ -290,7 +290,7 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
-        items.forEach { XCTAssert($0.state == .shutdown, "expected item to be shutdown, but \($0.state)") }
+        items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
     }
 
     func testRegisterSync() {
@@ -324,7 +324,7 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
-        XCTAssert(item.state == .shutdown, "expected item to be shutdown, but \(item.state)")
+        XCTAssertEqual(item.state, .shutdown, "expected item to be shutdown, but \(item.state)")
     }
 
     func testRegisterShutdownSync() {
@@ -356,7 +356,7 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
-        XCTAssert(item.state == .shutdown, "expected item to be shutdown, but \(item.state)")
+        XCTAssertEqual(item.state, .shutdown, "expected item to be shutdown, but \(item.state)")
     }
 
     func testRegisterAsync() {
@@ -372,7 +372,7 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
-        XCTAssert(item.state == .shutdown, "expected item to be shutdown, but \(item.state)")
+        XCTAssertEqual(item.state, .shutdown, "expected item to be shutdown, but \(item.state)")
     }
 
     func testRegisterShutdownAsync() {
@@ -386,7 +386,7 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
-        XCTAssert(item.state == .shutdown, "expected item to be shutdown, but \(item.state)")
+        XCTAssertEqual(item.state, .shutdown, "expected item to be shutdown, but \(item.state)")
     }
 
     func testRegisterAsyncClosure() {
@@ -408,7 +408,7 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
-        XCTAssert(item.state == .shutdown, "expected item to be shutdown, but \(item.state)")
+        XCTAssertEqual(item.state, .shutdown, "expected item to be shutdown, but \(item.state)")
     }
 
     func testRegisterShutdownAsyncClosure() {
@@ -425,7 +425,7 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
-        XCTAssert(item.state == .shutdown, "expected item to be shutdown, but \(item.state)")
+        XCTAssertEqual(item.state, .shutdown, "expected item to be shutdown, but \(item.state)")
     }
 
     func testRegisterNIO() {
@@ -442,7 +442,7 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
-        XCTAssert(item.state == .shutdown, "expected item to be shutdown, but \(item.state)")
+        XCTAssertEqual(item.state, .shutdown, "expected item to be shutdown, but \(item.state)")
     }
 
     func testRegisterShutdownNIO() {
@@ -457,7 +457,7 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
-        XCTAssert(item.state == .shutdown, "expected item to be shutdown, but \(item.state)")
+        XCTAssertEqual(item.state, .shutdown, "expected item to be shutdown, but \(item.state)")
     }
 
     func testRegisterNIOClosure() {
@@ -480,7 +480,7 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
-        XCTAssert(item.state == .shutdown, "expected item to be shutdown, but \(item.state)")
+        XCTAssertEqual(item.state, .shutdown, "expected item to be shutdown, but \(item.state)")
     }
 
     func testRegisterShutdownNIOClosure() {
@@ -498,7 +498,7 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
-        XCTAssert(item.state == .shutdown, "expected item to be shutdown, but \(item.state)")
+        XCTAssertEqual(item.state, .shutdown, "expected item to be shutdown, but \(item.state)")
     }
 
     func testNIOFailure() {
@@ -514,6 +514,56 @@ final class Tests: XCTestCase {
             lifecycle.shutdown()
         }
         lifecycle.wait()
+    }
+
+    func testExternalState() {
+        enum State: Equatable {
+            case idle
+            case started(String)
+            case shutdown
+        }
+
+        class Item {
+            let eventLoopGroup: EventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+
+            let data: String
+            init(_ data: String) {
+                self.data = data
+            }
+
+            func start() -> EventLoopFuture<String> {
+                return self.eventLoopGroup.next().makeSucceededFuture(self.data)
+            }
+
+            func shutdown() -> EventLoopFuture<Void> {
+                return self.eventLoopGroup.next().makeSucceededFuture(())
+            }
+        }
+
+        var state = State.idle
+
+        let expectedData = UUID().uuidString
+        let item = Item(expectedData)
+        let lifecycle = Lifecycle()
+        lifecycle.register(name: "test",
+                           start: .async {
+                               item.start().map { data -> Void in
+                                   state = .started(data)
+                               }
+                           },
+                           shutdown: .async {
+                               item.shutdown().map { _ -> Void in
+                                   state = .shutdown
+                               }
+                            })
+
+        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+            XCTAssertNil(error, "not expecting error")
+            XCTAssertEqual(state, .started(expectedData), "expected item to be shutdown, but \(state)")
+            lifecycle.shutdown()
+        }
+        lifecycle.wait()
+        XCTAssertEqual(state, .shutdown, "expected item to be shutdown, but \(state)")
     }
 }
 

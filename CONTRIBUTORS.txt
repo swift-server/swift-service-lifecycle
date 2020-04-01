@@ -12,6 +12,7 @@ needs to be listed here.
 ### Contributors
 
 - Tomer Doron <tomer@apple.com>
+- Yim Lee <yim_lee@apple.com>
 
 **Updating this list**
 

@@ -23,7 +23,7 @@ import XCTest
 ///
 
 #if os(Linux) || os(FreeBSD)
-@testable import LifecycleTests
+@testable import ServiceLauncherTests
 
 XCTMain([
     testCase(Tests.allTests),
