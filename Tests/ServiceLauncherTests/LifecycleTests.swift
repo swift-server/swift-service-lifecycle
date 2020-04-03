@@ -17,29 +17,15 @@ import NIO
 import ServiceLauncherNIOCompat
 import XCTest
 
-final class Tests: XCTestCase {
+final class LifeycleTests: XCTestCase {
     func testStartThenShutdown() {
         let items = (0 ... Int.random(in: 10 ... 20)).map { _ in GoodItem() }
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
         lifecycle.register(items)
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
+            items.forEach { XCTAssertEqual($0.state, .started, "expected item to be started, but \($0.state)") }
             lifecycle.shutdown()
-        }
-        lifecycle.wait()
-        items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
-    }
-
-    // FIXME: this test does not work in rio
-    func _testShutdownWithSignal() {
-        let signal = Lifecycle.Signal.ALRM
-        let items = (0 ... Int.random(in: 10 ... 20)).map { _ in GoodItem() }
-        let lifecycle = Lifecycle()
-        lifecycle.register(items)
-        let configuration = Lifecycle.Configuration(shutdownSignal: [signal])
-        lifecycle.start(configuration: configuration) { error in
-            XCTAssertNil(error, "not expecting error")
-            kill(getpid(), signal.rawValue)
         }
         lifecycle.wait()
         items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
@@ -47,9 +33,9 @@ final class Tests: XCTestCase {
 
     func testImmediateShutdown() {
         let items = (0 ... Int.random(in: 10 ... 20)).map { _ in GoodItem() }
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
         lifecycle.register(items)
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { _ in }
+        lifecycle.start { _ in }
         lifecycle.shutdown()
         lifecycle.wait()
         items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
@@ -69,9 +55,9 @@ final class Tests: XCTestCase {
         }
 
         let items: [LifecycleItem] = [GoodItem(), BadItem(), GoodItem()]
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
         lifecycle.register(items)
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssert(error is TestError, "expected error to match")
         }
         lifecycle.wait()
@@ -92,14 +78,14 @@ final class Tests: XCTestCase {
             }
         }
 
-        var shutdownErrors: [String: Error]?
+        var shutdownError: Lifecycle.ShutdownError?
         let items: [LifecycleItem] = [GoodItem(), BadItem(), BadItem(), GoodItem(), BadItem()]
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
         lifecycle.register(items)
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
-            lifecycle.shutdown { errors in
-                shutdownErrors = errors
+            lifecycle.shutdown { error in
+                shutdownError = error as? Lifecycle.ShutdownError
             }
         }
         lifecycle.wait()
@@ -107,69 +93,8 @@ final class Tests: XCTestCase {
         let goodItems = items.compactMap { $0 as? GoodItem }
         goodItems.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
         let badItems = items.compactMap { $0 as? BadItem }
-        XCTAssertEqual(shutdownErrors?.count, badItems.count, "expected shutdown errors")
-        badItems.forEach { XCTAssert(shutdownErrors?[$0.label] is TestError, "expected error to match") }
-    }
-
-    func testStartAndWait() {
-        class Item: LifecycleItem {
-            private let semaphore: DispatchSemaphore
-            var state = State.idle
-
-            init(_ semaphore: DispatchSemaphore) {
-                self.semaphore = semaphore
-            }
-
-            let label: String = UUID().uuidString
-
-            func start(callback: (Error?) -> Void) {
-                self.state = .started
-                self.semaphore.signal()
-                callback(nil)
-            }
-
-            func shutdown(callback: (Error?) -> Void) {
-                self.state = .shutdown
-                callback(nil)
-            }
-
-            enum State {
-                case idle
-                case started
-                case shutdown
-            }
-        }
-
-        let lifecycle = Lifecycle()
-        let semaphore = DispatchSemaphore(value: 0)
-        DispatchQueue(label: "test").asyncAfter(deadline: .now() + 0.1) {
-            semaphore.wait()
-            lifecycle.shutdown()
-        }
-        let item = Item(semaphore)
-        lifecycle.register(item)
-        XCTAssertNoThrow(try lifecycle.startAndWait(configuration: .init(shutdownSignal: nil)))
-        XCTAssertEqual(item.state, .shutdown, "expected item to be shutdown")
-    }
-
-    func testBadStartAndWait() {
-        class BadItem: LifecycleItem {
-            let label: String = UUID().uuidString
-
-            func start(callback: (Error?) -> Void) {
-                callback(TestError())
-            }
-
-            func shutdown(callback: (Error?) -> Void) {
-                callback(nil)
-            }
-        }
-
-        let lifecycle = Lifecycle()
-        lifecycle.register(GoodItem(), BadItem())
-        XCTAssertThrowsError(try lifecycle.startAndWait(configuration: .init(shutdownSignal: nil))) { error in
-            XCTAssert(error is TestError, "expected error to match")
-        }
+        XCTAssertEqual(shutdownError?.errors.count, badItems.count, "expected shutdown errors")
+        badItems.forEach { XCTAssert(shutdownError!.errors[$0.label] is TestError, "expected error to match") }
     }
 
     func testShutdownInOrder() {
@@ -201,9 +126,9 @@ final class Tests: XCTestCase {
 
         var result = [String]()
         let items = [Item(&result), Item(&result), Item(&result), Item(&result)]
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
         lifecycle.register(items)
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
             lifecycle.shutdown()
         }
@@ -235,13 +160,13 @@ final class Tests: XCTestCase {
             }
         }
 
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
         let items = (0 ... Int.random(in: 10 ... 20)).map { _ in Sync() }
         items.forEach { item in
             lifecycle.register(label: item.id, start: item.start, shutdown: item.shutdown)
         }
 
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
             lifecycle.shutdown()
         }
@@ -251,7 +176,7 @@ final class Tests: XCTestCase {
 
     func testAyncBarrier() {
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
 
         let item1 = NIOItem(eventLoopGroup: eventLoopGroup)
         lifecycle.register(label: "item1", start: .eventLoopFuture(item1.start), shutdown: .eventLoopFuture(item1.shutdown))
@@ -263,7 +188,7 @@ final class Tests: XCTestCase {
         let item2 = NIOItem(eventLoopGroup: eventLoopGroup)
         lifecycle.register(label: "item2", start: .eventLoopFuture(item2.start), shutdown: .eventLoopFuture(item2.shutdown))
 
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
             lifecycle.shutdown()
         }
@@ -272,7 +197,7 @@ final class Tests: XCTestCase {
     }
 
     func testConcurrency() {
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
         let items = (0 ... 50000).map { _ in GoodItem(startDelay: 0, shutdownDelay: 0) }
         let group = DispatchGroup()
         items.forEach { item in
@@ -284,7 +209,7 @@ final class Tests: XCTestCase {
         }
         group.wait()
 
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
             lifecycle.shutdown()
         }
@@ -311,14 +236,14 @@ final class Tests: XCTestCase {
             }
         }
 
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
 
         let item = Sync()
         lifecycle.register(label: "test",
                            start: item.start,
                            shutdown: item.shutdown)
 
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
             lifecycle.shutdown()
         }
@@ -345,12 +270,12 @@ final class Tests: XCTestCase {
             }
         }
 
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
 
         let item = Sync()
         lifecycle.registerShutdown(label: "test", item.shutdown)
 
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
             lifecycle.shutdown()
         }
@@ -359,14 +284,14 @@ final class Tests: XCTestCase {
     }
 
     func testRegisterAsync() {
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
 
         let item = GoodItem()
         lifecycle.register(label: "test",
                            start: .async(item.start),
                            shutdown: .async(item.shutdown))
 
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
             lifecycle.shutdown()
         }
@@ -375,12 +300,12 @@ final class Tests: XCTestCase {
     }
 
     func testRegisterShutdownAsync() {
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
 
         let item = GoodItem()
         lifecycle.registerShutdown(label: "test", .async(item.shutdown))
 
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
             lifecycle.shutdown()
         }
@@ -389,7 +314,7 @@ final class Tests: XCTestCase {
     }
 
     func testRegisterAsyncClosure() {
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
 
         let item = GoodItem()
         lifecycle.register(label: "test",
@@ -402,7 +327,7 @@ final class Tests: XCTestCase {
                                item.shutdown(callback: callback)
                            })
 
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
             lifecycle.shutdown()
         }
@@ -411,7 +336,7 @@ final class Tests: XCTestCase {
     }
 
     func testRegisterShutdownAsyncClosure() {
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
 
         let item = GoodItem()
         lifecycle.registerShutdown(label: "test", .async { callback in
@@ -419,7 +344,7 @@ final class Tests: XCTestCase {
             item.shutdown(callback: callback)
         })
 
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
             lifecycle.shutdown()
         }
@@ -429,14 +354,14 @@ final class Tests: XCTestCase {
 
     func testRegisterNIO() {
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
 
         let item = NIOItem(eventLoopGroup: eventLoopGroup)
         lifecycle.register(label: item.id,
                            start: .eventLoopFuture(item.start),
                            shutdown: .eventLoopFuture(item.shutdown))
 
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
             lifecycle.shutdown()
         }
@@ -446,12 +371,12 @@ final class Tests: XCTestCase {
 
     func testRegisterShutdownNIO() {
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
 
         let item = NIOItem(eventLoopGroup: eventLoopGroup)
         lifecycle.registerShutdown(label: item.id, .eventLoopFuture(item.shutdown))
 
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
             lifecycle.shutdown()
         }
@@ -461,7 +386,7 @@ final class Tests: XCTestCase {
 
     func testRegisterNIOClosure() {
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
 
         let item = NIOItem(eventLoopGroup: eventLoopGroup)
         lifecycle.register(label: item.id,
@@ -474,7 +399,7 @@ final class Tests: XCTestCase {
                                return item.shutdown()
                            })
 
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
             lifecycle.shutdown()
         }
@@ -484,7 +409,7 @@ final class Tests: XCTestCase {
 
     func testRegisterShutdownNIOClosure() {
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
 
         let item = NIOItem(eventLoopGroup: eventLoopGroup)
         lifecycle.registerShutdown(label: item.id, .eventLoopFuture {
@@ -492,7 +417,7 @@ final class Tests: XCTestCase {
             return item.shutdown()
         })
 
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
             lifecycle.shutdown()
         }
@@ -502,13 +427,13 @@ final class Tests: XCTestCase {
 
     func testNIOFailure() {
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
 
         lifecycle.register(label: "test",
                            start: .eventLoopFuture { eventLoopGroup.next().makeFailedFuture(TestError()) },
                            shutdown: .eventLoopFuture { eventLoopGroup.next().makeSucceededFuture(()) })
 
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssert(error is TestError, "expected error to match")
             lifecycle.shutdown()
         }
@@ -543,7 +468,7 @@ final class Tests: XCTestCase {
 
         let expectedData = UUID().uuidString
         let item = Item(expectedData)
-        let lifecycle = Lifecycle()
+        let lifecycle = Lifecycle(label: "test")
         lifecycle.register(label: "test",
                            start: .eventLoopFuture {
                                item.start().map { data -> Void in
@@ -556,7 +481,7 @@ final class Tests: XCTestCase {
                                }
                             })
 
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+        lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
             XCTAssertEqual(state, .started(expectedData), "expected item to be shutdown, but \(state)")
             lifecycle.shutdown()
@@ -565,76 +490,3 @@ final class Tests: XCTestCase {
         XCTAssertEqual(state, .shutdown, "expected item to be shutdown, but \(state)")
     }
 }
-
-private class GoodItem: LifecycleItem {
-    let queue = DispatchQueue(label: "GoodItem", attributes: .concurrent)
-    let startDelay: Double
-    let shutdownDelay: Double
-
-    var state = State.idle
-    let stateLock = Lock()
-
-    init(startDelay: Double = Double.random(in: 0.01 ... 0.1), shutdownDelay: Double = Double.random(in: 0.01 ... 0.1)) {
-        self.startDelay = startDelay
-        self.shutdownDelay = shutdownDelay
-    }
-
-    let label: String = UUID().uuidString
-
-    func start(callback: @escaping (Error?) -> Void) {
-        self.queue.asyncAfter(deadline: .now() + self.startDelay) {
-            self.stateLock.withLock { self.state = .started }
-            callback(nil)
-        }
-    }
-
-    func shutdown(callback: @escaping (Error?) -> Void) {
-        self.queue.asyncAfter(deadline: .now() + self.shutdownDelay) {
-            self.stateLock.withLock { self.state = .shutdown }
-            callback(nil)
-        }
-    }
-
-    enum State {
-        case idle
-        case started
-        case shutdown
-    }
-}
-
-private class NIOItem {
-    let id: String
-    let eventLoopGroup: EventLoopGroup
-    let startDelay: Int64
-    let shutdownDelay: Int64
-
-    var state = State.idle
-    let stateLock = Lock()
-
-    init(eventLoopGroup: EventLoopGroup, startDelay: Int64 = Int64.random(in: 10 ... 20), shutdownDelay: Int64 = Int64.random(in: 10 ... 20)) {
-        self.id = UUID().uuidString
-        self.eventLoopGroup = eventLoopGroup
-        self.startDelay = startDelay
-        self.shutdownDelay = shutdownDelay
-    }
-
-    func start() -> EventLoopFuture<Void> {
-        return self.eventLoopGroup.next().scheduleTask(in: .milliseconds(self.startDelay)) {
-            self.stateLock.withLock { self.state = .started }
-        }.futureResult
-    }
-
-    func shutdown() -> EventLoopFuture<Void> {
-        return self.eventLoopGroup.next().scheduleTask(in: .milliseconds(self.shutdownDelay)) {
-            self.stateLock.withLock { self.state = .shutdown }
-        }.futureResult
-    }
-
-    enum State {
-        case idle
-        case started
-        case shutdown
-    }
-}
-
-private struct TestError: Error {}
