@@ -75,7 +75,7 @@ public class Lifecycle {
 
     /// Shuts down the `LifecycleItem` array provided in `start` or `startAndWait`.
     /// Shutdown is performed in reverse order of items provided.
-    public func shutdown(on queue: DispatchQueue = DispatchQueue.global()) {
+    public func shutdown(on queue: DispatchQueue = DispatchQueue.global(), callback: @escaping ([String: Error]) -> Void = { _ in }) {
         self.stateLock.lock()
         switch self.state {
         case .idle:
@@ -90,8 +90,9 @@ public class Lifecycle {
         case .started(let items):
             self.state = .shuttingDown
             self.stateLock.unlock()
-            self._shutdown(on: queue, items: items) {
-                self.shutdownGroup.leave()
+            self._shutdown(on: queue, items: items) { errors in
+                defer { self.shutdownGroup.leave() }
+                callback(errors)
             }
         }
     }
@@ -125,7 +126,7 @@ public class Lifecycle {
             case .shuttingDown:
                 self.stateLock.unlock()
                 // shutdown was called while starting, or start failed, shutdown what we can
-                self._shutdown(on: configuration.callbackQueue, items: items) {
+                self._shutdown(on: configuration.callbackQueue, items: items) { _ in
                     callback(error)
                     self.shutdownGroup.leave()
                 }
@@ -171,12 +172,12 @@ public class Lifecycle {
         }
     }
 
-    private func _shutdown(on queue: DispatchQueue, items: [LifecycleItem], callback: @escaping () -> Void) {
+    private func _shutdown(on queue: DispatchQueue, items: [LifecycleItem], callback: @escaping ([String: Error]) -> Void) {
         self.stateLock.withLock {
             self.logger.info("shutting down lifecycle")
             self.state = .shuttingDown
         }
-        self._shutdown(on: queue, items: items.reversed(), index: 0) {
+        self._shutdown(on: queue, items: items.reversed(), index: 0, errors: [:]) { errors in
             self.stateLock.withLock {
                 guard case .shuttingDown = self.state else {
                     preconditionFailure("invalid state, \(self.state)")
@@ -184,24 +185,26 @@ public class Lifecycle {
                 self.state = .shutdown
             }
             self.logger.info("bye")
-            callback()
+            callback(errors)
         }
     }
 
-    private func _shutdown(on queue: DispatchQueue, items: [LifecycleItem], index: Int, callback: @escaping () -> Void) {
+    private func _shutdown(on queue: DispatchQueue, items: [LifecycleItem], index: Int, errors: [String: Error], callback: @escaping ([String: Error]) -> Void) {
         // async barrier
         let shutdown = { (callback) -> Void in queue.async { items[index].shutdown(callback: callback) } }
-        let callback = { () -> Void in queue.async { callback() } }
+        let callback = { (errors) -> Void in queue.async { callback(errors) } }
 
         if index >= items.count {
-            return callback()
+            return callback(errors)
         }
         self.logger.info("stopping item [\(items[index].label)]")
         shutdown { error in
+            var errors = errors
             if let error = error {
-                self.logger.info("failed to stop [\(items[index].label)]: \(error)")
+                errors[items[index].label] = error
+                self.logger.error("failed to stop [\(items[index].label)]: \(error)")
             }
-            self._shutdown(on: queue, items: items, index: index + 1, callback: callback)
+            self._shutdown(on: queue, items: items, index: index + 1, errors: errors, callback: callback)
         }
     }
 

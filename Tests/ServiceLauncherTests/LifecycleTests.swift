@@ -81,7 +81,7 @@ final class Tests: XCTestCase {
 
     func testBadShutdown() {
         class BadItem: LifecycleItem {
-            let label: String = UUID().uuidString
+            let label = UUID().uuidString
 
             func start(callback: (Error?) -> Void) {
                 callback(nil)
@@ -92,15 +92,23 @@ final class Tests: XCTestCase {
             }
         }
 
-        let items: [LifecycleItem] = [GoodItem(), BadItem(), GoodItem()]
+        var shutdownErrors: [String: Error]?
+        let items: [LifecycleItem] = [GoodItem(), BadItem(), BadItem(), GoodItem(), BadItem()]
         let lifecycle = Lifecycle()
         lifecycle.register(items)
         lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
             XCTAssertNil(error, "not expecting error")
-            lifecycle.shutdown()
+            lifecycle.shutdown { errors in
+                shutdownErrors = errors
+            }
         }
         lifecycle.wait()
-        items.compactMap { $0 as? GoodItem }.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
+
+        let goodItems = items.compactMap { $0 as? GoodItem }
+        goodItems.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
+        let badItems = items.compactMap { $0 as? BadItem }
+        XCTAssertEqual(shutdownErrors?.count, badItems.count, "expected shutdown errors")
+        badItems.forEach { XCTAssert(shutdownErrors?[$0.label] is TestError, "expected error to match") }
     }
 
     func testStartAndWait() {
