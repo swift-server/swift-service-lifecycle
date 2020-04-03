@@ -386,11 +386,9 @@ final class Tests: XCTestCase {
         let item = GoodItem()
         lifecycle.register(label: "test",
                            start: .async { callback in
-                               print("start")
                                item.start(callback: callback)
                            },
                            shutdown: .async { callback in
-                               print("shutdown")
                                item.shutdown(callback: callback)
                            })
 
@@ -407,7 +405,6 @@ final class Tests: XCTestCase {
 
         let item = GoodItem()
         lifecycle.registerShutdown(label: "test", .async { callback in
-            print("shutdown")
             item.shutdown(callback: callback)
         })
 
@@ -555,6 +552,66 @@ final class Tests: XCTestCase {
         }
         lifecycle.wait()
         XCTAssertEqual(state, .shutdown, "expected item to be shutdown, but \(state)")
+    }
+
+    func testStopCalledDuringStart() {
+        let l = Lifecycle()
+        let lifecycleQ = DispatchQueue(label: "lifecycleQ")
+        let blockStartGroup = DispatchGroup()
+        let waitForShutdownGroup = DispatchGroup()
+        let shutdownCompleteGroup = DispatchGroup()
+        blockStartGroup.enter()
+        waitForShutdownGroup.enter()
+        shutdownCompleteGroup.enter()
+        var startCalls = 0
+        var stopCalls = 0
+
+        l.register(label: "hanging in start",
+                   start: {
+                       if #available(macOS 10.12, *) {
+                           dispatchPrecondition(condition: DispatchPredicate.onQueue(lifecycleQ))
+                       }
+                       startCalls += 1
+                       blockStartGroup.wait()
+                   },
+                   shutdown: {
+                       if #available(macOS 10.12, *) {
+                           dispatchPrecondition(condition: DispatchPredicate.onQueue(lifecycleQ))
+                       }
+                       stopCalls += 1
+                       XCTAssertEqual(startCalls, 2)
+                       waitForShutdownGroup.leave()
+
+        })
+        l.register(label: "hi",
+                   start: {
+                       if #available(macOS 10.12, *) {
+                           dispatchPrecondition(condition: DispatchPredicate.onQueue(lifecycleQ))
+                       }
+                       startCalls += 1
+                       print("start")
+                   },
+                   shutdown: {
+                       if #available(macOS 10.12, *) {
+                           dispatchPrecondition(condition: DispatchPredicate.onQueue(lifecycleQ))
+                       }
+                       XCTAssertEqual(startCalls, 2)
+                       stopCalls += 1
+
+                       print("stop")
+
+        })
+        l.start(configuration: .init(callbackQueue: lifecycleQ, shutdownSignal: nil, installBacktrace: false)) { error in
+            XCTAssertNil(error)
+        }
+        l.shutdown()
+        blockStartGroup.leave()
+        waitForShutdownGroup.wait()
+        l.wait()
+        lifecycleQ.sync {
+            XCTAssertEqual(startCalls, stopCalls)
+            XCTAssertEqual(2, startCalls)
+        }
     }
 }
 
