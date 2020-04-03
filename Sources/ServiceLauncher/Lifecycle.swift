@@ -75,7 +75,7 @@ public class Lifecycle {
 
     /// Shuts down the `LifecycleItem` array provided in `start` or `startAndWait`.
     /// Shutdown is performed in reverse order of items provided.
-    public func shutdown(on queue: DispatchQueue = DispatchQueue.global()) {
+    public func shutdown() {
         self.stateLock.lock()
         switch self.state {
         case .idle:
@@ -87,7 +87,7 @@ public class Lifecycle {
         case .shuttingDown, .shutdown:
             self.stateLock.unlock()
             return
-        case .started(let items):
+        case .started(let queue, let items):
             self.state = .shuttingDown
             self.stateLock.unlock()
             self._shutdown(on: queue, items: items) {
@@ -116,7 +116,7 @@ public class Lifecycle {
             }
             self.state = .starting
         }
-        self._start(on: configuration.callbackQueue, items: items, index: 0) { _, error in
+        self._start(on: configuration.callbackQueue, items: items, index: 0) { started, error in
             self.stateLock.lock()
             if error != nil {
                 self.state = .shuttingDown
@@ -125,18 +125,19 @@ public class Lifecycle {
             case .shuttingDown:
                 self.stateLock.unlock()
                 // shutdown was called while starting, or start failed, shutdown what we can
-                self._shutdown(on: configuration.callbackQueue, items: items) {
+                let stoppable = started < items.count ? Array(items.prefix(started + 1)) : items
+                self._shutdown(on: configuration.callbackQueue, items: stoppable) {
                     callback(error)
                     self.shutdownGroup.leave()
                 }
             case .starting:
-                self.state = .started(items)
+                self.state = .started(configuration.callbackQueue, items)
                 self.stateLock.unlock()
                 configuration.shutdownSignal?.forEach { signal in
                     self.logger.info("setting up shutdown hook on \(signal)")
                     let signalSource = Lifecycle.trap(signal: signal, handler: { signal in
                         self.logger.info("intercepted signal: \(signal)")
-                        self.shutdown(on: configuration.callbackQueue)
+                        self.shutdown()
                     })
                     self.shutdownGroup.notify(queue: DispatchQueue.global()) {
                         signalSource.cancel()
@@ -208,7 +209,7 @@ public class Lifecycle {
     private enum State {
         case idle
         case starting
-        case started([LifecycleItem])
+        case started(DispatchQueue, [LifecycleItem])
         case shuttingDown
         case shutdown
     }
