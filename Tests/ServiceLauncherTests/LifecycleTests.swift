@@ -255,14 +255,14 @@ final class Tests: XCTestCase {
         let lifecycle = Lifecycle()
 
         let item1 = NIOItem(eventLoopGroup: eventLoopGroup)
-        lifecycle.register(name: "item1", start: .async(item1.start), shutdown: .async(item1.shutdown))
+        lifecycle.register(name: "item1", start: .eventLoopFuture(item1.start), shutdown: .eventLoopFuture(item1.shutdown))
 
         lifecycle.register(name: "blocker",
                            start: { () -> Void in try eventLoopGroup.next().makeSucceededFuture(()).wait() },
                            shutdown: { () -> Void in try eventLoopGroup.next().makeSucceededFuture(()).wait() })
 
         let item2 = NIOItem(eventLoopGroup: eventLoopGroup)
-        lifecycle.register(name: "item2", start: .async(item2.start), shutdown: .async(item2.shutdown))
+        lifecycle.register(name: "item2", start: .eventLoopFuture(item2.start), shutdown: .eventLoopFuture(item2.shutdown))
 
         lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
             XCTAssertNil(error, "not expecting error")
@@ -434,8 +434,8 @@ final class Tests: XCTestCase {
 
         let item = NIOItem(eventLoopGroup: eventLoopGroup)
         lifecycle.register(name: item.id,
-                           start: .async(item.start),
-                           shutdown: .async(item.shutdown))
+                           start: .eventLoopFuture(item.start),
+                           shutdown: .eventLoopFuture(item.shutdown))
 
         lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
             XCTAssertNil(error, "not expecting error")
@@ -450,7 +450,7 @@ final class Tests: XCTestCase {
         let lifecycle = Lifecycle()
 
         let item = NIOItem(eventLoopGroup: eventLoopGroup)
-        lifecycle.registerShutdown(name: item.id, .async(item.shutdown))
+        lifecycle.registerShutdown(name: item.id, .eventLoopFuture(item.shutdown))
 
         lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
             XCTAssertNil(error, "not expecting error")
@@ -466,11 +466,11 @@ final class Tests: XCTestCase {
 
         let item = NIOItem(eventLoopGroup: eventLoopGroup)
         lifecycle.register(name: item.id,
-                           start: .async {
+                           start: .eventLoopFuture {
                                print("start")
                                return item.start()
                            },
-                           shutdown: .async {
+                           shutdown: .eventLoopFuture {
                                print("shutdown")
                                return item.shutdown()
                            })
@@ -488,7 +488,7 @@ final class Tests: XCTestCase {
         let lifecycle = Lifecycle()
 
         let item = NIOItem(eventLoopGroup: eventLoopGroup)
-        lifecycle.registerShutdown(name: item.id, .async {
+        lifecycle.registerShutdown(name: item.id, .eventLoopFuture {
             print("shutdown")
             return item.shutdown()
         })
@@ -506,8 +506,8 @@ final class Tests: XCTestCase {
         let lifecycle = Lifecycle()
 
         lifecycle.register(name: "test",
-                           start: .async { eventLoopGroup.next().makeFailedFuture(TestError()) },
-                           shutdown: .async { eventLoopGroup.next().makeSucceededFuture(()) })
+                           start: .eventLoopFuture { eventLoopGroup.next().makeFailedFuture(TestError()) },
+                           shutdown: .eventLoopFuture { eventLoopGroup.next().makeSucceededFuture(()) })
 
         lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
             XCTAssert(error is TestError, "expected error to match")
@@ -546,12 +546,12 @@ final class Tests: XCTestCase {
         let item = Item(expectedData)
         let lifecycle = Lifecycle()
         lifecycle.register(name: "test",
-                           start: .async {
+                           start: .eventLoopFuture {
                                item.start().map { data -> Void in
                                    state = .started(data)
                                }
                            },
-                           shutdown: .async {
+                           shutdown: .eventLoopFuture {
                                item.shutdown().map { _ -> Void in
                                    state = .shutdown
                                }
