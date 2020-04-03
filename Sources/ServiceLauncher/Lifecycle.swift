@@ -17,7 +17,6 @@ import Darwin
 #else
 import Glibc
 #endif
-import Foundation
 import Backtrace
 import Dispatch
 import Logging
@@ -28,10 +27,10 @@ public class Lifecycle {
     private let shutdownGroup = DispatchGroup()
 
     private var state = State.idle
-    private let stateLock = NSLock()
+    private let stateLock = Lock()
 
     private var items = [LifecycleItem]()
-    private let itemsLock = NSLock()
+    private let itemsLock = Lock()
 
     /// Creates a `Lifecycle` instance.
     public init() {
@@ -44,7 +43,7 @@ public class Lifecycle {
     /// - parameters:
     ///    - configuration: Defines lifecycle `Configuration`
     public func startAndWait(configuration: Configuration = .init()) throws {
-        let waitLock = NSLock()
+        let waitLock = Lock()
         let group = DispatchGroup()
         var startError: Error?
         let items = self.itemsLock.withLock { self.items }
@@ -165,7 +164,7 @@ public class Lifecycle {
                 return callback(index, error)
             }
             // shutdown called while starting
-            if case .shuttingDown = self.stateLock.withLock({self.state}) {
+            if case .shuttingDown = self.stateLock.withLock({ self.state }) {
                 return callback(index, nil)
             }
             self._start(on: queue, items: items, index: index + 1, callback: callback)
@@ -397,13 +396,5 @@ extension Lifecycle {
         public static let INT: Signal = Signal(rawValue: SIGINT)
         // for testing
         internal static let ALRM: Signal = Signal(rawValue: SIGALRM)
-    }
-}
-
-extension NSLock {
-    func withLock<T>(_ body: () -> T) -> T {
-        self.lock()
-        defer { self.unlock() }
-        return body()
     }
 }
