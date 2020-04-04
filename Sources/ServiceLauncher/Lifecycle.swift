@@ -157,10 +157,10 @@ public class Lifecycle {
         if index >= items.count {
             return callback(index, nil)
         }
-        self.logger.info("starting item [\(items[index].name)]")
+        self.logger.info("starting item [\(items[index].label)]")
         start { error in
             if let error = error {
-                self.logger.info("failed to start [\(items[index].name)]: \(error)")
+                self.logger.info("failed to start [\(items[index].label)]: \(error)")
                 return callback(index, error)
             }
             // shutdown called while starting
@@ -196,10 +196,10 @@ public class Lifecycle {
         if index >= items.count {
             return callback()
         }
-        self.logger.info("stopping item [\(items[index].name)]")
+        self.logger.info("stopping item [\(items[index].label)]")
         shutdown { error in
             if let error = error {
-                self.logger.info("failed to stop [\(items[index].name)]: \(error)")
+                self.logger.info("failed to stop [\(items[index].label)]: \(error)")
             }
             self._shutdown(on: queue, items: items, index: index + 1, callback: callback)
         }
@@ -216,7 +216,7 @@ public class Lifecycle {
 
 extension Lifecycle {
     internal struct Item: LifecycleItem {
-        let name: String
+        let label: String
         let start: Handler
         let shutdown: Handler
 
@@ -278,39 +278,39 @@ public extension Lifecycle {
     /// Add a `LifecycleItem` to a `LifecycleItems` collection.
     ///
     /// - parameters:
-    ///    - name: name of the item, useful for debugging.
+    ///    - label: label of the item, useful for debugging.
     ///    - start: closure to perform the startup.
     ///    - shutdown: closure to perform the shutdown.
-    func register(name: String, start: Handler, shutdown: Handler) {
-        self.register(Item(name: name, start: start, shutdown: shutdown))
+    func register(label: String, start: Handler, shutdown: Handler) {
+        self.register(Item(label: label, start: start, shutdown: shutdown))
     }
 
     /// Adds a `LifecycleItem` to a `LifecycleItems` collection.
     ///
     /// - parameters:
-    ///    - name: name of the item, useful for debugging.
+    ///    - label: label of the item, useful for debugging.
     ///    - shutdown: closure to perform the shutdown.
-    func registerShutdown(name: String, _ handler: Handler) {
-        self.register(name: name, start: .none, shutdown: handler)
+    func registerShutdown(label: String, _ handler: Handler) {
+        self.register(label: label, start: .none, shutdown: handler)
     }
 
     /// Adds a `LifecycleItem` to a `LifecycleItems` collection.
     ///
     /// - parameters:
-    ///    - name: name of the item, useful for debugging.
+    ///    - label: label of the item, useful for debugging.
     ///    - start: closure to perform the shutdown.
     ///    - shutdown: closure to perform the shutdown.
-    func register(name: String, start: @escaping () throws -> Void, shutdown: @escaping () throws -> Void) {
-        self.register(name: name, start: .sync(start), shutdown: .sync(shutdown))
+    func register(label: String, start: @escaping () throws -> Void, shutdown: @escaping () throws -> Void) {
+        self.register(label: label, start: .sync(start), shutdown: .sync(shutdown))
     }
 
     /// Adds a `LifecycleItem` to a `LifecycleItems` collection.
     ///
     /// - parameters:
-    ///    - name: name of the item, useful for debugging.
+    ///    - label: label of the item, useful for debugging.
     ///    - shutdown: closure to perform the shutdown.
-    func registerShutdown(name: String, _ handler: @escaping () throws -> Void) {
-        self.register(name: name, start: .none, shutdown: .sync(handler))
+    func registerShutdown(label: String, _ handler: @escaping () throws -> Void) {
+        self.register(label: label, start: .none, shutdown: .sync(handler))
     }
 }
 
@@ -365,7 +365,7 @@ public extension Lifecycle {
 
 /// Represents an item that can be started and shut down
 public protocol LifecycleItem {
-    var name: String { get }
+    var label: String { get }
     func start(callback: @escaping (Error?) -> Void)
     func shutdown(callback: @escaping (Error?) -> Void)
 }
