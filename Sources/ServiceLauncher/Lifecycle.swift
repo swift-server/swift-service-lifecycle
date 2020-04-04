@@ -27,10 +27,10 @@ public class Lifecycle {
     private let shutdownGroup = DispatchGroup()
 
     private var state = State.idle
-    private let stateSemaphore = DispatchSemaphore(value: 1)
+    private let stateLock = Lock()
 
     private var items = [LifecycleItem]()
-    private let itemsSemaphore = DispatchSemaphore(value: 1)
+    private let itemsLock = Lock()
 
     /// Creates a `Lifecycle` instance.
     public init() {
@@ -43,16 +43,23 @@ public class Lifecycle {
     /// - parameters:
     ///    - configuration: Defines lifecycle `Configuration`
     public func startAndWait(configuration: Configuration = .init()) throws {
-        let waitSemaphore = DispatchSemaphore(value: 0)
+        let waitLock = Lock()
+        let group = DispatchGroup()
         var startError: Error?
-        let items = self.itemsSemaphore.lock { self.items }
+        let items = self.itemsLock.withLock { self.items }
+        group.enter()
         self._start(configuration: configuration, items: items) { error in
-            startError = error
-            waitSemaphore.signal()
+            waitLock.withLock {
+                startError = error
+            }
+            group.leave()
         }
-        waitSemaphore.wait()
-        try startError.map { throw $0 }
         self.shutdownGroup.wait()
+        try waitLock.withLock {
+            startError
+        }.map { error in
+            throw error
+        }
     }
 
     /// Starts the provided `LifecycleItem` array.
@@ -62,27 +69,27 @@ public class Lifecycle {
     ///    - configuration: Defines lifecycle `Configuration`
     ///    - callback: The handler which is called after the start operation completes. The parameter will be `nil` on success and contain the `Error` otherwise.
     public func start(configuration: Configuration = .init(), callback: @escaping (Error?) -> Void) {
-        let items = self.itemsSemaphore.lock { self.items }
+        let items = self.itemsLock.withLock { self.items }
         self._start(configuration: configuration, items: items, callback: callback)
     }
 
     /// Shuts down the `LifecycleItem` array provided in `start` or `startAndWait`.
     /// Shutdown is performed in reverse order of items provided.
     public func shutdown(on queue: DispatchQueue = DispatchQueue.global()) {
-        self.stateSemaphore.wait()
+        self.stateLock.lock()
         switch self.state {
         case .idle:
-            self.stateSemaphore.signal()
+            self.stateLock.unlock()
             self.shutdownGroup.leave()
         case .starting:
             self.state = .shuttingDown
-            self.stateSemaphore.signal()
+            self.stateLock.unlock()
         case .shuttingDown, .shutdown:
-            self.stateSemaphore.signal()
+            self.stateLock.unlock()
             return
         case .started(let items):
             self.state = .shuttingDown
-            self.stateSemaphore.signal()
+            self.stateLock.unlock()
             self._shutdown(on: queue, items: items) {
                 self.shutdownGroup.leave()
             }
@@ -97,7 +104,7 @@ public class Lifecycle {
     // MARK: - private
 
     private func _start(configuration: Configuration, items: [LifecycleItem], callback: @escaping (Error?) -> Void) {
-        self.stateSemaphore.lock {
+        self.stateLock.withLock {
             guard case .idle = self.state else {
                 preconditionFailure("invalid state, \(self.state)")
             }
@@ -110,13 +117,13 @@ public class Lifecycle {
             self.state = .starting
         }
         self._start(on: configuration.callbackQueue, items: items, index: 0) { _, error in
-            self.stateSemaphore.wait()
+            self.stateLock.lock()
             if error != nil {
                 self.state = .shuttingDown
             }
             switch self.state {
             case .shuttingDown:
-                self.stateSemaphore.signal()
+                self.stateLock.unlock()
                 // shutdown was called while starting, or start failed, shutdown what we can
                 self._shutdown(on: configuration.callbackQueue, items: items) {
                     callback(error)
@@ -124,7 +131,7 @@ public class Lifecycle {
                 }
             case .starting:
                 self.state = .started(items)
-                self.stateSemaphore.signal()
+                self.stateLock.unlock()
                 configuration.shutdownSignal?.forEach { signal in
                     self.logger.info("setting up shutdown hook on \(signal)")
                     let signalSource = Lifecycle.trap(signal: signal, handler: { signal in
@@ -157,23 +164,20 @@ public class Lifecycle {
                 return callback(index, error)
             }
             // shutdown called while starting
-            self.stateSemaphore.wait()
-            if case .shuttingDown = self.state {
-                self.stateSemaphore.signal()
+            if case .shuttingDown = self.stateLock.withLock({ self.state }) {
                 return callback(index, nil)
             }
-            self.stateSemaphore.signal()
             self._start(on: queue, items: items, index: index + 1, callback: callback)
         }
     }
 
     private func _shutdown(on queue: DispatchQueue, items: [LifecycleItem], callback: @escaping () -> Void) {
-        self.stateSemaphore.lock {
+        self.stateLock.withLock {
             self.logger.info("shutting down lifecycle")
             self.state = .shuttingDown
         }
         self._shutdown(on: queue, items: items.reversed(), index: 0) {
-            self.stateSemaphore.lock {
+            self.stateLock.withLock {
                 guard case .shuttingDown = self.state else {
                     preconditionFailure("invalid state, \(self.state)")
                 }
@@ -253,12 +257,12 @@ public extension Lifecycle {
     /// - parameters:
     ///    - items: one or more `LifecycleItem`.
     func register(_ items: [LifecycleItem]) {
-        self.stateSemaphore.lock {
+        self.stateLock.withLock {
             guard case .idle = self.state else {
                 preconditionFailure("invalid state, \(self.state)")
             }
         }
-        self.itemsSemaphore.lock {
+        self.itemsLock.withLock {
             self.items.append(contentsOf: items)
         }
     }
@@ -392,13 +396,5 @@ extension Lifecycle {
         public static let INT: Signal = Signal(rawValue: SIGINT)
         // for testing
         internal static let ALRM: Signal = Signal(rawValue: SIGALRM)
-    }
-}
-
-private extension DispatchSemaphore {
-    func lock<T>(_ body: () -> T) -> T {
-        self.wait()
-        defer { self.signal() }
-        return body()
     }
 }

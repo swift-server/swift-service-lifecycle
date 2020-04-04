@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 
 import NIO
-import NIOConcurrencyHelpers
 @testable import ServiceLauncher
 import ServiceLauncherNIOCompat
 import XCTest
