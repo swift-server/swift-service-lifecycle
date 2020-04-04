@@ -58,9 +58,7 @@ final class Tests: XCTestCase {
 
     func testBadStartup() {
         class BadItem: LifecycleItem {
-            var name: String {
-                return "\(self)"
-            }
+            let label: String = UUID().uuidString
 
             func start(callback: (Error?) -> Void) {
                 callback(TestError())
@@ -84,9 +82,7 @@ final class Tests: XCTestCase {
 
     func testBadShutdown() {
         class BadItem: LifecycleItem {
-            var name: String {
-                return "\(self)"
-            }
+            let label: String = UUID().uuidString
 
             func start(callback: (Error?) -> Void) {
                 callback(nil)
@@ -117,9 +113,7 @@ final class Tests: XCTestCase {
                 self.semaphore = semaphore
             }
 
-            var name: String {
-                return "\(self)"
-            }
+            let label: String = UUID().uuidString
 
             func start(callback: (Error?) -> Void) {
                 self.state = .started
@@ -153,9 +147,7 @@ final class Tests: XCTestCase {
 
     func testBadStartAndWait() {
         class BadItem: LifecycleItem {
-            var name: String {
-                return "\(self)"
-            }
+            let label: String = UUID().uuidString
 
             func start(callback: (Error?) -> Void) {
                 callback(TestError())
@@ -183,8 +175,8 @@ final class Tests: XCTestCase {
                 self.result = result
             }
 
-            var name: String {
-                return "\(self.id)"
+            var label: String {
+                return self.id
             }
 
             func start(callback: (Error?) -> Void) {
@@ -239,7 +231,7 @@ final class Tests: XCTestCase {
         let lifecycle = Lifecycle()
         let items = (0 ... Int.random(in: 10 ... 20)).map { _ in Sync() }
         items.forEach { item in
-            lifecycle.register(name: item.id, start: item.start, shutdown: item.shutdown)
+            lifecycle.register(label: item.id, start: item.start, shutdown: item.shutdown)
         }
 
         lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
@@ -255,14 +247,14 @@ final class Tests: XCTestCase {
         let lifecycle = Lifecycle()
 
         let item1 = NIOItem(eventLoopGroup: eventLoopGroup)
-        lifecycle.register(name: "item1", start: .eventLoopFuture(item1.start), shutdown: .eventLoopFuture(item1.shutdown))
+        lifecycle.register(label: "item1", start: .eventLoopFuture(item1.start), shutdown: .eventLoopFuture(item1.shutdown))
 
-        lifecycle.register(name: "blocker",
+        lifecycle.register(label: "blocker",
                            start: { () -> Void in try eventLoopGroup.next().makeSucceededFuture(()).wait() },
                            shutdown: { () -> Void in try eventLoopGroup.next().makeSucceededFuture(()).wait() })
 
         let item2 = NIOItem(eventLoopGroup: eventLoopGroup)
-        lifecycle.register(name: "item2", start: .eventLoopFuture(item2.start), shutdown: .eventLoopFuture(item2.shutdown))
+        lifecycle.register(label: "item2", start: .eventLoopFuture(item2.start), shutdown: .eventLoopFuture(item2.shutdown))
 
         lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
             XCTAssertNil(error, "not expecting error")
@@ -315,7 +307,7 @@ final class Tests: XCTestCase {
         let lifecycle = Lifecycle()
 
         let item = Sync()
-        lifecycle.register(name: "test",
+        lifecycle.register(label: "test",
                            start: item.start,
                            shutdown: item.shutdown)
 
@@ -349,7 +341,7 @@ final class Tests: XCTestCase {
         let lifecycle = Lifecycle()
 
         let item = Sync()
-        lifecycle.registerShutdown(name: "test", item.shutdown)
+        lifecycle.registerShutdown(label: "test", item.shutdown)
 
         lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
             XCTAssertNil(error, "not expecting error")
@@ -363,7 +355,7 @@ final class Tests: XCTestCase {
         let lifecycle = Lifecycle()
 
         let item = GoodItem()
-        lifecycle.register(name: "test",
+        lifecycle.register(label: "test",
                            start: .async(item.start),
                            shutdown: .async(item.shutdown))
 
@@ -379,7 +371,7 @@ final class Tests: XCTestCase {
         let lifecycle = Lifecycle()
 
         let item = GoodItem()
-        lifecycle.registerShutdown(name: "test", .async(item.shutdown))
+        lifecycle.registerShutdown(label: "test", .async(item.shutdown))
 
         lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
             XCTAssertNil(error, "not expecting error")
@@ -393,7 +385,7 @@ final class Tests: XCTestCase {
         let lifecycle = Lifecycle()
 
         let item = GoodItem()
-        lifecycle.register(name: "test",
+        lifecycle.register(label: "test",
                            start: .async { callback in
                                print("start")
                                item.start(callback: callback)
@@ -415,7 +407,7 @@ final class Tests: XCTestCase {
         let lifecycle = Lifecycle()
 
         let item = GoodItem()
-        lifecycle.registerShutdown(name: "test", .async { callback in
+        lifecycle.registerShutdown(label: "test", .async { callback in
             print("shutdown")
             item.shutdown(callback: callback)
         })
@@ -433,7 +425,7 @@ final class Tests: XCTestCase {
         let lifecycle = Lifecycle()
 
         let item = NIOItem(eventLoopGroup: eventLoopGroup)
-        lifecycle.register(name: item.id,
+        lifecycle.register(label: item.id,
                            start: .eventLoopFuture(item.start),
                            shutdown: .eventLoopFuture(item.shutdown))
 
@@ -450,7 +442,7 @@ final class Tests: XCTestCase {
         let lifecycle = Lifecycle()
 
         let item = NIOItem(eventLoopGroup: eventLoopGroup)
-        lifecycle.registerShutdown(name: item.id, .eventLoopFuture(item.shutdown))
+        lifecycle.registerShutdown(label: item.id, .eventLoopFuture(item.shutdown))
 
         lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
             XCTAssertNil(error, "not expecting error")
@@ -465,7 +457,7 @@ final class Tests: XCTestCase {
         let lifecycle = Lifecycle()
 
         let item = NIOItem(eventLoopGroup: eventLoopGroup)
-        lifecycle.register(name: item.id,
+        lifecycle.register(label: item.id,
                            start: .eventLoopFuture {
                                print("start")
                                return item.start()
@@ -488,7 +480,7 @@ final class Tests: XCTestCase {
         let lifecycle = Lifecycle()
 
         let item = NIOItem(eventLoopGroup: eventLoopGroup)
-        lifecycle.registerShutdown(name: item.id, .eventLoopFuture {
+        lifecycle.registerShutdown(label: item.id, .eventLoopFuture {
             print("shutdown")
             return item.shutdown()
         })
@@ -505,7 +497,7 @@ final class Tests: XCTestCase {
         let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
         let lifecycle = Lifecycle()
 
-        lifecycle.register(name: "test",
+        lifecycle.register(label: "test",
                            start: .eventLoopFuture { eventLoopGroup.next().makeFailedFuture(TestError()) },
                            shutdown: .eventLoopFuture { eventLoopGroup.next().makeSucceededFuture(()) })
 
@@ -545,7 +537,7 @@ final class Tests: XCTestCase {
         let expectedData = UUID().uuidString
         let item = Item(expectedData)
         let lifecycle = Lifecycle()
-        lifecycle.register(name: "test",
+        lifecycle.register(label: "test",
                            start: .eventLoopFuture {
                                item.start().map { data -> Void in
                                    state = .started(data)
@@ -580,9 +572,7 @@ private class GoodItem: LifecycleItem {
         self.shutdownDelay = shutdownDelay
     }
 
-    var name: String {
-        return "\(GoodItem.self)"
-    }
+    let label: String = UUID().uuidString
 
     func start(callback: @escaping (Error?) -> Void) {
         self.queue.asyncAfter(deadline: .now() + self.startDelay) {
