@@ -22,9 +22,11 @@ final class Tests: XCTestCase {
         let items = (0 ... Int.random(in: 10 ... 20)).map { _ in GoodItem() }
         let lifecycle = Lifecycle()
         lifecycle.register(items)
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
-            XCTAssertNil(error, "not expecting error")
-            lifecycle.shutdown()
+        lifecycle.start(configuration: .init(shutdownSignal: nil)) { startError in
+            XCTAssertNil(startError, "not expecting error")
+            lifecycle.shutdown { shutdownErrors in
+                XCTAssertNil(shutdownErrors, "not expecting error")
+            }
         }
         lifecycle.wait()
         items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
@@ -118,15 +120,52 @@ final class Tests: XCTestCase {
         items.suffix(started + 1).forEach { XCTAssertEqual($0.state, .idle, "expected item to be idle, but \($0.state)") }
     }
 
+    func testShutdownWhenIdle() {
+        let lifecycle = Lifecycle()
+        lifecycle.register(GoodItem())
+
+        let sempahpore1 = DispatchSemaphore(value: 0)
+        lifecycle.shutdown { errors in
+            XCTAssertNil(errors)
+            sempahpore1.signal()
+        }
+        lifecycle.wait()
+        XCTAssertEqual(.success, sempahpore1.wait(timeout: .now() + 1))
+
+        let sempahpore2 = DispatchSemaphore(value: 0)
+        lifecycle.shutdown { errors in
+            XCTAssertNil(errors)
+            sempahpore2.signal()
+        }
+        lifecycle.wait()
+        XCTAssertEqual(.success, sempahpore2.wait(timeout: .now() + 1))
+    }
+
+    func testShutdownWhenShutdown() {
+        let lifecycle = Lifecycle()
+        lifecycle.register(GoodItem())
+        let sempahpore1 = DispatchSemaphore(value: 0)
+        lifecycle.start { _ in
+            lifecycle.shutdown { errors in
+                XCTAssertNil(errors)
+                sempahpore1.signal()
+            }
+        }
+        lifecycle.wait()
+        XCTAssertEqual(.success, sempahpore1.wait(timeout: .now() + 1))
+
+        let sempahpore2 = DispatchSemaphore(value: 0)
+        lifecycle.shutdown { errors in
+            XCTAssertNil(errors)
+            sempahpore2.signal()
+        }
+        lifecycle.wait()
+        XCTAssertEqual(.success, sempahpore2.wait(timeout: .now() + 1))
+    }
+
     func testShutdownDuringHangingStart() {
         let lifecycle = Lifecycle()
-        let testQueue = DispatchQueue(label: UUID().uuidString)
-        let blockStartGroup = DispatchGroup()
-        let waitForShutdownGroup = DispatchGroup()
-        let shutdownCompleteGroup = DispatchGroup()
-        blockStartGroup.enter()
-        waitForShutdownGroup.enter()
-        shutdownCompleteGroup.enter()
+        let blockStartSemaphore = DispatchSemaphore(value: 0)
         var startCalls = [String]()
         var stopCalls = [String]()
 
@@ -134,42 +173,71 @@ final class Tests: XCTestCase {
             let id = UUID().uuidString
             lifecycle.register(label: id,
                                start: {
-                                   dispatchPrecondition(condition: DispatchPredicate.onQueue(testQueue))
                                    startCalls.append(id)
-                                   blockStartGroup.wait()
+                                   blockStartSemaphore.wait()
                                },
                                shutdown: {
-                                   dispatchPrecondition(condition: DispatchPredicate.onQueue(testQueue))
                                    XCTAssertTrue(startCalls.contains(id))
                                    stopCalls.append(id)
-                                   waitForShutdownGroup.leave()
-                        })
+                                })
         }
         do {
             let id = UUID().uuidString
             lifecycle.register(label: id,
                                start: {
-                                   dispatchPrecondition(condition: DispatchPredicate.onQueue(testQueue))
                                    startCalls.append(id)
                                },
                                shutdown: {
-                                   dispatchPrecondition(condition: DispatchPredicate.onQueue(testQueue))
                                    XCTAssertTrue(startCalls.contains(id))
                                    stopCalls.append(id)
-                        })
+                                })
         }
-        lifecycle.start(configuration: .init(callbackQueue: testQueue, shutdownSignal: nil)) { error in
+        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
             XCTAssertNil(error)
         }
         lifecycle.shutdown()
-        blockStartGroup.leave()
-        waitForShutdownGroup.wait()
+        blockStartSemaphore.signal()
         lifecycle.wait()
-        XCTAssertEqual(startCalls.count, stopCalls.count)
         XCTAssertEqual(startCalls.count, 1)
+        XCTAssertEqual(stopCalls.count, 1)
     }
 
-    func testBadStartup() {
+    func testShutdownErrors() {
+        class BadItem: LifecycleItem {
+            let label = UUID().uuidString
+
+            func start(callback: (Error?) -> Void) {
+                callback(nil)
+            }
+
+            func shutdown(callback: (Error?) -> Void) {
+                callback(TestError())
+            }
+        }
+
+        var shutdownErrors: [String: Error]?
+        let shutdownSemaphore = DispatchSemaphore(value: 0)
+        let items: [LifecycleItem] = [GoodItem(), BadItem(), BadItem(), GoodItem(), BadItem()]
+        let lifecycle = Lifecycle()
+        lifecycle.register(items)
+        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+            XCTAssertNil(error, "not expecting error")
+            lifecycle.shutdown { errors in
+                shutdownErrors = errors
+                shutdownSemaphore.signal()
+            }
+        }
+        lifecycle.wait()
+        XCTAssertEqual(.success, shutdownSemaphore.wait(timeout: .now() + 1))
+
+        let goodItems = items.compactMap { $0 as? GoodItem }
+        goodItems.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
+        let badItems = items.compactMap { $0 as? BadItem }
+        XCTAssertEqual(shutdownErrors?.count, badItems.count, "expected shutdown errors")
+        badItems.forEach { XCTAssert(shutdownErrors?[$0.label] is TestError, "expected error to match") }
+    }
+
+    func testStartupErrors() {
         class BadItem: LifecycleItem {
             let label: String = UUID().uuidString
 
@@ -192,30 +260,6 @@ final class Tests: XCTestCase {
         let badItemIndex = items.firstIndex { $0 as? BadItem != nil }!
         items.prefix(badItemIndex).compactMap { $0 as? GoodItem }.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
         items.suffix(from: badItemIndex + 1).compactMap { $0 as? GoodItem }.forEach { XCTAssertEqual($0.state, .idle, "expected item to be idle, but \($0.state)") }
-    }
-
-    func testBadShutdown() {
-        class BadItem: LifecycleItem {
-            let label: String = UUID().uuidString
-
-            func start(callback: (Error?) -> Void) {
-                callback(nil)
-            }
-
-            func shutdown(callback: (Error?) -> Void) {
-                callback(TestError())
-            }
-        }
-
-        let items: [LifecycleItem] = [GoodItem(), BadItem(), GoodItem()]
-        let lifecycle = Lifecycle()
-        lifecycle.register(items)
-        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
-            XCTAssertNil(error, "not expecting error")
-            lifecycle.shutdown()
-        }
-        lifecycle.wait()
-        items.compactMap { $0 as? GoodItem }.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
     }
 
     func testStartAndWait() {
