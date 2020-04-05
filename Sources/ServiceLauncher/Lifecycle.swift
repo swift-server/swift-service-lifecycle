@@ -32,6 +32,8 @@ public class Lifecycle {
     private var items = [LifecycleItem]()
     private let itemsLock = Lock()
 
+    private let queue = DispatchQueue(label: "lifecycle", attributes: .concurrent)
+
     /// Creates a `Lifecycle` instance.
     public init() {
         self.shutdownGroup.enter()
@@ -43,19 +45,15 @@ public class Lifecycle {
     /// - parameters:
     ///    - configuration: Defines lifecycle `Configuration`
     public func startAndWait(configuration: Configuration = .init()) throws {
-        let waitLock = Lock()
-        let group = DispatchGroup()
+        let lock = Lock()
         var startError: Error?
-        let items = self.itemsLock.withLock { self.items }
-        group.enter()
-        self._start(configuration: configuration, items: items) { error in
-            waitLock.withLock {
+        self.start(configuration: configuration) { error in
+            lock.withLock {
                 startError = error
             }
-            group.leave()
         }
-        self.shutdownGroup.wait()
-        try waitLock.withLock {
+        self.wait()
+        try lock.withLock {
             startError
         }.map { error in
             throw error
@@ -70,14 +68,23 @@ public class Lifecycle {
     ///    - callback: The handler which is called after the start operation completes. The parameter will be `nil` on success and contain the `Error` otherwise.
     public func start(configuration: Configuration = .init(), callback: @escaping (Error?) -> Void) {
         let items = self.itemsLock.withLock { self.items }
-        self._start(configuration: configuration, items: items, callback: callback)
+        self._start(configuration: configuration, items: items) { error in
+            // TODO: should the queue be another config option?
+            DispatchQueue.global().async {
+                callback(error)
+            }
+        }
     }
 
     /// Shuts down the `LifecycleItem` array provided in `start` or `startAndWait`.
     /// Shutdown is performed in reverse order of items provided.
+    ///
+    /// - parameters:
+    ///    - callback: The handler which is called after the shutdown operation completes. The parameter will be `nil` on success and contain a `[String: Error]` otherwise.
     public func shutdown(callback: @escaping ([String: Error]?) -> Void = { _ in }) {
-        let setupShutdownListener = { (queue: DispatchQueue) in
-            self.shutdownGroup.notify(queue: queue) {
+        let setupShutdownListener = {
+            // TODO: should the queue be another config option?
+            self.shutdownGroup.notify(queue: DispatchQueue.global()) {
                 guard case .shutdown(let errors) = self.state else {
                     preconditionFailure("invalid state, \(self.state)")
                 }
@@ -90,24 +97,24 @@ public class Lifecycle {
         case .idle:
             self.state = .shutdown(nil)
             self.stateLock.unlock()
-            defer { self.shutdownGroup.leave() }
-            callback(nil)
-        case .shutdown:
+            setupShutdownListener()
+            self.shutdownGroup.leave()
+        case .shutdown(let errors):
             self.stateLock.unlock()
             self.logger.warning("already shutdown")
-            callback(nil)
-        case .starting(let queue):
-            self.state = .shuttingDown(queue)
+            callback(errors)
+        case .starting:
+            self.state = .shuttingDown
             self.stateLock.unlock()
-            setupShutdownListener(queue)
-        case .shuttingDown(let queue):
+            setupShutdownListener()
+        case .shuttingDown:
             self.stateLock.unlock()
-            setupShutdownListener(queue)
-        case .started(let queue, let items):
-            self.state = .shuttingDown(queue)
+            setupShutdownListener()
+        case .started(let configuration, let items):
+            self.state = .shuttingDown
             self.stateLock.unlock()
-            setupShutdownListener(queue)
-            self._shutdown(on: queue, items: items, callback: self.shutdownGroup.leave)
+            setupShutdownListener()
+            self._shutdown(configuration: configuration, items: items, callback: self.shutdownGroup.leave)
         }
     }
 
@@ -129,24 +136,24 @@ public class Lifecycle {
                 self.logger.info("installing backtrace")
                 Backtrace.install()
             }
-            self.state = .starting(configuration.callbackQueue)
+            self.state = .starting
         }
-        self._start(on: configuration.callbackQueue, items: items, index: 0) { started, error in
+        self.startItem(configuration: configuration, items: items, index: 0) { started, error in
             self.stateLock.lock()
             if error != nil {
-                self.state = .shuttingDown(configuration.callbackQueue)
+                self.state = .shuttingDown
             }
             switch self.state {
             case .shuttingDown:
                 self.stateLock.unlock()
                 // shutdown was called while starting, or start failed, shutdown what we can
                 let stoppable = started < items.count ? Array(items.prefix(started + 1)) : items
-                self._shutdown(on: configuration.callbackQueue, items: stoppable) {
+                self._shutdown(configuration: configuration, items: stoppable) {
                     callback(error)
                     self.shutdownGroup.leave()
                 }
             case .starting:
-                self.state = .started(configuration.callbackQueue, items)
+                self.state = .started(configuration, items)
                 self.stateLock.unlock()
                 configuration.shutdownSignal?.forEach { signal in
                     self.logger.info("setting up shutdown hook on \(signal)")
@@ -165,16 +172,12 @@ public class Lifecycle {
         }
     }
 
-    private func _start(on queue: DispatchQueue, items: [LifecycleItem], index: Int, callback: @escaping (Int, Error?) -> Void) {
-        // async barrier
-        let start = { (callback) -> Void in queue.async { items[index].start(callback: callback) } }
-        let callback = { (index, error) -> Void in queue.async { callback(index, error) } }
-
+    private func startItem(configuration: Configuration, items: [LifecycleItem], index: Int, callback: @escaping (Int, Error?) -> Void) {
         if index >= items.count {
             return callback(index, nil)
         }
-        self.logger.info("starting item [\(items[index].label)]")
-        start { error in
+
+        let startCompletionHandler = { (error: Error?) -> Void in
             if let error = error {
                 self.logger.error("failed to start [\(items[index].label)]: \(error)")
                 return callback(index, error)
@@ -183,16 +186,50 @@ public class Lifecycle {
             if case .shuttingDown = self.stateLock.withLock({ self.state }) {
                 return callback(index, nil)
             }
-            self._start(on: queue, items: items, index: index + 1, callback: callback)
+            self.startItem(configuration: configuration, items: items, index: index + 1, callback: callback)
         }
+
+        var startTask: DispatchWorkItem?
+        var startTimoutTask: DispatchWorkItem?
+
+        // start
+        startTask = DispatchWorkItem {
+            // user's code runs on provided configuration.callbackQueue
+            configuration.callbackQueue.async {
+                items[index].start { error in
+                    // lifecycle code runs on self.queue
+                    self.queue.async {
+                        if startTask?.isCancelled ?? true {
+                            return
+                        }
+                        startTimoutTask?.cancel()
+                        startCompletionHandler(error)
+                    }
+                }
+            }
+        }
+
+        // start timeout
+        startTimoutTask = DispatchWorkItem {
+            if startTimoutTask?.isCancelled ?? true {
+                return
+            }
+            startTask?.cancel()
+            startCompletionHandler(TimeoutError())
+        }
+
+        self.logger.info("starting item [\(items[index].label)]")
+        // lifecycle code runs on self.queue
+        self.queue.async(execute: startTask!)
+        self.queue.asyncAfter(deadline: .now() + configuration.timeout, execute: startTimoutTask!)
     }
 
-    private func _shutdown(on queue: DispatchQueue, items: [LifecycleItem], callback: @escaping () -> Void) {
+    private func _shutdown(configuration: Configuration, items: [LifecycleItem], callback: @escaping () -> Void) {
         self.stateLock.withLock {
             self.logger.info("shutting down lifecycle")
-            self.state = .shuttingDown(queue)
+            self.state = .shuttingDown
         }
-        self._shutdown(on: queue, items: items.reversed(), index: 0, errors: nil) { errors in
+        self.shutdownItem(configuration: configuration, items: items.reversed(), index: 0, errors: nil) { errors in
             self.stateLock.withLock {
                 guard case .shuttingDown = self.state else {
                     preconditionFailure("invalid state, \(self.state)")
@@ -204,16 +241,12 @@ public class Lifecycle {
         }
     }
 
-    private func _shutdown(on queue: DispatchQueue, items: [LifecycleItem], index: Int, errors: [String: Error]?, callback: @escaping ([String: Error]?) -> Void) {
-        // async barrier
-        let shutdown = { (callback) -> Void in queue.async { items[index].shutdown(callback: callback) } }
-        let callback = { (errors) -> Void in queue.async { callback(errors) } }
-
+    private func shutdownItem(configuration: Configuration, items: [LifecycleItem], index: Int, errors: [String: Error]?, callback: @escaping ([String: Error]?) -> Void) {
         if index >= items.count {
             return callback(errors)
         }
-        self.logger.info("stopping item [\(items[index].label)]")
-        shutdown { error in
+
+        let shutdownCompletionHandler = { (error: Error?) -> Void in
             var errors = errors
             if let error = error {
                 if errors == nil {
@@ -222,17 +255,55 @@ public class Lifecycle {
                 errors![items[index].label] = error
                 self.logger.error("failed to stop [\(items[index].label)]: \(error)")
             }
-            self._shutdown(on: queue, items: items, index: index + 1, errors: errors, callback: callback)
+            self.shutdownItem(configuration: configuration, items: items, index: index + 1, errors: errors, callback: callback)
         }
+
+        var shutdownTask: DispatchWorkItem?
+        var shutdownTimoutTask: DispatchWorkItem?
+
+        // shutdown
+        shutdownTask = DispatchWorkItem {
+            // user's code runs on provided configuration.callbackQueue
+            configuration.callbackQueue.async {
+                items[index].shutdown { error in
+                    // lifecycle code runs on self.queue
+                    self.queue.async {
+                        if shutdownTask?.isCancelled ?? true {
+                            return
+                        }
+                        shutdownTimoutTask?.cancel()
+                        shutdownCompletionHandler(error)
+                    }
+                }
+            }
+        }
+
+        // start timeout
+        shutdownTimoutTask = DispatchWorkItem {
+            if shutdownTimoutTask?.isCancelled ?? true {
+                return
+            }
+            shutdownTask?.cancel()
+            shutdownCompletionHandler(TimeoutError())
+        }
+
+        self.logger.info("stopping item [\(items[index].label)]")
+        // lifecycle code runs on self.queue
+        self.queue.async(execute: shutdownTask!)
+        self.queue.asyncAfter(deadline: .now() + configuration.timeout, execute: shutdownTimoutTask!)
     }
 
     private enum State {
         case idle
-        case starting(DispatchQueue)
-        case started(DispatchQueue, [LifecycleItem])
-        case shuttingDown(DispatchQueue)
+        case starting
+        case started(Configuration, [LifecycleItem])
+        case shuttingDown
         case shutdown([String: Error]?)
     }
+}
+
+extension Lifecycle {
+    public struct TimeoutError: Error {}
 }
 
 extension Lifecycle {
@@ -256,15 +327,26 @@ extension Lifecycle {
     public struct Configuration {
         /// Defines the `DispatchQueue` on which startup and shutdown handlers are executed.
         public let callbackQueue: DispatchQueue
-        /// Defines if to install a crash signal trap that prints backtraces.
-        public let shutdownSignal: [Signal]?
+        /// Defines timeout for `LifecycleItem` start and shutdown operations.
+        public let timeout: DispatchTimeInterval
         /// Defines what, if any, signals to trap for invoking shutdown.
+        public let shutdownSignal: [Signal]?
+        /// Defines if to install a crash signal trap that prints backtraces.
         public let installBacktrace: Bool
 
+        /// Initlizes a `Configuration`.
+        ///
+        /// - parameters:
+        ///    - callbackQueue: Defines the `DispatchQueue` on which startup and shutdown handlers are executed.
+        ///    - timeout: Defines timeout for `LifecycleItem` start and shutdown operations.
+        ///    - shutdownSignal: Defines what, if any, signals to trap for invoking shutdown.
+        ///    - installBacktrace: Defines if to install a crash signal trap that prints backtraces.
         public init(callbackQueue: DispatchQueue = DispatchQueue.global(),
+                    timeout: DispatchTimeInterval = .seconds(5),
                     shutdownSignal: [Signal]? = [.TERM, .INT],
                     installBacktrace: Bool = true) {
             self.callbackQueue = callbackQueue
+            self.timeout = timeout
             self.shutdownSignal = shutdownSignal
             self.installBacktrace = installBacktrace
         }
