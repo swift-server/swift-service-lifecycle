@@ -26,7 +26,9 @@ extension Tests {
     static var allTests: [(String, (Tests) -> () throws -> Void)] {
         return [
             ("testStartThenShutdown", testStartThenShutdown),
-            ("testImmediateShutdown", testImmediateShutdown),
+            ("testDispatchQueues", testDispatchQueues),
+            ("testShutdownWhileStarting", testShutdownWhileStarting),
+            ("testShutdownDuringHangingStart", testShutdownDuringHangingStart),
             ("testBadStartup", testBadStartup),
             ("testBadShutdown", testBadShutdown),
             ("testStartAndWait", testStartAndWait),
