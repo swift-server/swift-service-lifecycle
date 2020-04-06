@@ -334,7 +334,7 @@ extension Lifecycle {
         /// Defines if to install a crash signal trap that prints backtraces.
         public let installBacktrace: Bool
 
-        /// Initlizes a `Configuration`.
+        /// Initializes a `Configuration`.
         ///
         /// - parameters:
         ///    - callbackQueue: Defines the `DispatchQueue` on which startup and shutdown handlers are executed.
