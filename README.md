@@ -10,7 +10,7 @@ This is the beginning of a community-driven open-source project actively seeking
 
 ## Getting started
 
-If you have a server-side Swift application, or maybe a cross-platform (e.g. Linux, macOS) application, and you would like to manage its startup and shutdown lifecycle, SwiftServiceLauncher is a great idea. Below you'll find all you need to know to get started.
+If you have a server-side Swift application or a cross-platform (e.g. Linux, macOS) application, and you would like to manage its startup and shutdown lifecycle, SwiftServiceLauncher is a great idea. Below you will find all you need to know to get started.
 
 ### Adding the dependency
 
