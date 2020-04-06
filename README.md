@@ -80,7 +80,7 @@ The main type in the library is `Lifecycle` which manages a state machine repres
 
 ### Registering items
 
-`Lifecycle` is a container for `LifecycleItem` which need to be registered via one of the following variants:
+`Lifecycle` is a container for `LifecycleItem`s which need to be registered via one of the following variants:
 
 You can register simple blocking throwing handlers using:
 
