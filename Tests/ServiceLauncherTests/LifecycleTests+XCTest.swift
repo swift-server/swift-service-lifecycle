@@ -35,7 +35,7 @@ extension Tests {
             ("testShutdownTimeout", testShutdownTimeout),
             ("testStartupErrors", testStartupErrors),
             ("testStartupTimeout", testStartupTimeout),
-            ("testShutdownDuringHangingShudown", testShutdownDuringHangingShudown),
+            ("testShutdownDuringHangingShutdown", testShutdownDuringHangingShutdown),
             ("testStartAndWait", testStartAndWait),
             ("testBadStartAndWait", testBadStartAndWait),
             ("testShutdownInOrder", testShutdownInOrder),

@@ -190,7 +190,7 @@ public class Lifecycle {
         }
 
         var startTask: DispatchWorkItem?
-        var startTimoutTask: DispatchWorkItem?
+        var startTimeoutTask: DispatchWorkItem?
 
         // start
         startTask = DispatchWorkItem {
@@ -202,7 +202,7 @@ public class Lifecycle {
                         if startTask?.isCancelled ?? true {
                             return
                         }
-                        startTimoutTask?.cancel()
+                        startTimeoutTask?.cancel()
                         startCompletionHandler(error)
                     }
                 }
@@ -211,7 +211,7 @@ public class Lifecycle {
 
         // start timeout
         startTimeoutTask = DispatchWorkItem {
-            if startTimoutTask?.isCancelled ?? true {
+            if startTimeoutTask?.isCancelled ?? true {
                 return
             }
             startTask?.cancel()
@@ -221,7 +221,7 @@ public class Lifecycle {
         self.logger.info("starting item [\(items[index].label)]")
         // lifecycle code runs on self.queue
         self.queue.async(execute: startTask!)
-        self.queue.asyncAfter(deadline: .now() + configuration.timeout, execute: startTimoutTask!)
+        self.queue.asyncAfter(deadline: .now() + configuration.timeout, execute: startTimeoutTask!)
     }
 
     private func _shutdown(configuration: Configuration, items: [LifecycleItem], callback: @escaping () -> Void) {
@@ -271,7 +271,7 @@ public class Lifecycle {
                         if shutdownTask?.isCancelled ?? true {
                             return
                         }
-                        shutdownTimoutTask?.cancel()
+                        shutdownTimeoutTask?.cancel()
                         shutdownCompletionHandler(error)
                     }
                 }
@@ -279,8 +279,8 @@ public class Lifecycle {
         }
 
         // start timeout
-        shutdownTimoutTask = DispatchWorkItem {
-            if shutdownTimoutTask?.isCancelled ?? true {
+        shutdownTimeoutTask = DispatchWorkItem {
+            if shutdownTimeoutTask?.isCancelled ?? true {
                 return
             }
             shutdownTask?.cancel()
@@ -290,7 +290,7 @@ public class Lifecycle {
         self.logger.info("stopping item [\(items[index].label)]")
         // lifecycle code runs on self.queue
         self.queue.async(execute: shutdownTask!)
-        self.queue.asyncAfter(deadline: .now() + configuration.timeout, execute: shutdownTimoutTask!)
+        self.queue.asyncAfter(deadline: .now() + configuration.timeout, execute: shutdownTimeoutTask!)
     }
 
     private enum State {
