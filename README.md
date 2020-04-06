@@ -44,7 +44,7 @@ lifecycle.registerShutdown(
     eventLoopGroup.syncShutdownGracefully
 )
 
-// register another resource that should be shutdown when the application exists.
+// register another resource that should be shutdown when the application exits.
 // in this case, we are registering an HTTPClient
 // and passing its `syncShutdown` function to be called on shutdown
 let httpClient = HTTPClient(eventLoopGroupProvider: .shared(eventLoopGroup))
