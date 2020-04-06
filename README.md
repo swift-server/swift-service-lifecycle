@@ -68,7 +68,7 @@ lifecycle.start() { error in
 // wait for the application to exist
 // this is a blocking operation that typically waits for
 // for a signal configured at lifecycle.start (default is `INT` and `TERM`)
-// or another thread calling lifecycle.shutdown (untypical)
+// or another thread calling lifecycle.shutdown (atypical)
 // shutdown handlers passed using the `register` or `registerShutdown` functions
 // will be called in the reverse order the items were registered in
 lifecycle.wait()
