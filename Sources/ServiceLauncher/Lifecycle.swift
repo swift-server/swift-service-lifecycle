@@ -259,7 +259,7 @@ public class Lifecycle {
         }
 
         var shutdownTask: DispatchWorkItem?
-        var shutdownTimoutTask: DispatchWorkItem?
+        var shutdownTimeoutTask: DispatchWorkItem?
 
         // shutdown
         shutdownTask = DispatchWorkItem {
