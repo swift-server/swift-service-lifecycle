@@ -37,7 +37,7 @@ var lifecycle = Lifecycle()
 
 // register a resource that should be shutdown when the application exists.
 // in this case, we are registering a SwiftNIO EventLoopGroup
-// and passing it's `syncShutdownGracefully` function to be called on shutdown
+// and passing its `syncShutdownGracefully` function to be called on shutdown
 let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 lifecycle.registerShutdown(
     name: "eventLoopGroup",
