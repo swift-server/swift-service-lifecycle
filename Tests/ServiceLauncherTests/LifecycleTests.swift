@@ -358,7 +358,7 @@ final class Tests: XCTestCase {
         XCTAssertTrue(stopCalls.contains("blocker"))
     }
 
-    func testShutdownDuringHangingShudown() {
+    func testShutdownDuringHangingShutdown() {
         let lifecycle = Lifecycle()
         let blockStartSemaphore = DispatchSemaphore(value: 0)
         var startCalls = [String]()
