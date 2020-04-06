@@ -132,7 +132,7 @@ internal func register(_ items: LifecycleItem...)
 
 ### Starting the lifecycle
 
-Use `Lifecycle::start` function to start the application. start handlers passed using the `register` function will be called in the order the items were registered in.
+Use `Lifecycle::start` function to start the application. Start handlers passed using the `register` function will be called in the order the items were registered in.
 
 `Lifecycle::start` is an asynchronous operation. If a startup error occurred, it will be logged and the startup sequence will halt on the first error, and bubble it up to the provided completion handler.
 
