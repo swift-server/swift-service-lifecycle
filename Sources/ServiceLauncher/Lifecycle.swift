@@ -45,19 +45,15 @@ public class Lifecycle {
     /// - parameters:
     ///    - configuration: Defines lifecycle `Configuration`
     public func startAndWait(configuration: Configuration = .init()) throws {
-        let lock = Lock()
         var startError: Error?
+        let startSemaphore = DispatchSemaphore(value: 0)
         self.start(configuration: configuration) { error in
-            lock.withLock {
-                startError = error
-            }
+            startError = error
+            startSemaphore.signal()
         }
+        startSemaphore.wait()
         self.wait()
-        try lock.withLock {
-            startError
-        }.map { error in
-            throw error
-        }
+        try startError.map { throw ($0) }
     }
 
     /// Starts the provided `LifecycleItem` array.
