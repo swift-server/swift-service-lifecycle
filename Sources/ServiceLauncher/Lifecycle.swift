@@ -210,7 +210,7 @@ public class Lifecycle {
         }
 
         // start timeout
-        startTimoutTask = DispatchWorkItem {
+        startTimeoutTask = DispatchWorkItem {
             if startTimoutTask?.isCancelled ?? true {
                 return
             }
