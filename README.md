@@ -14,7 +14,7 @@ If you have a server-side Swift application or a cross-platform (e.g. Linux, mac
 
 ### Adding the dependency
 
-To add a dependency on the package, you need to declare it in your `Package.swift`:
+To add a dependency on the package, declare it in your `Package.swift`:
 
 ```swift
 .package(url: "https://github.com/swift-server/swift-service-launcher.git", from: "1.0.0"),
