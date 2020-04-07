@@ -35,8 +35,9 @@ import ServiceLauncher
 // initialize the lifecycle container
 var lifecycle = Lifecycle()
 
-// register a resource that should be shutdown when the application exists.
-// in this case, we are registering a SwiftNIO EventLoopGroup
+// register a resource that should be shut down when the application exits.
+//
+// in this case, we are registering a SwiftNIO `EventLoopGroup`
 // and passing its `syncShutdownGracefully` function to be called on shutdown
 let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 lifecycle.registerShutdown(
@@ -44,33 +45,35 @@ lifecycle.registerShutdown(
     eventLoopGroup.syncShutdownGracefully
 )
 
-// register another resource that should be shutdown when the application exits.
-// in this case, we are registering an HTTPClient
+// register another resource that should be shut down when the application exits.
+//
+// in this case, we are registering an `HTTPClient`
 // and passing its `syncShutdown` function to be called on shutdown
 let httpClient = HTTPClient(eventLoopGroupProvider: .shared(eventLoopGroup))
 lifecycle.registerShutdown(
-    name: "HTTPClient",
+    name: "httpClient",
     httpClient.syncShutdown
 )
 
 // start the application
+//
 // start handlers passed using the `register` function
-// will be called in the order the items were registered in
+// will be called in the order they were registered in
 lifecycle.start() { error in
-    // this is the start completion handler.
-    // if an error occurred you can log it here
+    // start completion handler.
+    // if a startup error occurred you can capture it here
     if let error = error {
         logger.error("failed starting \(self) ☠️: \(error)")
     } else {
         logger.info("\(self) started successfully 🚀")
     }
 }
-// wait for the application to exist
-// this is a blocking operation that typically waits for
-// for a signal configured at lifecycle.start (default is `INT` and `TERM`)
-// or another thread calling lifecycle.shutdown (atypical)
+// wait for the application to exit
+//
+// this is a blocking operation that typically waits for a signal
+// the signal can be configured at `lifecycle.start`, and defaults to `INT` and `TERM`
 // shutdown handlers passed using the `register` or `registerShutdown` functions
-// will be called in the reverse order the items were registered in
+// will be called in the reverse order they were registered in
 lifecycle.wait()
 ```
 
@@ -203,7 +206,7 @@ lifecycle.register(
     start: .eventLoopFuture(foo.start),
     shutdown: .eventLoopFuture(foo.shutdown)
 )
-```  
+```
 
 -------
 
