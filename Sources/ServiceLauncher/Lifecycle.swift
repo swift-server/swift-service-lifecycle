@@ -131,7 +131,7 @@ public class Lifecycle {
             }
             self.state = .starting(configuration.callbackQueue)
         }
-        self._start(on: configuration.callbackQueue, items: items, index: 0) { started, error in
+        self.startItem(on: configuration.callbackQueue, items: items, index: 0) { started, error in
             self.stateLock.lock()
             if error != nil {
                 self.state = .shuttingDown(configuration.callbackQueue)
@@ -165,7 +165,7 @@ public class Lifecycle {
         }
     }
 
-    private func _start(on queue: DispatchQueue, items: [LifecycleItem], index: Int, callback: @escaping (Int, Error?) -> Void) {
+    private func startItem(on queue: DispatchQueue, items: [LifecycleItem], index: Int, callback: @escaping (Int, Error?) -> Void) {
         // async barrier
         let start = { (callback) -> Void in queue.async { items[index].start(callback: callback) } }
         let callback = { (index, error) -> Void in queue.async { callback(index, error) } }
@@ -183,7 +183,7 @@ public class Lifecycle {
             if case .shuttingDown = self.stateLock.withLock({ self.state }) {
                 return callback(index, nil)
             }
-            self._start(on: queue, items: items, index: index + 1, callback: callback)
+            self.startItem(on: queue, items: items, index: index + 1, callback: callback)
         }
     }
 
@@ -192,7 +192,7 @@ public class Lifecycle {
             self.logger.info("shutting down lifecycle")
             self.state = .shuttingDown(queue)
         }
-        self._shutdown(on: queue, items: items.reversed(), index: 0, errors: nil) { errors in
+        self.shutdownItem(on: queue, items: items.reversed(), index: 0, errors: nil) { errors in
             self.stateLock.withLock {
                 guard case .shuttingDown = self.state else {
                     preconditionFailure("invalid state, \(self.state)")
@@ -204,7 +204,7 @@ public class Lifecycle {
         }
     }
 
-    private func _shutdown(on queue: DispatchQueue, items: [LifecycleItem], index: Int, errors: [String: Error]?, callback: @escaping ([String: Error]?) -> Void) {
+    private func shutdownItem(on queue: DispatchQueue, items: [LifecycleItem], index: Int, errors: [String: Error]?, callback: @escaping ([String: Error]?) -> Void) {
         // async barrier
         let shutdown = { (callback) -> Void in queue.async { items[index].shutdown(callback: callback) } }
         let callback = { (errors) -> Void in queue.async { callback(errors) } }
@@ -222,7 +222,7 @@ public class Lifecycle {
                 errors![items[index].label] = error
                 self.logger.error("failed to stop [\(items[index].label)]: \(error)")
             }
-            self._shutdown(on: queue, items: items, index: index + 1, errors: errors, callback: callback)
+            self.shutdownItem(on: queue, items: items, index: index + 1, errors: errors, callback: callback)
         }
     }
 

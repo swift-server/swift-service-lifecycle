@@ -19,7 +19,7 @@ import XCTest
 
 final class Tests: XCTestCase {
     func testStartThenShutdown() {
-        let items = (0 ... Int.random(in: 10 ... 20)).map { _ in GoodItem() }
+        let items = (5 ... Int.random(in: 10 ... 20)).map { _ in GoodItem() }
         let lifecycle = Lifecycle()
         lifecycle.register(items)
         lifecycle.start(configuration: .init(shutdownSignal: nil)) { startError in
@@ -35,7 +35,7 @@ final class Tests: XCTestCase {
     // FIXME: this test does not work in rio
     func _testShutdownWithSignal() {
         let signal = Lifecycle.Signal.ALRM
-        let items = (0 ... Int.random(in: 10 ... 20)).map { _ in GoodItem() }
+        let items = (5 ... Int.random(in: 10 ... 20)).map { _ in GoodItem() }
         let lifecycle = Lifecycle()
         lifecycle.register(items)
         let configuration = Lifecycle.Configuration(shutdownSignal: [signal])
@@ -47,29 +47,71 @@ final class Tests: XCTestCase {
         items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
     }
 
-    func testDispatchQueues() {
+    func testDefaultCallbackQueue() {
         let lifecycle = Lifecycle()
-        let testQueue = DispatchQueue(label: UUID().uuidString)
+        var startCalls = [String]()
+        var stopCalls = [String]()
 
-        lifecycle.register(label: UUID().uuidString,
-                           start: {
-                               dispatchPrecondition(condition: DispatchPredicate.onQueue(testQueue))
-                           },
-                           shutdown: {
-                               dispatchPrecondition(condition: DispatchPredicate.onQueue(testQueue))
-                            })
-        lifecycle.register(label: UUID().uuidString,
-                           start: {
-                               dispatchPrecondition(condition: DispatchPredicate.onQueue(testQueue))
-                           },
-                           shutdown: {
-                               dispatchPrecondition(condition: DispatchPredicate.onQueue(testQueue))
-                            })
-        lifecycle.start(configuration: .init(callbackQueue: testQueue, shutdownSignal: nil)) { error in
-            XCTAssertNil(error)
-            lifecycle.shutdown()
+        let items = (1 ... Int.random(in: 10 ... 20)).map { index -> LifecycleItem in
+            let id = "item-\(index)"
+            return Lifecycle.Item(label: id,
+                                  start: .sync {
+                                      dispatchPrecondition(condition: .onQueue(.global()))
+                                      startCalls.append(id)
+                                  },
+                                  shutdown: .sync {
+                                      dispatchPrecondition(condition: .onQueue(.global()))
+                                      XCTAssertTrue(startCalls.contains(id))
+                                      stopCalls.append(id)
+                                   })
+        }
+        lifecycle.register(items)
+
+        lifecycle.start(configuration: .init(shutdownSignal: nil)) { startError in
+            dispatchPrecondition(condition: .onQueue(.global()))
+            XCTAssertNil(startError, "not expecting error")
+            lifecycle.shutdown { shutdownErrors in
+                dispatchPrecondition(condition: .onQueue(.global()))
+                XCTAssertNil(shutdownErrors, "not expecting error")
+            }
         }
         lifecycle.wait()
+        items.forEach { item in XCTAssertTrue(startCalls.contains(item.label), "expected \(item.label) to be started") }
+        items.forEach { item in XCTAssertTrue(stopCalls.contains(item.label), "expected \(item.label) to be stopped") }
+    }
+
+    func testUserDefinedCallbackQueue() {
+        let lifecycle = Lifecycle()
+        let testQueue = DispatchQueue(label: UUID().uuidString)
+        var startCalls = [String]()
+        var stopCalls = [String]()
+
+        let items = (1 ... Int.random(in: 10 ... 20)).map { index -> LifecycleItem in
+            let id = "item-\(index)"
+            return Lifecycle.Item(label: id,
+                                  start: .sync {
+                                      dispatchPrecondition(condition: .onQueue(testQueue))
+                                      startCalls.append(id)
+                                  },
+                                  shutdown: .sync {
+                                      dispatchPrecondition(condition: .onQueue(testQueue))
+                                      XCTAssertTrue(startCalls.contains(id))
+                                      stopCalls.append(id)
+                                   })
+        }
+        lifecycle.register(items)
+
+        lifecycle.start(configuration: .init(callbackQueue: testQueue, shutdownSignal: nil)) { startError in
+            dispatchPrecondition(condition: .onQueue(testQueue))
+            XCTAssertNil(startError, "not expecting error")
+            lifecycle.shutdown { shutdownErrors in
+                dispatchPrecondition(condition: .onQueue(testQueue))
+                XCTAssertNil(shutdownErrors, "not expecting error")
+            }
+        }
+        lifecycle.wait()
+        items.forEach { item in XCTAssertTrue(startCalls.contains(item.label), "expected \(item.label) to be started") }
+        items.forEach { item in XCTAssertTrue(stopCalls.contains(item.label), "expected \(item.label) to be stopped") }
     }
 
     func testShutdownWhileStarting() {
@@ -104,7 +146,7 @@ final class Tests: XCTestCase {
         }
         var started = 0
         let startSempahore = DispatchSemaphore(value: 0)
-        let items = (0 ... Int.random(in: 10 ... 20)).map { _ in Item {
+        let items = (5 ... Int.random(in: 10 ... 20)).map { _ in Item {
             started += 1
             startSempahore.signal()
         } }
@@ -387,7 +429,7 @@ final class Tests: XCTestCase {
         }
 
         let lifecycle = Lifecycle()
-        let items = (0 ... Int.random(in: 10 ... 20)).map { _ in Sync() }
+        let items = (5 ... Int.random(in: 10 ... 20)).map { _ in Sync() }
         items.forEach { item in
             lifecycle.register(label: item.id, start: item.start, shutdown: item.shutdown)
         }
@@ -424,7 +466,7 @@ final class Tests: XCTestCase {
 
     func testConcurrency() {
         let lifecycle = Lifecycle()
-        let items = (0 ... 50000).map { _ in GoodItem(startDelay: 0, shutdownDelay: 0) }
+        let items = (5000 ... 10000).map { _ in GoodItem(startDelay: 0, shutdownDelay: 0) }
         let group = DispatchGroup()
         items.forEach { item in
             group.enter()
