@@ -37,7 +37,7 @@ var lifecycle = Lifecycle()
 
 // register a resource that should be shut down when the application exits.
 //
-// in this case, we are registering a SwiftNIO EventLoopGroup
+// in this case, we are registering a SwiftNIO `EventLoopGroup`
 // and passing its `syncShutdownGracefully` function to be called on shutdown
 let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 lifecycle.registerShutdown(
@@ -47,7 +47,7 @@ lifecycle.registerShutdown(
 
 // register another resource that should be shut down when the application exits.
 //
-// in this case, we are registering an HTTPClient
+// in this case, we are registering an `HTTPClient`
 // and passing its `syncShutdown` function to be called on shutdown
 let httpClient = HTTPClient(eventLoopGroupProvider: .shared(eventLoopGroup))
 lifecycle.registerShutdown(
@@ -61,7 +61,7 @@ lifecycle.registerShutdown(
 // will be called in the order they were registered in
 lifecycle.start() { error in
     // start completion handler.
-    // if an startup error occurred you can capture it here
+    // if a startup error occurred you can capture it here
     if let error = error {
         logger.error("failed starting \(self) ☠️: \(error)")
     } else {
@@ -71,7 +71,7 @@ lifecycle.start() { error in
 // wait for the application to exit
 //
 // this is a blocking operation that typically waits for a signal
-// the signal can be configured at lifecycle.start, and defaults to `INT` and `TERM`
+// the signal can be configured at `lifecycle.start`, and defaults to `INT` and `TERM`
 // shutdown handlers passed using the `register` or `registerShutdown` functions
 // will be called in the reverse order they were registered in
 lifecycle.wait()
