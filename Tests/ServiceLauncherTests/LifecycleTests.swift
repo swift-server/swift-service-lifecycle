@@ -730,6 +730,7 @@ final class Tests: XCTestCase {
         }
 
         var state = State.idle
+        let stateLock = Lock()
 
         let expectedData = UUID().uuidString
         let item = Item(expectedData)
@@ -737,12 +738,16 @@ final class Tests: XCTestCase {
         lifecycle.register(label: "test",
                            start: .eventLoopFuture {
                                item.start().map { data -> Void in
-                                   state = .started(data)
+                                   stateLock.withLock {
+                                       state = .started(data)
+                                   }
                                }
                            },
                            shutdown: .eventLoopFuture {
                                item.shutdown().map { _ -> Void in
-                                   state = .shutdown
+                                   stateLock.withLock {
+                                       state = .shutdown
+                                   }
                                }
                             })
 
