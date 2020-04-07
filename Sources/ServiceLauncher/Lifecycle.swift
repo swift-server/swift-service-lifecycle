@@ -68,14 +68,14 @@ public class Lifecycle {
     /// - parameters:
     ///    - configuration: Defines lifecycle `Configuration`
     ///    - callback: The handler which is called after the start operation completes. The parameter will be `nil` on success and contain the `Error` otherwise.
-    public func start(configuration: Configuration = .init(), callback: @escaping (Error?) -> Void) {
+    public func start(configuration: Configuration = .init(), _ callback: @escaping (Error?) -> Void) {
         let items = self.itemsLock.withLock { self.items }
         self._start(configuration: configuration, items: items, callback: callback)
     }
 
     /// Shuts down the `LifecycleItem` array provided in `start` or `startAndWait`.
     /// Shutdown is performed in reverse order of items provided.
-    public func shutdown(callback: @escaping ([String: Error]?) -> Void = { _ in }) {
+    public func shutdown(_ callback: @escaping ([String: Error]?) -> Void = { _ in }) {
         let setupShutdownListener = { (queue: DispatchQueue) in
             self.shutdownGroup.notify(queue: queue) {
                 guard case .shutdown(let errors) = self.state else {
