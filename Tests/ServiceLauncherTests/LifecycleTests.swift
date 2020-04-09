@@ -732,7 +732,7 @@ final class Tests: XCTestCase {
                 self.stateLock.withLock {
                     self.state = .starting
                 }
-                return self.eventLoopGroup.next().scheduleTask(in: .milliseconds(1)) {
+                return self.eventLoopGroup.next().scheduleTask(in: .milliseconds(Int64.random(in: 5 ... 10))) {
                     self.stateLock.withLock {
                         self.state = .started(self.data)
                     }
@@ -743,7 +743,7 @@ final class Tests: XCTestCase {
                 self.stateLock.withLock {
                     self.state = .shuttingDown
                 }
-                return self.eventLoopGroup.next().scheduleTask(in: .milliseconds(1)) {
+                return self.eventLoopGroup.next().scheduleTask(in: .milliseconds(Int64.random(in: 5 ... 10))) {
                     self.stateLock.withLock {
                         self.state = .shutdown
                     }
