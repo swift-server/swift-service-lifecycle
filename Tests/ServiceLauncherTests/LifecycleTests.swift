@@ -705,6 +705,72 @@ final class Tests: XCTestCase {
         lifecycle.wait()
     }
 
+    // this is an example of how state can be managed inside a `LifecycleItem`
+    // note the use of locks in this example since there could be concurrent access issues
+    // in the case shutdown is called (e.g. via signal trap) during the startup sequence
+    // also see "testExternalState" test case
+    func testInternalState() {
+        class Item {
+            enum State: Equatable {
+                case idle
+                case starting
+                case started(String)
+                case shuttingDown
+                case shutdown
+            }
+
+            var state = State.idle
+            let stateLock = Lock()
+            let eventLoopGroup: EventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+
+            let data: String
+            init(_ data: String) {
+                self.data = data
+            }
+
+            func start() -> EventLoopFuture<Void> {
+                self.stateLock.withLock {
+                    self.state = .starting
+                }
+                return self.eventLoopGroup.next().scheduleTask(in: .milliseconds(1)) {
+                    self.stateLock.withLock {
+                        self.state = .started(self.data)
+                    }
+                }.futureResult
+            }
+
+            func shutdown() -> EventLoopFuture<Void> {
+                self.stateLock.withLock {
+                    self.state = .shuttingDown
+                }
+                return self.eventLoopGroup.next().scheduleTask(in: .milliseconds(1)) {
+                    self.stateLock.withLock {
+                        self.state = .shutdown
+                    }
+                }.futureResult
+            }
+        }
+
+        let expectedData = UUID().uuidString
+        let item = Item(expectedData)
+        let lifecycle = Lifecycle()
+        lifecycle.register(label: "test",
+                           start: .eventLoopFuture(item.start),
+                           shutdown: .eventLoopFuture(item.shutdown))
+
+        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+            XCTAssertNil(error, "not expecting error")
+            XCTAssertEqual(item.state, .started(expectedData), "expected item to be shutdown, but \(item.state)")
+            lifecycle.shutdown()
+        }
+        lifecycle.wait()
+        XCTAssertEqual(item.state, .shutdown, "expected item to be shutdown, but \(item.state)")
+    }
+
+    // this is an example of how state can be managed outside the `Lifecycle`
+    // note the use of locks in this example since there could be concurrent access issues
+    // in the case shutdown is called (e.g. via signal trap) during the startup sequence
+    // also see "testInternalState" test case
     func testExternalState() {
         enum State: Equatable {
             case idle

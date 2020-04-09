@@ -51,6 +51,7 @@ extension Tests {
             ("testRegisterNIOClosure", testRegisterNIOClosure),
             ("testRegisterShutdownNIOClosure", testRegisterShutdownNIOClosure),
             ("testNIOFailure", testNIOFailure),
+            ("testInternalState", testInternalState),
             ("testExternalState", testExternalState),
         ]
     }
