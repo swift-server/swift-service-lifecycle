@@ -3,13 +3,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "swift-service-launcher",
+    name: "swift-service-boostrap",
     platforms: [
         .macOS(.v10_12),
     ],
     products: [
-        .library(name: "ServiceLauncher", targets: ["ServiceLauncher"]),
-        .library(name: "ServiceLauncherNIOCompat", targets: ["ServiceLauncherNIOCompat"]),
+        .library(name: "Lifecycle", targets: ["Lifecycle"]),
+        .library(name: "LifecycleNIOCompat", targets: ["LifecycleNIOCompat"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
@@ -18,8 +18,8 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"), // used in tests
     ],
     targets: [
-        .target(name: "ServiceLauncher", dependencies: ["Logging", "Metrics", "Backtrace"]),
-        .target(name: "ServiceLauncherNIOCompat", dependencies: ["ServiceLauncher", "NIO"]),
-        .testTarget(name: "ServiceLauncherTests", dependencies: ["ServiceLauncher", "ServiceLauncherNIOCompat"]),
+        .target(name: "Lifecycle", dependencies: ["Logging", "Metrics", "Backtrace"]),
+        .target(name: "LifecycleNIOCompat", dependencies: ["Lifecycle", "NIO"]),
+        .testTarget(name: "LifecycleTests", dependencies: ["Lifecycle", "LifecycleNIOCompat"]),
     ]
 )
