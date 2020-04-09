@@ -705,6 +705,76 @@ final class Tests: XCTestCase {
         lifecycle.wait()
     }
 
+    // this is an example of how state can be managed inside a `LifecycleItem`
+    // note the use of locks in this example since there could be concurrent access issues
+    // in case shutdown is called (e.g. via signal trap) during the startup sequence
+    // see also `testExternalState` test case
+    func testInternalState() {
+        class Item {
+            enum State: Equatable {
+                case idle
+                case starting
+                case started(String)
+                case shuttingDown
+                case shutdown
+            }
+
+            var state = State.idle
+            let stateLock = Lock()
+
+            let queue = DispatchQueue(label: "test")
+
+            let data: String
+
+            init(_ data: String) {
+                self.data = data
+            }
+
+            func start(callback: @escaping (Error?) -> Void) {
+                self.stateLock.withLock {
+                    self.state = .starting
+                }
+                self.queue.asyncAfter(deadline: .now() + Double.random(in: 0.01 ... 0.1)) {
+                    self.stateLock.withLock {
+                        self.state = .started(self.data)
+                    }
+                    callback(nil)
+                }
+            }
+
+            func shutdown(callback: @escaping (Error?) -> Void) {
+                self.stateLock.withLock {
+                    self.state = .shuttingDown
+                }
+                self.queue.asyncAfter(deadline: .now() + Double.random(in: 0.01 ... 0.1)) {
+                    self.stateLock.withLock {
+                        self.state = .shutdown
+                    }
+                    callback(nil)
+                }
+            }
+        }
+
+        let expectedData = UUID().uuidString
+        let item = Item(expectedData)
+        let lifecycle = Lifecycle()
+        lifecycle.register(label: "test",
+                           start: .async(item.start),
+                           shutdown: .async(item.shutdown))
+
+        lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
+            XCTAssertNil(error, "not expecting error")
+            XCTAssertEqual(item.state, .started(expectedData), "expected item to be shutdown, but \(item.state)")
+            lifecycle.shutdown()
+        }
+        lifecycle.wait()
+        XCTAssertEqual(item.state, .shutdown, "expected item to be shutdown, but \(item.state)")
+    }
+
+    // this is an example of how state can be managed outside the `Lifecycle`
+    // note the use of locks in this example since there could be concurrent access issues
+    // in case shutdown is called (e.g. via signal trap) during the startup sequence
+    // see also `testInternalState` test case, which is the prefered way to manage item's state
     func testExternalState() {
         enum State: Equatable {
             case idle
@@ -713,36 +783,48 @@ final class Tests: XCTestCase {
         }
 
         class Item {
-            let eventLoopGroup: EventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+            let queue = DispatchQueue(label: "test")
 
             let data: String
+
             init(_ data: String) {
                 self.data = data
             }
 
-            func start() -> EventLoopFuture<String> {
-                return self.eventLoopGroup.next().makeSucceededFuture(self.data)
+            func start(callback: @escaping (String) -> Void) {
+                self.queue.asyncAfter(deadline: .now() + Double.random(in: 0.01 ... 0.1)) {
+                    callback(self.data)
+                }
             }
 
-            func shutdown() -> EventLoopFuture<Void> {
-                return self.eventLoopGroup.next().makeSucceededFuture(())
+            func shutdown(callback: @escaping () -> Void) {
+                self.queue.asyncAfter(deadline: .now() + Double.random(in: 0.01 ... 0.1)) {
+                    callback()
+                }
             }
         }
 
         var state = State.idle
+        let stateLock = Lock()
 
         let expectedData = UUID().uuidString
         let item = Item(expectedData)
         let lifecycle = Lifecycle()
         lifecycle.register(label: "test",
-                           start: .eventLoopFuture {
-                               item.start().map { data -> Void in
-                                   state = .started(data)
+                           start: .async { callback in
+                               item.start { data in
+                                   stateLock.withLock {
+                                       state = .started(data)
+                                   }
+                                   callback(nil)
                                }
                            },
-                           shutdown: .eventLoopFuture {
-                               item.shutdown().map { _ -> Void in
-                                   state = .shutdown
+                           shutdown: .async { callback in
+                               item.shutdown {
+                                   stateLock.withLock {
+                                       state = .shutdown
+                                   }
+                                   callback(nil)
                                }
                             })
 
