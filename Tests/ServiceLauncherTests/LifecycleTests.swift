@@ -721,33 +721,37 @@ final class Tests: XCTestCase {
 
             var state = State.idle
             let stateLock = Lock()
-            let eventLoopGroup: EventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+
+            let queue = DispatchQueue(label: "test")
 
             let data: String
+
             init(_ data: String) {
                 self.data = data
             }
 
-            func start() -> EventLoopFuture<Void> {
+            func start(callback: @escaping (Error?) -> Void) {
                 self.stateLock.withLock {
                     self.state = .starting
                 }
-                return self.eventLoopGroup.next().scheduleTask(in: .milliseconds(Int64.random(in: 5 ... 10))) {
+                self.queue.asyncAfter(deadline: .now() + Double.random(in: 0.01 ... 0.1)) {
                     self.stateLock.withLock {
                         self.state = .started(self.data)
                     }
-                }.futureResult
+                    callback(nil)
+                }
             }
 
-            func shutdown() -> EventLoopFuture<Void> {
+            func shutdown(callback: @escaping (Error?) -> Void) {
                 self.stateLock.withLock {
                     self.state = .shuttingDown
                 }
-                return self.eventLoopGroup.next().scheduleTask(in: .milliseconds(Int64.random(in: 5 ... 10))) {
+                self.queue.asyncAfter(deadline: .now() + Double.random(in: 0.01 ... 0.1)) {
                     self.stateLock.withLock {
                         self.state = .shutdown
                     }
-                }.futureResult
+                    callback(nil)
+                }
             }
         }
 
@@ -755,8 +759,8 @@ final class Tests: XCTestCase {
         let item = Item(expectedData)
         let lifecycle = Lifecycle()
         lifecycle.register(label: "test",
-                           start: .eventLoopFuture(item.start),
-                           shutdown: .eventLoopFuture(item.shutdown))
+                           start: .async(item.start),
+                           shutdown: .async(item.shutdown))
 
         lifecycle.start(configuration: .init(shutdownSignal: nil)) { error in
             XCTAssertNil(error, "not expecting error")
@@ -770,7 +774,7 @@ final class Tests: XCTestCase {
     // this is an example of how state can be managed outside the `Lifecycle`
     // note the use of locks in this example since there could be concurrent access issues
     // in case shutdown is called (e.g. via signal trap) during the startup sequence
-    // see also `testInternalState` test case
+    // see also `testInternalState` test case, which is the prefered way to manage item's state
     func testExternalState() {
         enum State: Equatable {
             case idle
@@ -779,19 +783,24 @@ final class Tests: XCTestCase {
         }
 
         class Item {
-            let eventLoopGroup: EventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+            let queue = DispatchQueue(label: "test")
 
             let data: String
+
             init(_ data: String) {
                 self.data = data
             }
 
-            func start() -> EventLoopFuture<String> {
-                return self.eventLoopGroup.next().makeSucceededFuture(self.data)
+            func start(callback: @escaping (String) -> Void) {
+                self.queue.asyncAfter(deadline: .now() + Double.random(in: 0.01 ... 0.1)) {
+                    callback(self.data)
+                }
             }
 
-            func shutdown() -> EventLoopFuture<Void> {
-                return self.eventLoopGroup.next().makeSucceededFuture(())
+            func shutdown(callback: @escaping () -> Void) {
+                self.queue.asyncAfter(deadline: .now() + Double.random(in: 0.01 ... 0.1)) {
+                    callback()
+                }
             }
         }
 
@@ -802,18 +811,20 @@ final class Tests: XCTestCase {
         let item = Item(expectedData)
         let lifecycle = Lifecycle()
         lifecycle.register(label: "test",
-                           start: .eventLoopFuture {
-                               item.start().map { data -> Void in
+                           start: .async { callback in
+                               item.start { data in
                                    stateLock.withLock {
                                        state = .started(data)
                                    }
+                                   callback(nil)
                                }
                            },
-                           shutdown: .eventLoopFuture {
-                               item.shutdown().map { _ -> Void in
+                           shutdown: .async { callback in
+                               item.shutdown {
                                    stateLock.withLock {
                                        state = .shutdown
                                    }
+                                   callback(nil)
                                }
                             })
 
