@@ -707,8 +707,8 @@ final class Tests: XCTestCase {
 
     // this is an example of how state can be managed inside a `LifecycleItem`
     // note the use of locks in this example since there could be concurrent access issues
-    // in the case shutdown is called (e.g. via signal trap) during the startup sequence
-    // also see "testExternalState" test case
+    // in case shutdown is called (e.g. via signal trap) during the startup sequence
+    // see also `testExternalState` test case
     func testInternalState() {
         class Item {
             enum State: Equatable {
@@ -769,8 +769,8 @@ final class Tests: XCTestCase {
 
     // this is an example of how state can be managed outside the `Lifecycle`
     // note the use of locks in this example since there could be concurrent access issues
-    // in the case shutdown is called (e.g. via signal trap) during the startup sequence
-    // also see "testInternalState" test case
+    // in case shutdown is called (e.g. via signal trap) during the startup sequence
+    // see also `testInternalState` test case
     func testExternalState() {
         enum State: Equatable {
             case idle
