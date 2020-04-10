@@ -18,7 +18,7 @@ set -e
 my_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 root_path="$my_path/.."
 version=$(git describe --abbrev=0 --tags || echo "0.0.0")
-modules=(ServiceLauncher)
+modules=(Lifecycle)
 
 if [[ "$(uname -s)" == "Linux" ]]; then
   # build code if required
@@ -58,7 +58,7 @@ It also provides a Signal based shutdown hook, to shutdown on signals like TERM 
 
 SwiftServiceBootstrap is non-framework specific, designed to be integrated with any server framework or directly in an application.
 
-To get started with SwiftCrypto, [`import ServiceLauncher`](../ServiceLauncher/index.html).
+To get started with SwiftServiceBootstrap, [`import Lifecycle`](../Lifecycle/index.html).
 EOF
 
 # run jazzy
@@ -67,18 +67,18 @@ if ! command -v jazzy > /dev/null; then
 fi
 
 jazzy_args=(--clean
-            --author 'ServiceLauncher team'
+            --author 'SwiftServiceBootstrap team'
             --readme "$module_switcher"
-            --author_url https://github.com/swift-server/swift-service-launcher
-            --github_url https://github.com/swift-server/swift-service-launcher
-            --github-file-prefix https://github.com/swift-server/swift-service-launcher/tree/$version
+            --author_url https://github.com/swift-server/swift-service-bootstrap
+            --github_url https://github.com/swift-server/swift-service-bootstrap
+            --github-file-prefix https://github.com/swift-server/swift-service-bootstrap/tree/$version
             --theme fullwidth
             --swift-build-tool spm)
 
 for module in "${modules[@]}"; do
   args=("${jazzy_args[@]}" --output "$jazzy_dir/docs/$version/$module" --docset-path "$jazzy_dir/docset/$version/$module"
         --module "$module" --module-version $version
-        --root-url "https://swift-server.github.io/swift-service-launcher/docs/$version/$module/")
+        --root-url "https://swift-server.github.io/swift-service-bootstrap/docs/$version/$module/")
   if [[ "$(uname -s)" == "Linux" ]]; then
     args+=(--sourcekitten-sourcefile "$root_path/.build/sourcekitten/$module.json")
   fi
@@ -96,7 +96,7 @@ if [[ $PUSH == true ]]; then
   cp -r "$jazzy_dir/docs/$version" docs/
   cp -r "docs/$version" docs/current
   git add --all docs
-  echo '<html><head><meta http-equiv="refresh" content="0; url=docs/current/ServiceLauncher/index.html" /></head></html>' > index.html
+  echo '<html><head><meta http-equiv="refresh" content="0; url=docs/current/Lifecycle/index.html" /></head></html>' > index.html
   git add index.html
   touch .nojekyll
   git add .nojekyll

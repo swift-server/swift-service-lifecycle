@@ -19,7 +19,7 @@ import XCTest
 final class ServiceLifecycleTests: XCTestCase {
     func testStartThenShutdown() {
         let items = (5 ... Int.random(in: 10 ... 20)).map { _ in GoodItem() }
-        let lifecycle = ComponentLifecycle(label: "test")
+        let lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: nil))
         lifecycle.register(items)
         lifecycle.start { startError in
             XCTAssertNil(startError, "not expecting error")
@@ -137,5 +137,38 @@ final class ServiceLifecycleTests: XCTestCase {
         items1.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
         items2.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
         items3.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
+    }
+
+    func testNesting2() {
+        struct SubSystem {
+            let lifecycle = ComponentLifecycle(label: "SubSystem")
+            let subsystem: SubSubSystem
+
+            init() {
+                self.subsystem = SubSubSystem()
+                self.lifecycle.register(self.subsystem.lifecycle)
+            }
+
+            struct SubSubSystem {
+                let lifecycle = ComponentLifecycle(label: "SubSubSystem")
+                let items = (0 ... Int.random(in: 10 ... 20)).map { _ in GoodItem() }
+
+                init() {
+                    self.lifecycle.register(self.items)
+                }
+            }
+        }
+
+        let lifecycle = ServiceLifecycle()
+        let subsystem = SubSystem()
+        lifecycle.register(subsystem.lifecycle)
+
+        lifecycle.start { error in
+            XCTAssertNil(error, "not expecting error")
+            subsystem.subsystem.items.forEach { XCTAssertEqual($0.state, .started, "expected item to be started, but \($0.state)") }
+            lifecycle.shutdown()
+        }
+        lifecycle.wait()
+        subsystem.subsystem.items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
     }
 }
