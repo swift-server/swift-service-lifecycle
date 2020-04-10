@@ -1,16 +1,16 @@
-# SwiftServiceLauncher
+# SwiftServiceBootstrap
 
-SwiftServiceLauncher provides a basic mechanism to cleanly start up and shut down the application, freeing resources in order before exiting.
+SwiftServiceBootstrap provides a basic mechanism to cleanly start up and shut down the application, freeing resources in order before exiting.
 It also provides a `Signal`-based shutdown hook, to shutdown on signals like `TERM` or `INT`.
 
-SwiftServiceLauncher was designed with the idea that every application has some startup and shutdown workflow-like-logic which is often sensitive to failure and hard to get right.
+SwiftServiceBootstrap was designed with the idea that every application has some startup and shutdown workflow-like-logic which is often sensitive to failure and hard to get right.
 The library codes this common need in a safe and reusable way that is non-framework specific, and designed to be integrated with any server framework or directly in an application.
 
-This is the beginning of a community-driven open-source project actively seeking contributions, be it code, documentation, or ideas. What SwiftServiceLauncher provides today is covered in the [API docs](https://swift-server.github.io/swift-service-launcher/), but it will continue to evolve with community input.
+This is the beginning of a community-driven open-source project actively seeking contributions, be it code, documentation, or ideas. What SwiftServiceBootstrap provides today is covered in the [API docs](https://swift-server.github.io/swift-service-launcher/), but it will continue to evolve with community input.
 
 ## Getting started
 
-If you have a server-side Swift application or a cross-platform (e.g. Linux, macOS) application, and you would like to manage its startup and shutdown lifecycle, SwiftServiceLauncher is a great idea. Below you will find all you need to know to get started.
+If you have a server-side Swift application or a cross-platform (e.g. Linux, macOS) application, and you would like to manage its startup and shutdown lifecycle, SwiftServiceBootstrap is a great idea. Below you will find all you need to know to get started.
 
 ### Adding the dependency
 
@@ -20,10 +20,10 @@ To add a dependency on the package, declare it in your `Package.swift`:
 .package(url: "https://github.com/swift-server/swift-service-launcher.git", from: "1.0.0"),
 ```
 
-and to your application target, add "SwiftServiceLauncher" to your dependencies:
+and to your application target, add "SwiftServiceBootstrap" to your dependencies:
 
 ```swift
-.target(name: "BestExampleApp", dependencies: ["SwiftServiceLauncher"]),
+.target(name: "BestExampleApp", dependencies: ["SwiftServiceBootstrap"]),
 ```
 
 ###  Defining the lifecycle
@@ -195,7 +195,7 @@ In more complex cases, when signal trapping based shutdown is not appropriate, y
 
 [SwiftNIO](https://github.com/apple/swift-nio) is a popular networking library that among other things provides Future abstraction named `EventLoopFuture`.
 
-SwiftServiceLauncher comes with a compatibility module designed to make managing SwiftNIO based resources easy.
+SwiftServiceBootstrap comes with a compatibility module designed to make managing SwiftNIO based resources easy.
 
 Once you import `ServiceLauncherNIOCompat` module, `Lifecycle.Handler` gains a static helpers named `eventLoopFuture` designed to help simplify the registration call to:
 

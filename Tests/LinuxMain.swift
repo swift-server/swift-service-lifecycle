@@ -1,12 +1,12 @@
 //===----------------------------------------------------------------------===//
 //
-// This source file is part of the SwiftServiceLauncher open source project
+// This source file is part of the SwiftServiceBootstrap open source project
 //
-// Copyright (c) 2019-2020 Apple Inc. and the SwiftServiceLauncher project authors
+// Copyright (c) 2019-2020 Apple Inc. and the SwiftServiceBootstrap project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
-// See CONTRIBUTORS.txt for the list of SwiftServiceLauncher project authors
+// See CONTRIBUTORS.txt for the list of SwiftServiceBootstrap project authors
 //
 // SPDX-License-Identifier: Apache-2.0
 //
