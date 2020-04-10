@@ -36,7 +36,7 @@ final class ServiceLifecycleTests: XCTestCase {
             print("skipping testShutdownWithSignal")
             return
         }
-        let signal = ServiceLifecycle.Signal.ALRM
+        let signal = Lifecycle.Signal.ALRM
         let items = (0 ... Int.random(in: 10 ... 20)).map { _ in GoodItem() }
         let lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: [signal]))
         lifecycle.register(items)

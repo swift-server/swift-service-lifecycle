@@ -19,7 +19,7 @@ extension Lifecycle.Handler {
     /// Asynchronous `Lifecycle.Handler` based on an `EventLoopFuture`.
     ///
     /// - parameters:
-    ///    - future: the underlying `EventLoopFuture`
+    ///    - future: function returning the underlying `EventLoopFuture`
     public static func eventLoopFuture(_ future: @escaping () -> EventLoopFuture<Void>) -> Lifecycle.Handler {
         return Lifecycle.Handler { callback in
             future().whenComplete { result in
