@@ -19,7 +19,7 @@ import XCTest
 final class ServiceLifecycleTests: XCTestCase {
     func testStartThenShutdown() {
         let items = (5 ... Int.random(in: 10 ... 20)).map { _ in GoodItem() }
-        let lifecycle = ComponentLifecycle(label: "test")
+        let lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: nil))
         lifecycle.register(items)
         lifecycle.start { startError in
             XCTAssertNil(startError, "not expecting error")
