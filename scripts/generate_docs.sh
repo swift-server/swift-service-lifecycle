@@ -1,13 +1,13 @@
 #!/bin/bash
 ##===----------------------------------------------------------------------===##
 ##
-## This source file is part of the SwiftServiceLauncher open source project
+## This source file is part of the SwiftServiceBootstrap open source project
 ##
-## Copyright (c) 2020 Apple Inc. and the SwiftServiceLauncher project authors
+## Copyright (c) 2020 Apple Inc. and the SwiftServiceBootstrap project authors
 ## Licensed under Apache License v2.0
 ##
 ## See LICENSE.txt for license information
-## See CONTRIBUTORS.txt for the list of SwiftServiceLauncher project authors
+## See CONTRIBUTORS.txt for the list of SwiftServiceBootstrap project authors
 ##
 ## SPDX-License-Identifier: Apache-2.0
 ##
@@ -51,12 +51,12 @@ mkdir -p "$jazzy_dir"
 # prep index
 module_switcher="$jazzy_dir/README.md"
 cat > "$module_switcher" <<"EOF"
-# SwiftServiceLauncher Docs
+# SwiftServiceBootstrap Docs
 
-SwiftServiceLauncher provides a basic mechanism to cleanly start up and shut down the application, freeing resources in order before exiting.
+SwiftServiceBootstrap provides a basic mechanism to cleanly start up and shut down the application, freeing resources in order before exiting.
 It also provides a Signal based shutdown hook, to shutdown on signals like TERM or INT.
 
-SwiftServiceLauncher is non-framework specific, designed to be integrated with any server framework or directly in an application.
+SwiftServiceBootstrap is non-framework specific, designed to be integrated with any server framework or directly in an application.
 
 To get started with SwiftCrypto, [`import ServiceLauncher`](../ServiceLauncher/index.html).
 EOF
