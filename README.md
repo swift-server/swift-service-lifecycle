@@ -207,6 +207,42 @@ In more complex cases, when signal trapping based shutdown is not appropriate, y
 
 `shutdown` is an asynchronous operation. Errors will be logged and bubble it up to the provided completion handler.
 
+### Complex Systems and Nesting of Subsystems
+
+In larger Applications (Services) `ComponentLifecycle` can be used to manage the lifecycle of subsystems, such that `ServiceLifecycle` can start and shutdown `ComponentLifecycle`s.
+
+In fact, since `ComponentLifecycle` conforms to `Lifecycle.Task`,
+it can start and stop other `ComponentLifecycles`, forming a tree. E.g.:
+
+```swift
+struct SubSystem {
+    let lifecycle = ComponentLifecycle(label: "SubSystem")
+    let subsystem: SubSubSystem
+
+    init() {
+        self.subsystem = SubSubSystem()
+        self.lifecycle.register(self.subsystem.lifecycle)
+    }
+
+    struct SubSubSystem {
+        let lifecycle = ComponentLifecycle(label: "SubSubSystem")
+
+        init() {
+            self.lifecycle.register(...)
+        }
+    }
+}
+
+let lifecycle = ServiceLifecycle()
+let subsystem = SubSystem()
+lifecycle.register(subsystem.lifecycle)
+
+lifecycle.start { error in
+    ...
+}
+lifecycle.wait()
+```
+
 ### Compatibility with SwiftNIO Futures
 
 [SwiftNIO](https://github.com/apple/swift-nio) is a popular networking library that among other things provides Future abstraction named `EventLoopFuture`.

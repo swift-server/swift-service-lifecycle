@@ -30,6 +30,7 @@ extension ServiceLifecycleTests {
             ("testStartAndWait", testStartAndWait),
             ("testBadStartAndWait", testBadStartAndWait),
             ("testNesting", testNesting),
+            ("testNesting2", testNesting2),
         ]
     }
 }
