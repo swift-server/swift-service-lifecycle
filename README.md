@@ -41,7 +41,7 @@ let lifecycle = ServiceLifecycle()
 // and passing its `syncShutdownGracefully` function to be called on shutdown
 let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 lifecycle.registerShutdown(
-    name: "eventLoopGroup",
+    label: "eventLoopGroup",
     eventLoopGroup.syncShutdownGracefully
 )
 
@@ -53,7 +53,7 @@ lifecycle.registerShutdown(
 // and `shutdown` function to be called on shutdown
 let migrator = DatabaseMigrator()
 lifecycle.register(
-    name: "migrator",
+    label: "migrator",
     start: .async(migrator.migrate),
     shutdown: .async(migrator.shutdown)
 )
@@ -62,7 +62,7 @@ lifecycle.register(
 //
 // start handlers passed using the `register` function
 // will be called in the order they were registered in
-lifecycle.start() { error in
+lifecycle.start { error in
     // start completion handler.
     // if a startup error occurred you can capture it here
     if let error = error {
@@ -118,7 +118,7 @@ where `Lifecycle.Handler` is a container for an asynchronous closure defined as 
 ```swift
 let foo = ...
 lifecycle.register(
-    name: "foo",
+    label: "foo",
     start: .async(foo.asyncStart),
     shutdown: .async(foo.asyncShutdown)
 )
@@ -129,23 +129,23 @@ or, just shutdown:
 ```swift
 let foo = ...
 lifecycle.registerShutdown(
-    name: "foo",
+    label: "foo",
     .async(foo.asyncShutdown)
 )
 ```
 
 
-you can also register a collection of `LifecycleItem`s (less typical) using:
+you can also register a collection of `Lifecycle.Task`s (less typical) using:
 
 ```swift
-func register(_ items: [LifecycleItem])
+func register(_ tasks: [Lifecycle.Task])
 
-internal func register(_ items: LifecycleItem...)
+func register(_ tasks: Lifecycle.Task...)
 ```
 
 ### Configuration
 
-`ServiceLifecycle` constructor takes optional `Lifecycle.Configuration` to further refine the `ServiceLifecycle` behavior:
+`ServiceLifecycle` initializer takes optional `ServiceLifecycle.Configuration` to further refine the `ServiceLifecycle` behavior:
 
 * `callbackQueue`: Defines the `DispatchQueue` on which startup and shutdown handlers are executed. By default, `DispatchQueue.global` is used.
 
@@ -162,7 +162,7 @@ Start handlers passed using the `register` function will be called in the order 
 If a startup error occurred, it will be logged and the startup sequence will halt on the first error, and bubble it up to the provided completion handler.
 
 ```swift
-lifecycle.start() { error in
+lifecycle.start { error in
     if let error = error {
         logger.error("failed starting \(self) ☠️: \(error)")
     } else {
@@ -176,7 +176,7 @@ lifecycle.start() { error in
 Typical use of the library is to call on `wait` after calling `start`.
 
 ```swift
-lifecycle.start() { error in
+lifecycle.start { error in
   ...   
 }
 lifecycle.wait() // <-- blocks the thread
@@ -203,16 +203,16 @@ startup order will be 1, 2, 3 and shutdown order will be 3, 2, 1.
 
 If a shutdown error occurred, it will be logged and the shutdown sequence will *continue* to the next item, and attempt to shut it down until all registered items that have been started are shut down.
 
-In more complex cases, when signal trapping based shutdown is not appropriate, you may pass `nil` as the `shutdownSignal` configuration, and call `shutdown` manually when appropriate. This is designed to be a rarely used pressure valve.
+In more complex cases, when `Signal`-trapping-based shutdown is not appropriate, you may pass `nil` as the `shutdownSignal` configuration, and call `shutdown` manually when appropriate. This is designed to be a rarely used pressure valve.
 
-`shutdown` is an asynchronous operation. Errors will be logged and bubble it up to the provided completion handler.
+`shutdown` is an asynchronous operation. Errors will be logged and bubbled up to the provided completion handler.
 
 ### Complex Systems and Nesting of Subsystems
 
 In larger Applications (Services) `ComponentLifecycle` can be used to manage the lifecycle of subsystems, such that `ServiceLifecycle` can start and shutdown `ComponentLifecycle`s.
 
 In fact, since `ComponentLifecycle` conforms to `Lifecycle.Task`,
-it can start and stop other `ComponentLifecycles`, forming a tree. E.g.:
+it can start and stop other `ComponentLifecycle`s, forming a tree. E.g.:
 
 ```swift
 struct SubSystem {
@@ -249,12 +249,12 @@ lifecycle.wait()
 
 SwiftServiceBootstrap comes with a compatibility module designed to make managing SwiftNIO based resources easy.
 
-Once you import `LifecycleNIOCompat` module, `Lifecycle.Handler` gains a static helpers named `eventLoopFuture` designed to help simplify the registration call to:
+Once you import `LifecycleNIOCompat` module, `Lifecycle.Handler` gains a static helper named `eventLoopFuture` designed to help simplify the registration call to:
 
 ```swift
 let foo = ...
 lifecycle.register(
-    name: "foo",
+    label: "foo",
     start: .eventLoopFuture(foo.start),
     shutdown: .eventLoopFuture(foo.shutdown)
 )
@@ -265,7 +265,7 @@ or, just shutdown:
 ```swift
 let foo = ...
 lifecycle.registerShutdown(
-    name: "foo",
+    label: "foo",
     .eventLoopFuture(foo.shutdown)
 )
 ```
