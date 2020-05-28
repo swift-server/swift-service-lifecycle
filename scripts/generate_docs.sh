@@ -51,14 +51,14 @@ mkdir -p "$jazzy_dir"
 # prep index
 module_switcher="$jazzy_dir/README.md"
 cat > "$module_switcher" <<"EOF"
-# SwiftServiceBootstrap Docs
+# SwiftServiceLifecycle Docs
 
-SwiftServiceBootstrap provides a basic mechanism to cleanly start up and shut down the application, freeing resources in order before exiting.
+SwiftServiceLifecycle provides a basic mechanism to cleanly start up and shut down the application, freeing resources in order before exiting.
 It also provides a Signal based shutdown hook, to shutdown on signals like TERM or INT.
 
-SwiftServiceBootstrap is non-framework specific, designed to be integrated with any server framework or directly in an application.
+SwiftServiceLifecycle is non-framework specific, designed to be integrated with any server framework or directly in an application.
 
-To get started with SwiftServiceBootstrap, [`import Lifecycle`](../Lifecycle/index.html).
+To get started with SwiftServiceLifecycle, [`import Lifecycle`](../Lifecycle/index.html).
 EOF
 
 # run jazzy
@@ -67,18 +67,18 @@ if ! command -v jazzy > /dev/null; then
 fi
 
 jazzy_args=(--clean
-            --author 'SwiftServiceBootstrap team'
+            --author 'SwiftServiceLifecycle team'
             --readme "$module_switcher"
-            --author_url https://github.com/swift-server/swift-service-bootstrap
-            --github_url https://github.com/swift-server/swift-service-bootstrap
-            --github-file-prefix https://github.com/swift-server/swift-service-bootstrap/tree/$version
+            --author_url https://github.com/swift-server/swift-service-lifecycle
+            --github_url https://github.com/swift-server/swift-service-lifecycle
+            --github-file-prefix https://github.com/swift-server/swift-service-lifecycle/tree/$version
             --theme fullwidth
             --swift-build-tool spm)
 
 for module in "${modules[@]}"; do
   args=("${jazzy_args[@]}" --output "$jazzy_dir/docs/$version/$module" --docset-path "$jazzy_dir/docset/$version/$module"
         --module "$module" --module-version $version
-        --root-url "https://swift-server.github.io/swift-service-bootstrap/docs/$version/$module/")
+        --root-url "https://swift-server.github.io/swift-service-lifecycle/docs/$version/$module/")
   if [[ "$(uname -s)" == "Linux" ]]; then
     args+=(--sourcekitten-sourcefile "$root_path/.build/sourcekitten/$module.json")
   fi
