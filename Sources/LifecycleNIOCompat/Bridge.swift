@@ -15,13 +15,13 @@
 import Lifecycle
 import NIO
 
-extension Lifecycle.Handler {
+extension LifecycleHandler {
     /// Asynchronous `Lifecycle.Handler` based on an `EventLoopFuture`.
     ///
     /// - parameters:
     ///    - future: function returning the underlying `EventLoopFuture`
-    public static func eventLoopFuture(_ future: @escaping () -> EventLoopFuture<Void>) -> Lifecycle.Handler {
-        return Lifecycle.Handler { callback in
+    public static func eventLoopFuture(_ future: @escaping () -> EventLoopFuture<Void>) -> LifecycleHandler {
+        return LifecycleHandler { callback in
             future().whenComplete { result in
                 switch result {
                 case .success:

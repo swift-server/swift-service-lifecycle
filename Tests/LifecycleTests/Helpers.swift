@@ -17,7 +17,7 @@ import Lifecycle
 import NIO
 import NIOConcurrencyHelpers
 
-class GoodItem: Lifecycle.Task {
+class GoodItem: LifecycleTask {
     let queue = DispatchQueue(label: "GoodItem", attributes: .concurrent)
 
     let id: String

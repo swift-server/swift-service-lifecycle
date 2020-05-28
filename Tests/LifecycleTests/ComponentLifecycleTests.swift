@@ -37,7 +37,7 @@ final class ComponentLifecycleTests: XCTestCase {
         var startCalls = [String]()
         var stopCalls = [String]()
 
-        let items = (1 ... Int.random(in: 10 ... 20)).map { index -> Lifecycle.Task in
+        let items = (1 ... Int.random(in: 10 ... 20)).map { index -> LifecycleTask in
             let id = "item-\(index)"
             return ComponentLifecycle.Task(label: id,
                                            start: .sync {
@@ -71,7 +71,7 @@ final class ComponentLifecycleTests: XCTestCase {
         var startCalls = [String]()
         var stopCalls = [String]()
 
-        let items = (1 ... Int.random(in: 10 ... 20)).map { index -> Lifecycle.Task in
+        let items = (1 ... Int.random(in: 10 ... 20)).map { index -> LifecycleTask in
             let id = "item-\(index)"
             return ComponentLifecycle.Task(label: id,
                                            start: .sync {
@@ -100,7 +100,7 @@ final class ComponentLifecycleTests: XCTestCase {
     }
 
     func testShutdownWhileStarting() {
-        class Item: Lifecycle.Task {
+        class Item: LifecycleTask {
             let startedCallback: () -> Void
             var state = State.idle
 
@@ -230,7 +230,7 @@ final class ComponentLifecycleTests: XCTestCase {
     }
 
     func testShutdownErrors() {
-        class BadItem: Lifecycle.Task {
+        class BadItem: LifecycleTask {
             let label = UUID().uuidString
 
             func start(_ callback: (Error?) -> Void) {
@@ -244,7 +244,7 @@ final class ComponentLifecycleTests: XCTestCase {
 
         var shutdownError: Lifecycle.ShutdownError?
         let shutdownSemaphore = DispatchSemaphore(value: 0)
-        let items: [Lifecycle.Task] = [GoodItem(), BadItem(), BadItem(), GoodItem(), BadItem()]
+        let items: [LifecycleTask] = [GoodItem(), BadItem(), BadItem(), GoodItem(), BadItem()]
         let lifecycle = ComponentLifecycle(label: "test")
         lifecycle.register(items)
         lifecycle.start { startError in
@@ -265,7 +265,7 @@ final class ComponentLifecycleTests: XCTestCase {
     }
 
     func testStartupErrors() {
-        class BadItem: Lifecycle.Task {
+        class BadItem: LifecycleTask {
             let label: String = UUID().uuidString
 
             func start(_ callback: (Error?) -> Void) {
@@ -277,7 +277,7 @@ final class ComponentLifecycleTests: XCTestCase {
             }
         }
 
-        let items: [Lifecycle.Task] = [GoodItem(), GoodItem(), BadItem(), GoodItem()]
+        let items: [LifecycleTask] = [GoodItem(), GoodItem(), BadItem(), GoodItem()]
         let lifecycle = ComponentLifecycle(label: "test")
         lifecycle.register(items)
         lifecycle.start { error in
@@ -290,7 +290,7 @@ final class ComponentLifecycleTests: XCTestCase {
     }
 
     func testStartAndWait() {
-        class Item: Lifecycle.Task {
+        class Item: LifecycleTask {
             private let semaphore: DispatchSemaphore
             var state = State.idle
 
@@ -331,7 +331,7 @@ final class ComponentLifecycleTests: XCTestCase {
     }
 
     func testBadStartAndWait() {
-        class BadItem: Lifecycle.Task {
+        class BadItem: LifecycleTask {
             let label: String = UUID().uuidString
 
             func start(_ callback: (Error?) -> Void) {
@@ -351,7 +351,7 @@ final class ComponentLifecycleTests: XCTestCase {
     }
 
     func testShutdownInOrder() {
-        class Item: Lifecycle.Task {
+        class Item: LifecycleTask {
             let id: String
             var result: [String]
 

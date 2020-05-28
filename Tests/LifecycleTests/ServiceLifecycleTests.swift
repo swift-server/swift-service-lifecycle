@@ -36,7 +36,7 @@ final class ServiceLifecycleTests: XCTestCase {
             print("skipping testShutdownWithSignal")
             return
         }
-        let signal = Lifecycle.Signal.ALRM
+        let signal = ServiceLifecycle.Signal.ALRM
         let items = (0 ... Int.random(in: 10 ... 20)).map { _ in GoodItem() }
         let lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: [signal]))
         lifecycle.register(items)
@@ -49,7 +49,7 @@ final class ServiceLifecycleTests: XCTestCase {
     }
 
     func testStartAndWait() {
-        class Item: Lifecycle.Task {
+        class Item: LifecycleTask {
             private let semaphore: DispatchSemaphore
             var state = State.idle
 
@@ -92,7 +92,7 @@ final class ServiceLifecycleTests: XCTestCase {
     }
 
     func testBadStartAndWait() {
-        class BadItem: Lifecycle.Task {
+        class BadItem: LifecycleTask {
             var label: String {
                 return "\(self)"
             }

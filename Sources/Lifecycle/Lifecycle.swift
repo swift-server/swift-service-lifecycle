@@ -21,11 +21,7 @@ import Backtrace
 import Dispatch
 import Logging
 
-// MARK: - Lifecycle (namespace)
-
-public enum Lifecycle {
-    public typealias Task = LifecycleTask
-}
+// MARK: - LifecycleTask
 
 /// Represents an item that can be started and shut down
 public protocol LifecycleTask {
@@ -34,87 +30,52 @@ public protocol LifecycleTask {
     func shutdown(_ callback: @escaping (Error?) -> Void)
 }
 
+// MARK: - LifecycleHandler
+
 /// Supported startup and shutdown method styles
-public extension Lifecycle {
-    struct Handler {
-        private let body: (@escaping (Error?) -> Void) -> Void
+public struct LifecycleHandler {
+    private let body: (@escaping (Error?) -> Void) -> Void
 
-        /// Initialize a `Lifecycle.Handler` based on a completion handler.
-        ///
-        /// - parameters:
-        ///    - callback: the underlying completion handler
-        public init(_ callback: @escaping (@escaping (Error?) -> Void) -> Void) {
-            self.body = callback
-        }
-
-        /// Asynchronous `Lifecycle.Handler` based on a completion handler.
-        ///
-        /// - parameters:
-        ///    - callback: the underlying completion handler
-        public static func async(_ callback: @escaping (@escaping (Error?) -> Void) -> Void) -> Handler {
-            return Handler(callback)
-        }
-
-        /// Asynchronous `Lifecycle.Handler` based on a blocking, throwing function.
-        ///
-        /// - parameters:
-        ///    - body: the underlying function
-        public static func sync(_ body: @escaping () throws -> Void) -> Handler {
-            return Handler { completionHandler in
-                do {
-                    try body()
-                    completionHandler(nil)
-                } catch {
-                    completionHandler(error)
-                }
-            }
-        }
-
-        /// Noop `Lifecycle.Handler`.
-        public static var none: Handler {
-            return Handler { callback in
-                callback(nil)
-            }
-        }
-
-        internal func run(_ callback: @escaping (Error?) -> Void) {
-            self.body(callback)
-        }
-    }
-}
-
-public extension Lifecycle {
-    struct ShutdownError: Error {
-        public let errors: [String: Error]
-    }
-}
-
-extension Lifecycle {
-    /// Setup a signal trap.
+    /// Initialize a `Lifecycle.Handler` based on a completion handler.
     ///
     /// - parameters:
-    ///    - signal: The signal to trap.
-    ///    - handler: closure to invoke when the signal is captured.
-    /// - returns: a `DispatchSourceSignal` for the given trap. The source must be cancled by the caller.
-    public static func trap(signal sig: Signal, handler: @escaping (Signal) -> Void, on queue: DispatchQueue = .global()) -> DispatchSourceSignal {
-        let signalSource = DispatchSource.makeSignalSource(signal: sig.rawValue, queue: queue)
-        signal(sig.rawValue, SIG_IGN)
-        signalSource.setEventHandler(handler: {
-            signalSource.cancel()
-            handler(sig)
-        })
-        signalSource.resume()
-        return signalSource
+    ///    - callback: the underlying completion handler
+    public init(_ callback: @escaping (@escaping (Error?) -> Void) -> Void) {
+        self.body = callback
     }
 
-    /// A system signal
-    public struct Signal {
-        internal var rawValue: CInt
+    /// Asynchronous `Lifecycle.Handler` based on a completion handler.
+    ///
+    /// - parameters:
+    ///    - callback: the underlying completion handler
+    public static func async(_ callback: @escaping (@escaping (Error?) -> Void) -> Void) -> LifecycleHandler {
+        return LifecycleHandler(callback)
+    }
 
-        public static let TERM: Signal = Signal(rawValue: SIGTERM)
-        public static let INT: Signal = Signal(rawValue: SIGINT)
-        // for testing
-        internal static let ALRM: Signal = Signal(rawValue: SIGALRM)
+    /// Asynchronous `Lifecycle.Handler` based on a blocking, throwing function.
+    ///
+    /// - parameters:
+    ///    - body: the underlying function
+    public static func sync(_ body: @escaping () throws -> Void) -> LifecycleHandler {
+        return LifecycleHandler { completionHandler in
+            do {
+                try body()
+                completionHandler(nil)
+            } catch {
+                completionHandler(error)
+            }
+        }
+    }
+
+    /// Noop `Lifecycle.Handler`.
+    public static var none: LifecycleHandler {
+        return LifecycleHandler { callback in
+            callback(nil)
+        }
+    }
+
+    internal func run(_ callback: @escaping (Error?) -> Void) {
+        self.body(callback)
     }
 }
 
@@ -146,7 +107,7 @@ public struct ServiceLifecycle {
     public func start(_ callback: @escaping (Error?) -> Void) {
         self.configuration.shutdownSignal?.forEach { signal in
             self.lifecycle.log("setting up shutdown hook on \(signal)")
-            let signalSource = Lifecycle.trap(signal: signal, handler: { signal in
+            let signalSource = ServiceLifecycle.trap(signal: signal, handler: { signal in
                 self.lifecycle.log("intercepted signal: \(signal)")
                 self.shutdown()
            })
@@ -181,12 +142,41 @@ public struct ServiceLifecycle {
     }
 }
 
+extension ServiceLifecycle {
+    /// Setup a signal trap.
+    ///
+    /// - parameters:
+    ///    - signal: The signal to trap.
+    ///    - handler: closure to invoke when the signal is captured.
+    /// - returns: a `DispatchSourceSignal` for the given trap. The source must be cancled by the caller.
+    public static func trap(signal sig: Signal, handler: @escaping (Signal) -> Void, on queue: DispatchQueue = .global()) -> DispatchSourceSignal {
+        let signalSource = DispatchSource.makeSignalSource(signal: sig.rawValue, queue: queue)
+        signal(sig.rawValue, SIG_IGN)
+        signalSource.setEventHandler(handler: {
+            signalSource.cancel()
+            handler(sig)
+        })
+        signalSource.resume()
+        return signalSource
+    }
+
+    /// A system signal
+    public struct Signal {
+        internal var rawValue: CInt
+
+        public static let TERM: Signal = Signal(rawValue: SIGTERM)
+        public static let INT: Signal = Signal(rawValue: SIGINT)
+        // for testing
+        internal static let ALRM: Signal = Signal(rawValue: SIGALRM)
+    }
+}
+
 public extension ServiceLifecycle {
     /// Adds a `Task` to a `Tasks` collection.
     ///
     /// - parameters:
     ///    - tasks: one or more `Tasks`.
-    func register(_ tasks: Lifecycle.Task ...) {
+    func register(_ tasks: LifecycleTask ...) {
         self.lifecycle.register(tasks)
     }
 
@@ -194,7 +184,7 @@ public extension ServiceLifecycle {
     ///
     /// - parameters:
     ///    - tasks: array of `Tasks`.
-    func register(_ tasks: [Lifecycle.Task]) {
+    func register(_ tasks: [LifecycleTask]) {
         self.lifecycle.register(tasks)
     }
 
@@ -204,7 +194,7 @@ public extension ServiceLifecycle {
     ///    - label: label of the item, useful for debugging.
     ///    - start: `Handler` to perform the startup.
     ///    - shutdown: `Handler` to perform the shutdown.
-    func register(label: String, start: Lifecycle.Handler, shutdown: Lifecycle.Handler) {
+    func register(label: String, start: LifecycleHandler, shutdown: LifecycleHandler) {
         self.lifecycle.register(label: label, start: start, shutdown: shutdown)
     }
 
@@ -213,7 +203,7 @@ public extension ServiceLifecycle {
     /// - parameters:
     ///    - label: label of the item, useful for debugging.
     ///    - handler: `Handler` to perform the shutdown.
-    func registerShutdown(label: String, _ handler: Lifecycle.Handler) {
+    func registerShutdown(label: String, _ handler: LifecycleHandler) {
         self.lifecycle.registerShutdown(label: label, handler)
     }
 
@@ -245,13 +235,13 @@ extension ServiceLifecycle {
         /// Defines the `DispatchQueue` on which startup and shutdown callback handlers are run.
         public var callbackQueue: DispatchQueue
         /// Defines if to install a crash signal trap that prints backtraces.
-        public var shutdownSignal: [Lifecycle.Signal]?
+        public var shutdownSignal: [Signal]?
         /// Defines what, if any, signals to trap for invoking shutdown.
         public var installBacktrace: Bool
 
         public init(logger: Logger = Logger(label: "Lifeycle"),
                     callbackQueue: DispatchQueue = .global(),
-                    shutdownSignal: [Lifecycle.Signal]? = [.TERM, .INT],
+                    shutdownSignal: [Signal]? = [.TERM, .INT],
                     installBacktrace: Bool = true) {
             self.logger = logger
             self.callbackQueue = callbackQueue
@@ -261,10 +251,14 @@ extension ServiceLifecycle {
     }
 }
 
+struct ShutdownError: Error {
+    public let errors: [String: Error]
+}
+
 // MARK: - ComponentLifecycle
 
 /// `Lifecycle` provides a basic mechanism to cleanly startup and shutdown the application, freeing resources in order before exiting.
-public class ComponentLifecycle: Lifecycle.Task {
+public class ComponentLifecycle: LifecycleTask {
     public let label: String
     private let logger: Logger
     internal let shutdownGroup = DispatchGroup()
@@ -272,7 +266,7 @@ public class ComponentLifecycle: Lifecycle.Task {
     private var state = State.idle
     private let stateLock = Lock()
 
-    private var tasks = [Lifecycle.Task]()
+    private var tasks = [LifecycleTask]()
     private let tasksLock = Lock()
 
     /// Creates a `ComponentLifecycle` instance.
@@ -369,7 +363,7 @@ public class ComponentLifecycle: Lifecycle.Task {
 
     // MARK: - private
 
-    private func _start(on queue: DispatchQueue, tasks: [Lifecycle.Task], callback: @escaping (Error?) -> Void) {
+    private func _start(on queue: DispatchQueue, tasks: [LifecycleTask], callback: @escaping (Error?) -> Void) {
         precondition(tasks.count > 0, "invalid number of tasks, must be > 0")
         self.stateLock.withLock {
             guard case .idle = self.state else {
@@ -402,7 +396,7 @@ public class ComponentLifecycle: Lifecycle.Task {
         }
     }
 
-    private func startTask(on queue: DispatchQueue, tasks: [Lifecycle.Task], index: Int, callback: @escaping (Int, Error?) -> Void) {
+    private func startTask(on queue: DispatchQueue, tasks: [LifecycleTask], index: Int, callback: @escaping (Int, Error?) -> Void) {
         // async barrier
         let start = { (callback) -> Void in queue.async { tasks[index].start(callback) } }
         let callback = { (index, error) -> Void in queue.async { callback(index, error) } }
@@ -424,7 +418,7 @@ public class ComponentLifecycle: Lifecycle.Task {
         }
     }
 
-    private func _shutdown(on queue: DispatchQueue, tasks: [Lifecycle.Task], callback: @escaping () -> Void) {
+    private func _shutdown(on queue: DispatchQueue, tasks: [LifecycleTask], callback: @escaping () -> Void) {
         self.stateLock.withLock {
             log("shutting down")
             self.state = .shuttingDown(queue)
@@ -441,7 +435,7 @@ public class ComponentLifecycle: Lifecycle.Task {
         }
     }
 
-    private func shutdownTask(on queue: DispatchQueue, tasks: [Lifecycle.Task], index: Int, errors: [String: Error]?, callback: @escaping ([String: Error]?) -> Void) {
+    private func shutdownTask(on queue: DispatchQueue, tasks: [LifecycleTask], index: Int, errors: [String: Error]?, callback: @escaping ([String: Error]?) -> Void) {
         // async barrier
         let shutdown = { (callback) -> Void in queue.async { tasks[index].shutdown(callback) } }
         let callback = { (errors) -> Void in queue.async { callback(errors) } }
@@ -470,17 +464,17 @@ public class ComponentLifecycle: Lifecycle.Task {
     private enum State {
         case idle
         case starting(DispatchQueue)
-        case started(DispatchQueue, [Lifecycle.Task])
+        case started(DispatchQueue, [LifecycleTask])
         case shuttingDown(DispatchQueue)
         case shutdown([String: Error]?)
     }
 }
 
 public extension ComponentLifecycle {
-    internal struct Task: Lifecycle.Task {
+    internal struct Task: LifecycleTask {
         let label: String
-        let start: Lifecycle.Handler
-        let shutdown: Lifecycle.Handler
+        let start: LifecycleHandler
+        let shutdown: LifecycleHandler
 
         func start(_ callback: @escaping (Error?) -> Void) {
             self.start.run(callback)
@@ -495,7 +489,7 @@ public extension ComponentLifecycle {
     ///
     /// - parameters:
     ///    - tasks: one or more `Tasks`.
-    func register(_ tasks: Lifecycle.Task ...) {
+    func register(_ tasks: LifecycleTask ...) {
         self.register(tasks)
     }
 
@@ -503,7 +497,7 @@ public extension ComponentLifecycle {
     ///
     /// - parameters:
     ///    - tasks: array of `Tasks`.
-    func register(_ tasks: [Lifecycle.Task]) {
+    func register(_ tasks: [LifecycleTask]) {
         self.stateLock.withLock {
             guard case .idle = self.state else {
                 preconditionFailure("invalid state, \(self.state)")
@@ -520,7 +514,7 @@ public extension ComponentLifecycle {
     ///    - label: label of the item, useful for debugging.
     ///    - start: `Handler` to perform the startup.
     ///    - shutdown: `Handler` to perform the shutdown.
-    func register(label: String, start: Lifecycle.Handler, shutdown: Lifecycle.Handler) {
+    func register(label: String, start: LifecycleHandler, shutdown: LifecycleHandler) {
         self.register(Task(label: label, start: start, shutdown: shutdown))
     }
 
@@ -529,7 +523,7 @@ public extension ComponentLifecycle {
     /// - parameters:
     ///    - label: label of the item, useful for debugging.
     ///    - handler: `Handler` to perform the shutdown.
-    func registerShutdown(label: String, _ handler: Lifecycle.Handler) {
+    func registerShutdown(label: String, _ handler: LifecycleHandler) {
         self.register(label: label, start: .none, shutdown: handler)
     }
 
