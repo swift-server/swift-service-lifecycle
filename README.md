@@ -1,26 +1,26 @@
-# SwiftServiceBootstrap
+# SwiftServiceLifecycle
 
-SwiftServiceBootstrap provides a basic mechanism to cleanly start up and shut down the application, freeing resources in order before exiting.
+SwiftServiceLifecycle provides a basic mechanism to cleanly start up and shut down the application, freeing resources in order before exiting.
 It also provides a `Signal`-based shutdown hook, to shutdown on signals like `TERM` or `INT`.
 
-SwiftServiceBootstrap was designed with the idea that every application has some startup and shutdown workflow-like-logic which is often sensitive to failure and hard to get right.
+SwiftServiceLifecycle was designed with the idea that every application has some startup and shutdown workflow-like-logic which is often sensitive to failure and hard to get right.
 The library codes this common need in a safe and reusable way that is non-framework specific, and designed to be integrated with any server framework or directly in an application.
 
-This is the beginning of a community-driven open-source project actively seeking contributions, be it code, documentation, or ideas. What SwiftServiceBootstrap provides today is covered in the [API docs](https://swift-server.github.io/swift-service-bootstrap/), but it will continue to evolve with community input.
+This is the beginning of a community-driven open-source project actively seeking contributions, be it code, documentation, or ideas. What SwiftServiceLifecycle provides today is covered in the [API docs](https://swift-server.github.io/swift-service-lifecycle/), but it will continue to evolve with community input.
 
 ## Getting started
 
-If you have a server-side Swift application or a cross-platform (e.g. Linux, macOS) application, and you would like to manage its startup and shutdown lifecycle, SwiftServiceBootstrap is a great idea. Below you will find all you need to know to get started.
+If you have a server-side Swift application or a cross-platform (e.g. Linux, macOS) application, and you would like to manage its startup and shutdown lifecycle, SwiftServiceLifecycle is a great idea. Below you will find all you need to know to get started.
 
 ### Adding the dependency
 
 To add a dependency on the package, declare it in your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/swift-server/swift-service-bootstrap.git", from: "1.0.0-alpha.2"),
+.package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "1.0.0-alpha.2"),
 ```
 
-and to your application target, add "SwiftServiceBootstrap" to your dependencies:
+and to your application target, add "SwiftServiceLifecycle" to your dependencies:
 
 ```swift
 .target(name: "MyApplication", dependencies: ["Lifecycle"]),
@@ -247,7 +247,7 @@ lifecycle.wait()
 
 [SwiftNIO](https://github.com/apple/swift-nio) is a popular networking library that among other things provides Future abstraction named `EventLoopFuture`.
 
-SwiftServiceBootstrap comes with a compatibility module designed to make managing SwiftNIO based resources easy.
+SwiftServiceLifecycle comes with a compatibility module designed to make managing SwiftNIO based resources easy.
 
 Once you import `LifecycleNIOCompat` module, `Lifecycle.Handler` gains a static helper named `eventLoopFuture` designed to help simplify the registration call to:
 

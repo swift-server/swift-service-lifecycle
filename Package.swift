@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "swift-service-bootstrap",
+    name: "swift-service-lifecycle",
     platforms: [
         .macOS(.v10_12),
     ],
