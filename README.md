@@ -17,7 +17,7 @@ If you have a server-side Swift application or a cross-platform (e.g. Linux, mac
 To add a dependency on the package, declare it in your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "1.0.0-alpha.2"),
+.package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "1.0.0-alpha.3"),
 ```
 
 and to your application target, add "SwiftServiceLifecycle" to your dependencies:
@@ -93,7 +93,7 @@ In larger Applications (Services) `ComponentLifecycle` can be used to manage the
 
 ### Registering items
 
-`ServiceLifecycle` and `ComponentLifecycle` are containers for `Lifecycle.Task`s which need to be registered via one of the following variants:
+`ServiceLifecycle` and `ComponentLifecycle` are containers for `LifecycleTask`s which need to be registered via one of the following variants:
 
 You can register simple blocking throwing handlers using:
 
@@ -111,9 +111,9 @@ func register(label: String, start: Handler, shutdown: Handler)
 func registerShutdown(label: String, _ handler: Handler)
 ```
 
-where `Lifecycle.Handler` is a container for an asynchronous closure defined as  `(@escaping (Error?) -> Void) -> Void`
+where `LifecycleHandler` is a container for an asynchronous closure defined as  `(@escaping (Error?) -> Void) -> Void`
 
-`Lifecycle.Handler` comes with static helpers named `async` and `sync` designed to help simplify the registration call to:
+`LifecycleHandler` comes with static helpers named `async` and `sync` designed to help simplify the registration call to:
 
 ```swift
 let foo = ...
@@ -135,12 +135,12 @@ lifecycle.registerShutdown(
 ```
 
 
-you can also register a collection of `Lifecycle.Task`s (less typical) using:
+you can also register a collection of `LifecycleTask`s (less typical) using:
 
 ```swift
-func register(_ tasks: [Lifecycle.Task])
+func register(_ tasks: [LifecycleTask])
 
-func register(_ tasks: Lifecycle.Task...)
+func register(_ tasks: LifecycleTask...)
 ```
 
 ### Configuration
@@ -211,7 +211,7 @@ In more complex cases, when `Signal`-trapping-based shutdown is not appropriate,
 
 In larger Applications (Services) `ComponentLifecycle` can be used to manage the lifecycle of subsystems, such that `ServiceLifecycle` can start and shutdown `ComponentLifecycle`s.
 
-In fact, since `ComponentLifecycle` conforms to `Lifecycle.Task`,
+In fact, since `ComponentLifecycle` conforms to `LifecycleTask`,
 it can start and stop other `ComponentLifecycle`s, forming a tree. E.g.:
 
 ```swift
@@ -249,7 +249,7 @@ lifecycle.wait()
 
 SwiftServiceLifecycle comes with a compatibility module designed to make managing SwiftNIO based resources easy.
 
-Once you import `LifecycleNIOCompat` module, `Lifecycle.Handler` gains a static helper named `eventLoopFuture` designed to help simplify the registration call to:
+Once you import `LifecycleNIOCompat` module, `LifecycleHandler` gains a static helper named `eventLoopFuture` designed to help simplify the registration call to:
 
 ```swift
 let foo = ...
