@@ -161,13 +161,25 @@ extension ServiceLifecycle {
     }
 
     /// A system signal
-    public struct Signal {
+    public struct Signal: Equatable, CustomStringConvertible {
         internal var rawValue: CInt
 
-        public static let TERM: Signal = Signal(rawValue: SIGTERM)
-        public static let INT: Signal = Signal(rawValue: SIGINT)
+        public static let TERM = Signal(rawValue: SIGTERM)
+        public static let INT = Signal(rawValue: SIGINT)
         // for testing
-        internal static let ALRM: Signal = Signal(rawValue: SIGALRM)
+        internal static let ALRM = Signal(rawValue: SIGALRM)
+
+        public var description: String {
+            var result = "Signal("
+            switch self {
+            case Signal.TERM: result += "TERM, "
+            case Signal.INT: result += "INT, "
+            case Signal.ALRM: result += "ALRM, "
+            default: () // ok to ignore
+            }
+            result += "rawValue: \(self.rawValue))"
+            return result
+        }
     }
 }
 

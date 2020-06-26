@@ -171,4 +171,10 @@ final class ServiceLifecycleTests: XCTestCase {
         lifecycle.wait()
         subsystem.subsystem.items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
     }
+
+    func testSignalDescription() {
+        XCTAssertEqual("\(ServiceLifecycle.Signal.TERM)", "Signal(TERM, rawValue: \(ServiceLifecycle.Signal.TERM.rawValue))")
+        XCTAssertEqual("\(ServiceLifecycle.Signal.INT)", "Signal(INT, rawValue: \(ServiceLifecycle.Signal.INT.rawValue))")
+        XCTAssertEqual("\(ServiceLifecycle.Signal.ALRM)", "Signal(ALRM, rawValue: \(ServiceLifecycle.Signal.ALRM.rawValue))")
+    }
 }
