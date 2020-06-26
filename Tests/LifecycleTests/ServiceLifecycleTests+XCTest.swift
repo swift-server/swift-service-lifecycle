@@ -31,6 +31,7 @@ extension ServiceLifecycleTests {
             ("testBadStartAndWait", testBadStartAndWait),
             ("testNesting", testNesting),
             ("testNesting2", testNesting2),
+            ("testSignalDescription", testSignalDescription),
         ]
     }
 }

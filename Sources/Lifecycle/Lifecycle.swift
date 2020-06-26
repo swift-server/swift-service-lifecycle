@@ -172,9 +172,9 @@ extension ServiceLifecycle {
         public var description: String {
             var result = "Signal("
             switch self {
-            case Self.TERM: result += "TERM, "
-            case Self.INT: result += "INT, "
-            case Self.ALRM: result += "ALRM, "
+            case Signal.TERM: result += "TERM, "
+            case Signal.INT: result += "INT, "
+            case Signal.ALRM: result += "ALRM, "
             default: () // ok to ignore
             }
             result += "rawValue: \(self.rawValue))"
