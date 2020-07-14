@@ -95,9 +95,9 @@ In larger Applications (Services) `ComponentLifecycle` can be used to manage the
 
 `ServiceLifecycle` and `ComponentLifecycle` are containers for `LifecycleTask`s which need to be registered using  a `LifecycleHandler` - a container for synchronous or asynchronous closures.
 
-Synchronous handlers are defined as  `() throws -> Void`
+Synchronous handlers are defined as  `() throws -> Void`.
 
-Asynchronous handlers defined are as  `(@escaping (Error?) -> Void) -> Void`
+Asynchronous handlers defined are as  `(@escaping (Error?) -> Void) -> Void`.
 
 `LifecycleHandler` comes with static helpers named `async` and `sync` designed to help simplify the registration call to:
 
