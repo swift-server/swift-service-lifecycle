@@ -199,11 +199,11 @@ final class ComponentLifecycleTests: XCTestCase {
         do {
             let id = UUID().uuidString
             lifecycle.register(label: id,
-                               start: {
+                               start: .sync {
                                    startCalls.append(id)
                                    blockStartSemaphore.wait()
                                },
-                               shutdown: {
+                               shutdown: .sync {
                                    XCTAssertTrue(startCalls.contains(id))
                                    stopCalls.append(id)
                                 })
@@ -211,10 +211,10 @@ final class ComponentLifecycleTests: XCTestCase {
         do {
             let id = UUID().uuidString
             lifecycle.register(label: id,
-                               start: {
+                               start: .sync {
                                    startCalls.append(id)
                                },
-                               shutdown: {
+                               shutdown: .sync {
                                    XCTAssertTrue(startCalls.contains(id))
                                    stopCalls.append(id)
                                 })
@@ -416,7 +416,7 @@ final class ComponentLifecycleTests: XCTestCase {
         let lifecycle = ComponentLifecycle(label: "test")
         let items = (5 ... Int.random(in: 10 ... 20)).map { _ in Sync() }
         items.forEach { item in
-            lifecycle.register(label: item.id, start: item.start, shutdown: item.shutdown)
+            lifecycle.register(label: item.id, start: .sync(item.start), shutdown: .sync(item.shutdown))
         }
 
         lifecycle.start { error in
@@ -435,8 +435,8 @@ final class ComponentLifecycleTests: XCTestCase {
         lifecycle.register(label: "item1", start: .eventLoopFuture(item1.start), shutdown: .eventLoopFuture(item1.shutdown))
 
         lifecycle.register(label: "blocker",
-                           start: { () -> Void in try eventLoopGroup.next().makeSucceededFuture(()).wait() },
-                           shutdown: { () -> Void in try eventLoopGroup.next().makeSucceededFuture(()).wait() })
+                           start: .sync { try eventLoopGroup.next().makeSucceededFuture(()).wait() },
+                           shutdown: .sync { try eventLoopGroup.next().makeSucceededFuture(()).wait() })
 
         let item2 = NIOItem(eventLoopGroup: eventLoopGroup)
         lifecycle.register(label: "item2", start: .eventLoopFuture(item2.start), shutdown: .eventLoopFuture(item2.shutdown))
@@ -493,8 +493,8 @@ final class ComponentLifecycleTests: XCTestCase {
 
         let item = Sync()
         lifecycle.register(label: "test",
-                           start: item.start,
-                           shutdown: item.shutdown)
+                           start: .sync(item.start),
+                           shutdown: .sync(item.shutdown))
 
         lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
@@ -526,7 +526,7 @@ final class ComponentLifecycleTests: XCTestCase {
         let lifecycle = ComponentLifecycle(label: "test")
 
         let item = Sync()
-        lifecycle.registerShutdown(label: "test", item.shutdown)
+        lifecycle.registerShutdown(label: "test", .sync(item.shutdown))
 
         lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
