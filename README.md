@@ -42,7 +42,7 @@ let lifecycle = ServiceLifecycle()
 let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 lifecycle.registerShutdown(
     label: "eventLoopGroup",
-    eventLoopGroup.syncShutdownGracefully
+    .sync(eventLoopGroup.syncShutdownGracefully)
 )
 
 // register another resource that should be started when the application starts
@@ -93,27 +93,24 @@ In larger Applications (Services) `ComponentLifecycle` can be used to manage the
 
 ### Registering items
 
-`ServiceLifecycle` and `ComponentLifecycle` are containers for `LifecycleTask`s which need to be registered via one of the following variants:
+`ServiceLifecycle` and `ComponentLifecycle` are containers for `LifecycleTask`s which need to be registered using  a `LifecycleHandler` - a container for synchronous or asynchronous closures.
 
-You can register simple blocking throwing handlers using:
+Synchronous handlers are defined as  `() throws -> Void`.
 
-```swift
-func register(label: String, start: @escaping () throws -> Void, shutdown: @escaping () throws -> Void)
-
-func registerShutdown(label: String, _ handler: @escaping () throws -> Void)
-```
-
-or, you can register asynchronous and more complex handlers using:
-
-```swift
-func register(label: String, start: Handler, shutdown: Handler)
-
-func registerShutdown(label: String, _ handler: Handler)
-```
-
-where `LifecycleHandler` is a container for an asynchronous closure defined as  `(@escaping (Error?) -> Void) -> Void`
+Asynchronous handlers defined are as  `(@escaping (Error?) -> Void) -> Void`.
 
 `LifecycleHandler` comes with static helpers named `async` and `sync` designed to help simplify the registration call to:
+
+```swift
+let foo = ...
+lifecycle.register(
+    label: "foo",
+    start: .sync(foo.syncStart),
+    shutdown: .sync(foo.syncShutdown)
+)
+```
+
+Or the async version:
 
 ```swift
 let foo = ...
@@ -130,10 +127,18 @@ or, just shutdown:
 let foo = ...
 lifecycle.registerShutdown(
     label: "foo",
+    .sync(foo.syncShutdown)
+)
+```
+Or the async version:
+
+```swift
+let foo = ...
+lifecycle.registerShutdown(
+    label: "foo",
     .async(foo.asyncShutdown)
 )
 ```
-
 
 you can also register a collection of `LifecycleTask`s (less typical) using:
 
