@@ -218,25 +218,6 @@ public extension ServiceLifecycle {
     func registerShutdown(label: String, _ handler: LifecycleHandler) {
         self.lifecycle.registerShutdown(label: label, handler)
     }
-
-    /// Adds a `Task` to a `Tasks` collection.
-    ///
-    /// - parameters:
-    ///    - label: label of the item, useful for debugging.
-    ///    - start: closure to perform the shutdown.
-    ///    - shutdown: closure to perform the shutdown.
-    func register(label: String, start: @escaping () throws -> Void, shutdown: @escaping () throws -> Void) {
-        self.lifecycle.register(label: label, start: start, shutdown: shutdown)
-    }
-
-    /// Adds a `Task` to a `Tasks` collection.
-    ///
-    /// - parameters:
-    ///    - label: label of the item, useful for debugging.
-    ///    - handler: closure to perform the shutdown.
-    func registerShutdown(label: String, _ handler: @escaping () throws -> Void) {
-        self.lifecycle.registerShutdown(label: label, handler)
-    }
 }
 
 extension ServiceLifecycle {
