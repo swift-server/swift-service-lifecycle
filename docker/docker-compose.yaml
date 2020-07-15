@@ -6,13 +6,13 @@ version: "3"
 services:
 
   runtime-setup:
-    image: swift-service-bootstrap:default
+    image: swift-service-lifecycle:default
     build:
       context: .
       dockerfile: Dockerfile
 
   common: &common
-    image: swift-service-bootstrap:default
+    image: swift-service-lifecycle:default
     depends_on: [runtime-setup]
     volumes:
       - ~/.ssh:/root/.ssh
