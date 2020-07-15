@@ -1,13 +1,13 @@
 #!/bin/bash
 ##===----------------------------------------------------------------------===##
 ##
-## This source file is part of the SwiftServiceBootstrap open source project
+## This source file is part of the SwiftServiceLifecycle open source project
 ##
-## Copyright (c) 2019-2020 Apple Inc. and the SwiftServiceBootstrap project authors
+## Copyright (c) 2019-2020 Apple Inc. and the SwiftServiceLifecycle project authors
 ## Licensed under Apache License v2.0
 ##
 ## See LICENSE.txt for license information
-## See CONTRIBUTORS.txt for the list of SwiftServiceBootstrap project authors
+## See CONTRIBUTORS.txt for the list of SwiftServiceLifecycle project authors
 ##
 ## SPDX-License-Identifier: Apache-2.0
 ##
@@ -19,7 +19,7 @@ contributors=$( cd "$here"/.. && git shortlog -es | cut -f2 | sed 's/^/- /' )
 
 cat > "$here/../CONTRIBUTORS.txt" <<- EOF
 	For the purpose of tracking copyright, this is the list of individuals and
-	organizations who have contributed source code to SwiftServiceBootstrap.
+	organizations who have contributed source code to SwiftServiceLifecycle.
 
 	For employees of an organization/company where the copyright of work done
 	by employees of that company is held by the company itself, only the company

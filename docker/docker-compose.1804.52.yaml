@@ -3,14 +3,14 @@ version: "3"
 services:
 
   runtime-setup:
-    image: swift-service-bootstrap:18.04-5.2
+    image: swift-service-lifecycle:18.04-5.2
     build:
       args:
         ubuntu_version: "bionic"
         swift_version: "5.2"
 
   test:
-    image: swift-service-bootstrap:18.04-5.2
+    image: swift-service-lifecycle:18.04-5.2
 
   shell:
-    image: swift-service-bootstrap:18.04-5.2
+    image: swift-service-lifecycle:18.04-5.2

@@ -3,17 +3,17 @@ version: "3"
 services:
 
   runtime-setup:
-    image: swift-service-bootstrap:16.04-5.1
+    image: swift-service-lifecycle:16.04-5.1
     build:
       args:
         ubuntu_version: "xenial"
         swift_version: "5.1"
 
   test:
-    image: swift-service-bootstrap:16.04-5.1
+    image: swift-service-lifecycle:16.04-5.1
     environment:
       - SANITIZER_ARG=--sanitize=thread
       - SKIP_SIGNAL_TEST=true
 
   shell:
-    image: swift-service-bootstrap:16.04-5.1
+    image: swift-service-lifecycle:16.04-5.1
