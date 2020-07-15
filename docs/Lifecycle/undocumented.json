@@ -1,0 +1,82 @@
+{
+  "warnings": [
+    {
+      "file": "/code/Sources/Lifecycle/Lifecycle.swift",
+      "line": 28,
+      "symbol": "LifecycleTask.label",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/Lifecycle/Lifecycle.swift",
+      "line": 29,
+      "symbol": "LifecycleTask.start(_:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/Lifecycle/Lifecycle.swift",
+      "line": 30,
+      "symbol": "LifecycleTask.shutdown(_:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/Lifecycle/Lifecycle.swift",
+      "line": 84,
+      "symbol": "ServiceLifecycle",
+      "symbol_kind": "source.lang.swift.decl.struct",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/Lifecycle/Lifecycle.swift",
+      "line": 145,
+      "symbol": "ServiceLifecycle",
+      "symbol_kind": "source.lang.swift.decl.extension",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/Lifecycle/Lifecycle.swift",
+      "line": 167,
+      "symbol": "ServiceLifecycle.Signal.TERM",
+      "symbol_kind": "source.lang.swift.decl.var.static",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/Lifecycle/Lifecycle.swift",
+      "line": 168,
+      "symbol": "ServiceLifecycle.Signal.INT",
+      "symbol_kind": "source.lang.swift.decl.var.static",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/Lifecycle/Lifecycle.swift",
+      "line": 186,
+      "symbol": "ServiceLifecycle",
+      "symbol_kind": "source.lang.swift.decl.extension",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/Lifecycle/Lifecycle.swift",
+      "line": 223,
+      "symbol": "ServiceLifecycle",
+      "symbol_kind": "source.lang.swift.decl.extension",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/Lifecycle/Lifecycle.swift",
+      "line": 235,
+      "symbol": "ServiceLifecycle.Configuration.init(logger:callbackQueue:shutdownSignal:installBacktrace:)",
+      "symbol_kind": "source.lang.swift.decl.function.method.instance",
+      "warning": "undocumented"
+    },
+    {
+      "file": "/code/Sources/Lifecycle/Lifecycle.swift",
+      "line": 255,
+      "symbol": "ComponentLifecycle.label",
+      "symbol_kind": "source.lang.swift.decl.var.instance",
+      "warning": "undocumented"
+    }
+  ],
+  "source_directory": "/code"
+}
