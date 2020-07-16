@@ -148,7 +148,7 @@ extension ServiceLifecycle {
     /// - parameters:
     ///    - signal: The signal to trap.
     ///    - handler: closure to invoke when the signal is captured.
-    /// - returns: a `DispatchSourceSignal` for the given trap. The source must be cancled by the caller.
+    /// - returns: a `DispatchSourceSignal` for the given trap. The source must be cancelled by the caller.
     public static func trap(signal sig: Signal, handler: @escaping (Signal) -> Void, on queue: DispatchQueue = .global()) -> DispatchSourceSignal {
         let signalSource = DispatchSource.makeSignalSource(signal: sig.rawValue, queue: queue)
         signal(sig.rawValue, SIG_IGN)
