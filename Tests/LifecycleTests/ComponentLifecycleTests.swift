@@ -15,6 +15,7 @@
 @testable import Lifecycle
 import LifecycleNIOCompat
 import NIO
+import NIOConcurrencyHelpers
 import XCTest
 
 final class ComponentLifecycleTests: XCTestCase {

@@ -20,6 +20,7 @@ import Glibc
 import Backtrace
 import Dispatch
 import Logging
+import NIOConcurrencyHelpers
 
 // MARK: - LifecycleTask
 

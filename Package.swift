@@ -18,7 +18,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"), // used in tests
     ],
     targets: [
-        .target(name: "Lifecycle", dependencies: ["Logging", "Metrics", "Backtrace"]),
+        .target(name: "Lifecycle", dependencies: ["NIO", "Logging", "Metrics", "Backtrace"]),
         .target(name: "LifecycleNIOCompat", dependencies: ["Lifecycle", "NIO"]),
         .testTarget(name: "LifecycleTests", dependencies: ["Lifecycle", "LifecycleNIOCompat"]),
     ]
