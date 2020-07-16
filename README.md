@@ -1,7 +1,7 @@
 # Swift Service Lifecycle
 
 Swift Service Lifecycle provides a basic mechanism to cleanly start up and shut down the application, freeing resources in order before exiting.
-It also provides a `Signal`-based shutdown hook, to shutdown on signals like `TERM` or `INT`.
+It also provides a `Signal`-based shutdown hook, to shut down on signals like `TERM` or `INT`.
 
 Swift Service Lifecycle was designed with the idea that every application has some startup and shutdown workflow-like-logic which is often sensitive to failure and hard to get right.
 The library codes this common need in a safe and reusable way that is non-framework specific, and designed to be integrated with any server framework or directly in an application.
@@ -85,7 +85,7 @@ lifecycle.wait()
 The main types in the library are `ServiceLifecycle` and `ComponentLifecycle`.
 
 `ServiceLifecycle` is the most commonly used type.
-It is designed to manage the top level Application (Service) lifecycle,
+It is designed to manage the top-level Application (Service) lifecycle,
 and in addition to managing the startup and shutdown flows it can also set up `Signal` trap for shutdown and install backtraces.
 
 `ComponentLifecycle` manages a state machine representing the startup and shutdown logic flow.
@@ -93,7 +93,7 @@ In larger Applications (Services) `ComponentLifecycle` can be used to manage the
 
 ### Registering items
 
-`ServiceLifecycle` and `ComponentLifecycle` are containers for `LifecycleTask`s which need to be registered using  a `LifecycleHandler` - a container for synchronous or asynchronous closures.
+`ServiceLifecycle` and `ComponentLifecycle` are containers for `LifecycleTask`s which need to be registered using a `LifecycleHandler` - a container for synchronous or asynchronous closures.
 
 Synchronous handlers are defined as  `() throws -> Void`.
 
@@ -156,11 +156,11 @@ func register(_ tasks: LifecycleTask...)
 
 * `shutdownSignal`: Defines what, if any, signals to trap for invoking shutdown. By default, `INT` and `TERM` are trapped.
 
-* `installBacktrace`: Defines if to install a crash signal trap that prints backtraces. This is especially useful for application running on Linux since Swift does not provide backtraces on Linux out of the box. This functionality is provided via the [Swift Backtrace](https://github.com/swift-server/swift-backtrace) library.
+* `installBacktrace`: Defines if to install a crash signal trap that prints backtraces. This is especially useful for applications running on Linux since Swift does not provide backtraces on Linux out of the box. This functionality is provided via the [Swift Backtrace](https://github.com/swift-server/swift-backtrace) library.
 
 ### Starting the lifecycle
 
-Use `start` function to start the application.
+Use the `start` function to start the application.
 Start handlers passed using the `register` function will be called in the order the items were registered in.
 
 `start` is an asynchronous operation.
@@ -178,7 +178,7 @@ lifecycle.start { error in
 
 ### Shutdown
 
-Typical use of the library is to call on `wait` after calling `start`.
+The typical use of the library is to call on `wait` after calling `start`.
 
 ```swift
 lifecycle.start { error in
