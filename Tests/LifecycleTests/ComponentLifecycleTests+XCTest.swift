@@ -40,6 +40,7 @@ extension ComponentLifecycleTests {
             ("testSync", testSync),
             ("testAyncBarrier", testAyncBarrier),
             ("testConcurrency", testConcurrency),
+            ("testZeroTask", testZeroTask),
             ("testRegisterSync", testRegisterSync),
             ("testRegisterShutdownSync", testRegisterShutdownSync),
             ("testRegisterAsync", testRegisterAsync),

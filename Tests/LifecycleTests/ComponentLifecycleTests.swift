@@ -470,6 +470,16 @@ final class ComponentLifecycleTests: XCTestCase {
         items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
     }
 
+    func testZeroTask() {
+        let lifecycle = ComponentLifecycle(label: "test")
+
+        lifecycle.start { error in
+            XCTAssertNil(error, "not expecting error")
+            lifecycle.shutdown()
+        }
+        lifecycle.wait()
+    }
+
     func testRegisterSync() {
         class Sync {
             var state = State.idle
