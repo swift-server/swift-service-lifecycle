@@ -232,7 +232,7 @@ extension ServiceLifecycle {
         /// Defines what, if any, signals to trap for invoking shutdown.
         public var installBacktrace: Bool
 
-        public init(logger: Logger = Logger(label: "Lifeycle"),
+        public init(logger: Logger = Logger(label: "Lifecycle"),
                     callbackQueue: DispatchQueue = .global(),
                     shutdownSignal: [Signal]? = [.TERM, .INT],
                     installBacktrace: Bool = true) {
