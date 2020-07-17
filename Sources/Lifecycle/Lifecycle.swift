@@ -357,15 +357,15 @@ public class ComponentLifecycle: LifecycleTask {
     // MARK: - private
 
     private func _start(on queue: DispatchQueue, tasks: [LifecycleTask], callback: @escaping (Error?) -> Void) {
-        if tasks.count == 0 {
-            log(level: .notice, "No task provided.")
-        }
         self.stateLock.withLock {
             guard case .idle = self.state else {
                 preconditionFailure("invalid state, \(self.state)")
             }
-            log("starting")
+            self.log("starting")
             self.state = .starting(queue)
+        }
+        if tasks.count == 0 {
+            self.log(level: .notice, "no tasks provided")
         }
         self.startTask(on: queue, tasks: tasks, index: 0) { started, error in
             self.stateLock.lock()
