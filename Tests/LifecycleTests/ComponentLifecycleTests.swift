@@ -48,7 +48,7 @@ final class ComponentLifecycleTests: XCTestCase {
                                                dispatchPrecondition(condition: .onQueue(.global()))
                                                XCTAssertTrue(startCalls.contains(id))
                                                stopCalls.append(id)
-                                   })
+                                           })
         }
         lifecycle.register(items)
 
@@ -82,7 +82,7 @@ final class ComponentLifecycleTests: XCTestCase {
                                                dispatchPrecondition(condition: .onQueue(testQueue))
                                                XCTAssertTrue(startCalls.contains(id))
                                                stopCalls.append(id)
-                                   })
+                                           })
         }
         lifecycle.register(items)
 
@@ -206,7 +206,7 @@ final class ComponentLifecycleTests: XCTestCase {
                                shutdown: .sync {
                                    XCTAssertTrue(startCalls.contains(id))
                                    stopCalls.append(id)
-                                })
+                               })
         }
         do {
             let id = UUID().uuidString
@@ -217,7 +217,7 @@ final class ComponentLifecycleTests: XCTestCase {
                                shutdown: .sync {
                                    XCTAssertTrue(startCalls.contains(id))
                                    stopCalls.append(id)
-                                })
+                               })
         }
         lifecycle.start { error in
             XCTAssertNil(error)
@@ -468,6 +468,16 @@ final class ComponentLifecycleTests: XCTestCase {
         }
         lifecycle.wait()
         items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
+    }
+
+    func testZeroTask() {
+        let lifecycle = ComponentLifecycle(label: "test")
+
+        lifecycle.start { error in
+            XCTAssertNil(error, "not expecting error")
+            lifecycle.shutdown()
+        }
+        lifecycle.wait()
     }
 
     func testRegisterSync() {
@@ -811,7 +821,7 @@ final class ComponentLifecycleTests: XCTestCase {
                                    }
                                    callback(nil)
                                }
-                            })
+                           })
 
         lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")

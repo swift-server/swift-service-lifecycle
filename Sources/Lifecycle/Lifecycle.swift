@@ -110,7 +110,7 @@ public struct ServiceLifecycle {
             let signalSource = ServiceLifecycle.trap(signal: signal, handler: { signal in
                 self.lifecycle.log("intercepted signal: \(signal)")
                 self.shutdown()
-           })
+            })
             self.lifecycle.shutdownGroup.notify(queue: .global()) {
                 signalSource.cancel()
             }
@@ -357,13 +357,15 @@ public class ComponentLifecycle: LifecycleTask {
     // MARK: - private
 
     private func _start(on queue: DispatchQueue, tasks: [LifecycleTask], callback: @escaping (Error?) -> Void) {
-        precondition(tasks.count > 0, "invalid number of tasks, must be > 0")
         self.stateLock.withLock {
             guard case .idle = self.state else {
                 preconditionFailure("invalid state, \(self.state)")
             }
-            log("starting")
+            self.log("starting")
             self.state = .starting(queue)
+        }
+        if tasks.count == 0 {
+            self.log(level: .notice, "no tasks provided")
         }
         self.startTask(on: queue, tasks: tasks, index: 0) { started, error in
             self.stateLock.lock()
