@@ -110,7 +110,7 @@ public struct ServiceLifecycle {
             let signalSource = ServiceLifecycle.trap(signal: signal, handler: { signal in
                 self.lifecycle.log("intercepted signal: \(signal)")
                 self.shutdown()
-           })
+            })
             self.lifecycle.shutdownGroup.notify(queue: .global()) {
                 signalSource.cancel()
             }
