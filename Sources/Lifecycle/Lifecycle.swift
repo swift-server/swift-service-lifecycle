@@ -227,9 +227,9 @@ extension ServiceLifecycle {
         public var logger: Logger
         /// Defines the `DispatchQueue` on which startup and shutdown callback handlers are run.
         public var callbackQueue: DispatchQueue
-        /// Defines if to install a crash signal trap that prints backtraces.
-        public var shutdownSignal: [Signal]?
         /// Defines what, if any, signals to trap for invoking shutdown.
+        public var shutdownSignal: [Signal]?
+        /// Defines if to install a crash signal trap that prints backtraces.
         public var installBacktrace: Bool
 
         public init(logger: Logger = Logger(label: "Lifecycle"),
