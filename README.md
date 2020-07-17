@@ -6,7 +6,7 @@ It also provides a `Signal`-based shutdown hook, to shut down on signals like `T
 Swift Service Lifecycle was designed with the idea that every application has some startup and shutdown workflow-like-logic which is often sensitive to failure and hard to get right.
 The library codes this common need in a safe and reusable way that is non-framework specific, and designed to be integrated with any server framework or directly in an application.
 
-This is the beginning of a community-driven open-source project actively seeking contributions, be it code, documentation, or ideas. What Swift Service Lifecycle provides today is covered in the [API docs](https://swift-server.github.io/swift-service-lifecycle/), but it will continue to evolve with community input.
+This is the beginning of a community-driven open-source project actively seeking [contributions](CONTRIBUTING.md), be it code, documentation, or ideas. What Swift Service Lifecycle provides today is covered in the [API docs](https://swift-server.github.io/swift-service-lifecycle/), but it will continue to evolve with community input.
 
 ## Getting started
 
