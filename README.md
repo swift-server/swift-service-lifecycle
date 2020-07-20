@@ -152,6 +152,8 @@ func register(_ tasks: LifecycleTask...)
 
 `ServiceLifecycle` initializer takes optional `ServiceLifecycle.Configuration` to further refine the `ServiceLifecycle` behavior:
 
+* `logger`: Defines the `Logger` to work with.  By default, `Logger(label: "Lifecycle")` is used.
+
 * `callbackQueue`: Defines the `DispatchQueue` on which startup and shutdown handlers are executed. By default, `DispatchQueue.global` is used.
 
 * `shutdownSignal`: Defines what, if any, signals to trap for invoking shutdown. By default, `INT` and `TERM` are trapped.
