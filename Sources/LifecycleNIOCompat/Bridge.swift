@@ -32,7 +32,7 @@ extension LifecycleHandler {
             }
         }
     }
-    
+
     /// `Lifecycle.Handler` that cancels a `RepeatedTask`.
     ///
     /// - parameters:
