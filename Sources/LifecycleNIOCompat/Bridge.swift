@@ -32,4 +32,17 @@ extension LifecycleHandler {
             }
         }
     }
+    
+    /// `Lifecycle.Handler` that cancels a `RepeatedTask`.
+    ///
+    /// - parameters:
+    ///    - task: `RepeatedTask` to be cancelled
+    ///    - on: `EventLoop` to use for cancelling the task
+    public static func cancelRepeatedTask(_ task: RepeatedTask, on eventLoop: EventLoop) -> LifecycleHandler {
+        return self.eventLoopFuture {
+            let promise = eventLoop.makePromise(of: Void.self)
+            task.cancel(promise: promise)
+            return promise.futureResult
+        }
+    }
 }
