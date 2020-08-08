@@ -28,6 +28,7 @@ extension ServiceLifecycleTests {
             ("testStartThenShutdown", testStartThenShutdown),
             ("testShutdownWithSignal", testShutdownWithSignal),
             ("testStartAndWait", testStartAndWait),
+            ("testStartAndWaitShutdownWithSignal", testStartAndWaitShutdownWithSignal),
             ("testBadStartAndWait", testBadStartAndWait),
             ("testNesting", testNesting),
             ("testNesting2", testNesting2),
