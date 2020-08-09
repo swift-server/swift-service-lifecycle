@@ -91,6 +91,55 @@ final class ServiceLifecycleTests: XCTestCase {
         XCTAssertEqual(item.state, .shutdown, "expected item to be shutdown")
     }
 
+    func testStartAndWaitShutdownWithSignal() {
+        if ProcessInfo.processInfo.environment["SKIP_SIGNAL_TEST"].flatMap(Bool.init) ?? false {
+            print("skipping testStartAndWaitShutdownWithSignal")
+            return
+        }
+
+        class Item: LifecycleTask {
+            private let semaphore: DispatchSemaphore
+            var state = State.idle
+
+            init(_ semaphore: DispatchSemaphore) {
+                self.semaphore = semaphore
+            }
+
+            var label: String {
+                return "\(self)"
+            }
+
+            func start(_ callback: (Error?) -> Void) {
+                self.state = .started
+                self.semaphore.signal()
+                callback(nil)
+            }
+
+            func shutdown(_ callback: (Error?) -> Void) {
+                self.state = .shutdown
+                callback(nil)
+            }
+
+            enum State {
+                case idle
+                case started
+                case shutdown
+            }
+        }
+
+        let signal = ServiceLifecycle.Signal.ALRM
+        let lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: [signal]))
+        let semaphore = DispatchSemaphore(value: 0)
+        DispatchQueue(label: "test").asyncAfter(deadline: .now() + 0.1) {
+            semaphore.wait()
+            kill(getpid(), signal.rawValue)
+        }
+        let item = Item(semaphore)
+        lifecycle.register(item)
+        XCTAssertNoThrow(try lifecycle.startAndWait())
+        XCTAssertEqual(item.state, .shutdown, "expected item to be shutdown")
+    }
+
     func testBadStartAndWait() {
         class BadItem: LifecycleTask {
             var label: String {

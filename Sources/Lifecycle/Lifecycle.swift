@@ -105,25 +105,14 @@ public struct ServiceLifecycle {
     /// - parameters:
     ///    - callback: The handler which is called after the start operation completes. The parameter will be `nil` on success and contain the `Error` otherwise.
     public func start(_ callback: @escaping (Error?) -> Void) {
-        self.configuration.shutdownSignal?.forEach { signal in
-            self.lifecycle.log("setting up shutdown hook on \(signal)")
-            let signalSource = ServiceLifecycle.trap(signal: signal, handler: { signal in
-                self.lifecycle.log("intercepted signal: \(signal)")
-                self.shutdown()
-            })
-            self.lifecycle.shutdownGroup.notify(queue: .global()) {
-                signalSource.cancel()
-            }
-        }
+        self.setupShutdownHook()
         self.lifecycle.start(on: self.configuration.callbackQueue, callback)
     }
 
     /// Starts the provided `LifecycleItem` array and waits (blocking) until a shutdown `Signal` is captured or `shutdown` is called on another thread.
     /// Startup is performed in the order of items provided.
-    ///
-    /// - parameters:
-    ///    - configuration: Defines lifecycle `Configuration`
     public func startAndWait() throws {
+        self.setupShutdownHook()
         try self.lifecycle.startAndWait(on: self.configuration.callbackQueue)
     }
 
@@ -139,6 +128,19 @@ public struct ServiceLifecycle {
     /// Waits (blocking) until shutdown `Signal` is captured or `shutdown` is invoked on another thread.
     public func wait() {
         self.lifecycle.wait()
+    }
+
+    private func setupShutdownHook() {
+        self.configuration.shutdownSignal?.forEach { signal in
+            self.lifecycle.log("setting up shutdown hook on \(signal)")
+            let signalSource = ServiceLifecycle.trap(signal: signal, handler: { signal in
+                self.lifecycle.log("intercepted signal: \(signal)")
+                self.shutdown()
+            })
+            self.lifecycle.shutdownGroup.notify(queue: .global()) {
+                signalSource.cancel()
+            }
+        }
     }
 }
 

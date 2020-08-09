@@ -11,6 +11,8 @@ services:
 
   test:
     image: swift-service-lifecycle:18.04-5.2
+    environment:
+      - SKIP_SIGNAL_TEST=true
 
   shell:
     image: swift-service-lifecycle:18.04-5.2
