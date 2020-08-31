@@ -36,7 +36,7 @@ public protocol LifecycleTask {
 public struct LifecycleHandler {
     private let body: (@escaping (Error?) -> Void) -> Void
 
-    /// Initialize a `Lifecycle.Handler` based on a completion handler.
+    /// Initialize a `LifecycleHandler` based on a completion handler.
     ///
     /// - parameters:
     ///    - callback: the underlying completion handler
@@ -44,7 +44,7 @@ public struct LifecycleHandler {
         self.body = callback
     }
 
-    /// Asynchronous `Lifecycle.Handler` based on a completion handler.
+    /// Asynchronous `LifecycleHandler` based on a completion handler.
     ///
     /// - parameters:
     ///    - callback: the underlying completion handler
@@ -52,7 +52,7 @@ public struct LifecycleHandler {
         return LifecycleHandler(callback)
     }
 
-    /// Asynchronous `Lifecycle.Handler` based on a blocking, throwing function.
+    /// Asynchronous `LifecycleHandler` based on a blocking, throwing function.
     ///
     /// - parameters:
     ///    - body: the underlying function
@@ -67,7 +67,7 @@ public struct LifecycleHandler {
         }
     }
 
-    /// Noop `Lifecycle.Handler`.
+    /// Noop `LifecycleHandler`.
     public static var none: LifecycleHandler {
         return LifecycleHandler { callback in
             callback(nil)
@@ -83,64 +83,73 @@ public struct LifecycleHandler {
 
 public struct ServiceLifecycle {
     private let configuration: Configuration
-    private let lifecycle: ComponentLifecycle
 
-    /// Creates a `ComponentLifecycle` instance.
+    /// The underlying `ComponentLifecycle` instance
+    ///
+    /// Designed for composition purposes, mainly for frameworks that need to offer both top-level start/stop functionality and composition into larger systems.
+    /// In other words, should not be used outside the context of building an Application framework.
+    private let underlying: ComponentLifecycle
+
+    /// Creates a `ServiceLifecycle` instance.
     ///
     /// - parameters:
     ///    - configuration: Defines lifecycle `Configuration`
     public init(configuration: Configuration = .init()) {
         self.configuration = configuration
-        self.lifecycle = ComponentLifecycle(label: "Lifecycle", logger: self.configuration.logger)
+        self.underlying = ComponentLifecycle(label: self.configuration.label, logger: self.configuration.logger)
         // setup backtrace trap as soon as possible
         if configuration.installBacktrace {
-            self.lifecycle.log("installing backtrace")
+            self.log("installing backtrace")
             Backtrace.install()
         }
     }
 
-    /// Starts the provided `LifecycleItem` array.
+    /// Starts the provided `LifecycleTask` array.
     /// Startup is performed in the order of items provided.
     ///
     /// - parameters:
     ///    - callback: The handler which is called after the start operation completes. The parameter will be `nil` on success and contain the `Error` otherwise.
     public func start(_ callback: @escaping (Error?) -> Void) {
         self.setupShutdownHook()
-        self.lifecycle.start(on: self.configuration.callbackQueue, callback)
+        self.underlying.start(on: self.configuration.callbackQueue, callback)
     }
 
-    /// Starts the provided `LifecycleItem` array and waits (blocking) until a shutdown `Signal` is captured or `shutdown` is called on another thread.
+    /// Starts the provided `LifecycleTask` array and waits (blocking) until a shutdown `Signal` is captured or `shutdown` is called on another thread.
     /// Startup is performed in the order of items provided.
     public func startAndWait() throws {
         self.setupShutdownHook()
-        try self.lifecycle.startAndWait(on: self.configuration.callbackQueue)
+        try self.underlying.startAndWait(on: self.configuration.callbackQueue)
     }
 
-    /// Shuts down the `LifecycleItem` array provided in `start` or `startAndWait`.
+    /// Shuts down the `LifecycleTask` array provided in `start` or `startAndWait`.
     /// Shutdown is performed in reverse order of items provided.
     ///
     /// - parameters:
     ///    - callback: The handler which is called after the start operation completes. The parameter will be `nil` on success and contain the `Error` otherwise.
     public func shutdown(_ callback: @escaping (Error?) -> Void = { _ in }) {
-        self.lifecycle.shutdown(callback)
+        self.underlying.shutdown(callback)
     }
 
     /// Waits (blocking) until shutdown `Signal` is captured or `shutdown` is invoked on another thread.
     public func wait() {
-        self.lifecycle.wait()
+        self.underlying.wait()
     }
 
     private func setupShutdownHook() {
         self.configuration.shutdownSignal?.forEach { signal in
-            self.lifecycle.log("setting up shutdown hook on \(signal)")
+            self.log("setting up shutdown hook on \(signal)")
             let signalSource = ServiceLifecycle.trap(signal: signal, handler: { signal in
-                self.lifecycle.log("intercepted signal: \(signal)")
+                self.log("intercepted signal: \(signal)")
                 self.shutdown()
             })
-            self.lifecycle.shutdownGroup.notify(queue: .global()) {
+            self.underlying.shutdownGroup.notify(queue: .global()) {
                 signalSource.cancel()
             }
         }
+    }
+
+    private func log(_ message: String) {
+        self.underlying.log(message)
     }
 }
 
@@ -186,45 +195,47 @@ extension ServiceLifecycle {
 }
 
 public extension ServiceLifecycle {
-    /// Adds a `Task` to a `Tasks` collection.
+    /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
     ///
     /// - parameters:
-    ///    - tasks: one or more `Tasks`.
+    ///    - tasks: one or more `LifecycleTask`.
     func register(_ tasks: LifecycleTask ...) {
-        self.lifecycle.register(tasks)
+        self.underlying.register(tasks)
     }
 
-    /// Adds a `Task` to a `Tasks` collection.
+    /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
     ///
     /// - parameters:
-    ///    - tasks: array of `Tasks`.
+    ///    - tasks: array of `LifecycleTask`.
     func register(_ tasks: [LifecycleTask]) {
-        self.lifecycle.register(tasks)
+        self.underlying.register(tasks)
     }
 
-    /// Adds a `Task` to a `Tasks` collection.
+    /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
     ///
     /// - parameters:
     ///    - label: label of the item, useful for debugging.
-    ///    - start: `Handler` to perform the startup.
-    ///    - shutdown: `Handler` to perform the shutdown.
+    ///    - start: `LifecycleHandler` to perform the startup.
+    ///    - shutdown: `LifecycleHandler` to perform the shutdown.
     func register(label: String, start: LifecycleHandler, shutdown: LifecycleHandler) {
-        self.lifecycle.register(label: label, start: start, shutdown: shutdown)
+        self.underlying.register(label: label, start: start, shutdown: shutdown)
     }
 
-    /// Adds a `Task` to a `Tasks` collection.
+    /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
     ///
     /// - parameters:
     ///    - label: label of the item, useful for debugging.
-    ///    - handler: `Handler` to perform the shutdown.
+    ///    - handler: `LifecycleHandler` to perform the shutdown.
     func registerShutdown(label: String, _ handler: LifecycleHandler) {
-        self.lifecycle.registerShutdown(label: label, handler)
+        self.underlying.registerShutdown(label: label, handler)
     }
 }
 
 extension ServiceLifecycle {
-    /// `Lifecycle` configuration options.
+    /// `ServiceLifecycle` configuration options.
     public struct Configuration {
+        /// Defines the `label` for the lifeycle and its Logger
+        public var label: String
         /// Defines the `Logger` to log with.
         public var logger: Logger
         /// Defines the `DispatchQueue` on which startup and shutdown callback handlers are run.
@@ -234,11 +245,13 @@ extension ServiceLifecycle {
         /// Defines if to install a crash signal trap that prints backtraces.
         public var installBacktrace: Bool
 
-        public init(logger: Logger = Logger(label: "Lifecycle"),
+        public init(label: String = "Lifecycle",
+                    logger: Logger? = nil,
                     callbackQueue: DispatchQueue = .global(),
                     shutdownSignal: [Signal]? = [.TERM, .INT],
                     installBacktrace: Bool = true) {
-            self.logger = logger
+            self.label = label
+            self.logger = logger ?? Logger(label: label)
             self.callbackQueue = callbackQueue
             self.shutdownSignal = shutdownSignal
             self.installBacktrace = installBacktrace
@@ -275,7 +288,7 @@ public class ComponentLifecycle: LifecycleTask {
         self.shutdownGroup.enter()
     }
 
-    /// Starts the provided `LifecycleItem` array.
+    /// Starts the provided `LifecycleTask` array.
     /// Startup is performed in the order of items provided.
     ///
     /// - parameters:
@@ -284,7 +297,7 @@ public class ComponentLifecycle: LifecycleTask {
         self.start(on: .global(), callback)
     }
 
-    /// Starts the provided `LifecycleItem` array.
+    /// Starts the provided `LifecycleTask` array.
     /// Startup is performed in the order of items provided.
     ///
     /// - parameters:
@@ -295,7 +308,7 @@ public class ComponentLifecycle: LifecycleTask {
         self._start(on: queue, tasks: tasks, callback: callback)
     }
 
-    /// Starts the provided `LifecycleItem` array and waits (blocking) until `shutdown` is called on another thread.
+    /// Starts the provided `LifecycleTask` array and waits (blocking) until `shutdown` is called on another thread.
     /// Startup is performed in the order of items provided.
     ///
     /// - parameters:
@@ -313,7 +326,7 @@ public class ComponentLifecycle: LifecycleTask {
         self.wait()
     }
 
-    /// Shuts down the `LifecycleItem` array provided in `start` or `startAndWait`.
+    /// Shuts down the `LifecycleTask` array provided in `start` or `startAndWait`.
     /// Shutdown is performed in reverse order of items provided.
     public func shutdown(_ callback: @escaping (Error?) -> Void = { _ in }) {
         let setupShutdownListener = { (queue: DispatchQueue) in
@@ -482,18 +495,18 @@ public extension ComponentLifecycle {
         }
     }
 
-    /// Adds a `Task` to a `Tasks` collection.
+    /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
     ///
     /// - parameters:
-    ///    - tasks: one or more `Tasks`.
+    ///    - tasks: one or more `LifecycleTask`.
     func register(_ tasks: LifecycleTask ...) {
         self.register(tasks)
     }
 
-    /// Adds a `Task` to a `Tasks` collection.
+    /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
     ///
     /// - parameters:
-    ///    - tasks: array of `Tasks`.
+    ///    - tasks: array of `LifecycleTask`.
     func register(_ tasks: [LifecycleTask]) {
         self.stateLock.withLock {
             guard case .idle = self.state else {
@@ -505,7 +518,7 @@ public extension ComponentLifecycle {
         }
     }
 
-    /// Adds a `Task` to a `Tasks` collection.
+    /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
     ///
     /// - parameters:
     ///    - label: label of the item, useful for debugging.
@@ -515,7 +528,7 @@ public extension ComponentLifecycle {
         self.register(Task(label: label, start: start, shutdown: shutdown))
     }
 
-    /// Adds a `Task` to a `Tasks` collection.
+    /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
     ///
     /// - parameters:
     ///    - label: label of the item, useful for debugging.

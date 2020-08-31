@@ -32,7 +32,11 @@ final class ComponentLifecycleTests: XCTestCase {
         items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
     }
 
-    func testDefaultCallbackQueue() {
+    func testDefaultCallbackQueue() throws {
+        guard #available(OSX 10.12, *) else {
+            return
+        }
+
         let lifecycle = ComponentLifecycle(label: "test")
         var startCalls = [String]()
         var stopCalls = [String]()
@@ -65,7 +69,11 @@ final class ComponentLifecycleTests: XCTestCase {
         items.forEach { item in XCTAssertTrue(stopCalls.contains(item.label), "expected \(item.label) to be stopped") }
     }
 
-    func testUserDefinedCallbackQueue() {
+    func testUserDefinedCallbackQueue() throws {
+        guard #available(OSX 10.12, *) else {
+            return
+        }
+
         let lifecycle = ComponentLifecycle(label: "test")
         let testQueue = DispatchQueue(label: UUID().uuidString)
         var startCalls = [String]()
