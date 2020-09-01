@@ -4,9 +4,6 @@ import PackageDescription
 
 let package = Package(
     name: "swift-service-lifecycle",
-    platforms: [
-        .macOS(.v10_12),
-    ],
     products: [
         .library(name: "Lifecycle", targets: ["Lifecycle"]),
         .library(name: "LifecycleNIOCompat", targets: ["LifecycleNIOCompat"]),
