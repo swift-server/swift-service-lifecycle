@@ -46,3 +46,22 @@ extension LifecycleHandler {
         }
     }
 }
+
+extension ServiceLifecycle {
+    /// Starts the provided `LifecycleItem` array.
+    /// Startup is performed in the order of items provided.
+    ///
+    /// - parameters:
+    ///    - eventLoop: The `eventLoop` which is used to generate the `EventLoopFuture` that is returned. After the start the future is fulfilled:
+    func start(on eventLoop: EventLoop) -> EventLoopFuture<Void> {
+        let promise = eventLoop.makePromise(of: Void.self)
+        self.start { error in
+            if let error = error {
+                promise.fail(error)
+            } else {
+                promise.succeed(())
+            }
+        }
+        return promise.futureResult
+    }
+}
