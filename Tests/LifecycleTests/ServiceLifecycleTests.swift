@@ -14,6 +14,7 @@
 
 @testable import Lifecycle
 import LifecycleNIOCompat
+import Logging
 import XCTest
 
 final class ServiceLifecycleTests: XCTestCase {
@@ -225,5 +226,11 @@ final class ServiceLifecycleTests: XCTestCase {
         XCTAssertEqual("\(ServiceLifecycle.Signal.TERM)", "Signal(TERM, rawValue: \(ServiceLifecycle.Signal.TERM.rawValue))")
         XCTAssertEqual("\(ServiceLifecycle.Signal.INT)", "Signal(INT, rawValue: \(ServiceLifecycle.Signal.INT.rawValue))")
         XCTAssertEqual("\(ServiceLifecycle.Signal.ALRM)", "Signal(ALRM, rawValue: \(ServiceLifecycle.Signal.ALRM.rawValue))")
+    }
+
+    func testBacktracesInstalledOnce() {
+        let config = ServiceLifecycle.Configuration(installBacktrace: true)
+        _ = ServiceLifecycle(configuration: config)
+        _ = ServiceLifecycle(configuration: config)
     }
 }
