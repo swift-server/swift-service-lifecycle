@@ -194,40 +194,9 @@ extension ServiceLifecycle {
     }
 }
 
-public extension ServiceLifecycle {
-    /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
-    ///
-    /// - parameters:
-    ///    - tasks: one or more `LifecycleTask`.
-    func register(_ tasks: LifecycleTask ...) {
+extension ServiceLifecycle: LifecycleRegistrar {
+    public func register(_ tasks: [LifecycleTask]) {
         self.underlying.register(tasks)
-    }
-
-    /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
-    ///
-    /// - parameters:
-    ///    - tasks: array of `LifecycleTask`.
-    func register(_ tasks: [LifecycleTask]) {
-        self.underlying.register(tasks)
-    }
-
-    /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
-    ///
-    /// - parameters:
-    ///    - label: label of the item, useful for debugging.
-    ///    - start: `LifecycleHandler` to perform the startup.
-    ///    - shutdown: `LifecycleHandler` to perform the shutdown.
-    func register(label: String, start: LifecycleHandler, shutdown: LifecycleHandler) {
-        self.underlying.register(label: label, start: start, shutdown: shutdown)
-    }
-
-    /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
-    ///
-    /// - parameters:
-    ///    - label: label of the item, useful for debugging.
-    ///    - handler: `LifecycleHandler` to perform the shutdown.
-    func registerShutdown(label: String, _ handler: LifecycleHandler) {
-        self.underlying.registerShutdown(label: label, handler)
     }
 }
 
@@ -480,34 +449,8 @@ public class ComponentLifecycle: LifecycleTask {
     }
 }
 
-public extension ComponentLifecycle {
-    internal struct Task: LifecycleTask {
-        let label: String
-        let start: LifecycleHandler
-        let shutdown: LifecycleHandler
-
-        func start(_ callback: @escaping (Error?) -> Void) {
-            self.start.run(callback)
-        }
-
-        func shutdown(_ callback: @escaping (Error?) -> Void) {
-            self.shutdown.run(callback)
-        }
-    }
-
-    /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
-    ///
-    /// - parameters:
-    ///    - tasks: one or more `LifecycleTask`.
-    func register(_ tasks: LifecycleTask ...) {
-        self.register(tasks)
-    }
-
-    /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
-    ///
-    /// - parameters:
-    ///    - tasks: array of `LifecycleTask`.
-    func register(_ tasks: [LifecycleTask]) {
+extension ComponentLifecycle: LifecycleRegistrar {
+    public func register(_ tasks: [LifecycleTask]) {
         self.stateLock.withLock {
             guard case .idle = self.state else {
                 preconditionFailure("invalid state, \(self.state)")
@@ -517,6 +460,24 @@ public extension ComponentLifecycle {
             self.tasks.append(contentsOf: tasks)
         }
     }
+}
+
+public protocol LifecycleRegistrar {
+    /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
+    ///
+    /// - parameters:
+    ///    - tasks: array of `LifecycleTask`.
+    func register(_ tasks: [LifecycleTask])
+}
+
+extension LifecycleRegistrar {
+    /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
+    ///
+    /// - parameters:
+    ///    - tasks: one or more `LifecycleTask`.
+    public func register(_ tasks: LifecycleTask ...) {
+        self.register(tasks)
+    }
 
     /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
     ///
@@ -524,8 +485,8 @@ public extension ComponentLifecycle {
     ///    - label: label of the item, useful for debugging.
     ///    - start: `Handler` to perform the startup.
     ///    - shutdown: `Handler` to perform the shutdown.
-    func register(label: String, start: LifecycleHandler, shutdown: LifecycleHandler) {
-        self.register(Task(label: label, start: start, shutdown: shutdown))
+    public func register(label: String, start: LifecycleHandler, shutdown: LifecycleHandler) {
+        self.register(LifecycleTaskImpl(label: label, start: start, shutdown: shutdown))
     }
 
     /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
@@ -533,7 +494,21 @@ public extension ComponentLifecycle {
     /// - parameters:
     ///    - label: label of the item, useful for debugging.
     ///    - handler: `Handler` to perform the shutdown.
-    func registerShutdown(label: String, _ handler: LifecycleHandler) {
+    public func registerShutdown(label: String, _ handler: LifecycleHandler) {
         self.register(label: label, start: .none, shutdown: handler)
+    }
+}
+
+internal struct LifecycleTaskImpl: LifecycleTask {
+    let label: String
+    let start: LifecycleHandler
+    let shutdown: LifecycleHandler
+
+    func start(_ callback: @escaping (Error?) -> Void) {
+        self.start.run(callback)
+    }
+
+    func shutdown(_ callback: @escaping (Error?) -> Void) {
+        self.shutdown.run(callback)
     }
 }
