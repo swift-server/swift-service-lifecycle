@@ -81,6 +81,8 @@ public struct LifecycleHandler {
 
 // MARK: - ServiceLifecycle
 
+/// `ServiceLifecycle` provides a basic mechanism to cleanly startup and shutdown the application, freeing resources in order before exiting.
+///  By default, also install shutdown hooks based on `Signal` and backtraces.
 public struct ServiceLifecycle {
     private let configuration: Configuration
 
@@ -194,7 +196,7 @@ extension ServiceLifecycle {
     }
 }
 
-extension ServiceLifecycle: LifecycleRegistrar {
+extension ServiceLifecycle: LifecycleTasksConainer {
     public func register(_ tasks: [LifecycleTask]) {
         self.underlying.register(tasks)
     }
@@ -234,7 +236,7 @@ struct ShutdownError: Error {
 
 // MARK: - ComponentLifecycle
 
-/// `Lifecycle` provides a basic mechanism to cleanly startup and shutdown the application, freeing resources in order before exiting.
+/// `ComponentLifecycle` provides a basic mechanism to cleanly startup and shutdown a subsystem in a larger application, freeing resources in order before exiting.
 public class ComponentLifecycle: LifecycleTask {
     public let label: String
     private let logger: Logger
@@ -449,7 +451,7 @@ public class ComponentLifecycle: LifecycleTask {
     }
 }
 
-extension ComponentLifecycle: LifecycleRegistrar {
+extension ComponentLifecycle: LifecycleTasksConainer {
     public func register(_ tasks: [LifecycleTask]) {
         self.stateLock.withLock {
             guard case .idle = self.state else {
@@ -462,7 +464,8 @@ extension ComponentLifecycle: LifecycleRegistrar {
     }
 }
 
-public protocol LifecycleRegistrar {
+/// A container of `LifecycleTask`, used to register additional `LifecycleTask`
+public protocol LifecycleTasksConainer {
     /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
     ///
     /// - parameters:
@@ -470,7 +473,7 @@ public protocol LifecycleRegistrar {
     func register(_ tasks: [LifecycleTask])
 }
 
-extension LifecycleRegistrar {
+extension LifecycleTasksConainer {
     /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
     ///
     /// - parameters:
@@ -486,7 +489,7 @@ extension LifecycleRegistrar {
     ///    - start: `Handler` to perform the startup.
     ///    - shutdown: `Handler` to perform the shutdown.
     public func register(label: String, start: LifecycleHandler, shutdown: LifecycleHandler) {
-        self.register(LifecycleTaskImpl(label: label, start: start, shutdown: shutdown))
+        self.register(_LifecycleTask(label: label, start: start, shutdown: shutdown))
     }
 
     /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
@@ -499,7 +502,7 @@ extension LifecycleRegistrar {
     }
 }
 
-internal struct LifecycleTaskImpl: LifecycleTask {
+internal struct _LifecycleTask: LifecycleTask {
     let label: String
     let start: LifecycleHandler
     let shutdown: LifecycleHandler
