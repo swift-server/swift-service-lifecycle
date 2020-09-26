@@ -43,16 +43,16 @@ final class ComponentLifecycleTests: XCTestCase {
 
         let items = (1 ... Int.random(in: 10 ... 20)).map { index -> LifecycleTask in
             let id = "item-\(index)"
-            return ComponentLifecycle.Task(label: id,
-                                           start: .sync {
-                                               dispatchPrecondition(condition: .onQueue(.global()))
-                                               startCalls.append(id)
-                                           },
-                                           shutdown: .sync {
-                                               dispatchPrecondition(condition: .onQueue(.global()))
-                                               XCTAssertTrue(startCalls.contains(id))
-                                               stopCalls.append(id)
-                                           })
+            return _LifecycleTask(label: id,
+                                  start: .sync {
+                                      dispatchPrecondition(condition: .onQueue(.global()))
+                                      startCalls.append(id)
+                                  },
+                                  shutdown: .sync {
+                                      dispatchPrecondition(condition: .onQueue(.global()))
+                                      XCTAssertTrue(startCalls.contains(id))
+                                      stopCalls.append(id)
+                                 })
         }
         lifecycle.register(items)
 
@@ -81,16 +81,16 @@ final class ComponentLifecycleTests: XCTestCase {
 
         let items = (1 ... Int.random(in: 10 ... 20)).map { index -> LifecycleTask in
             let id = "item-\(index)"
-            return ComponentLifecycle.Task(label: id,
-                                           start: .sync {
-                                               dispatchPrecondition(condition: .onQueue(testQueue))
-                                               startCalls.append(id)
-                                           },
-                                           shutdown: .sync {
-                                               dispatchPrecondition(condition: .onQueue(testQueue))
-                                               XCTAssertTrue(startCalls.contains(id))
-                                               stopCalls.append(id)
-                                           })
+            return _LifecycleTask(label: id,
+                                  start: .sync {
+                                      dispatchPrecondition(condition: .onQueue(testQueue))
+                                      startCalls.append(id)
+                                  },
+                                  shutdown: .sync {
+                                      dispatchPrecondition(condition: .onQueue(testQueue))
+                                      XCTAssertTrue(startCalls.contains(id))
+                                      stopCalls.append(id)
+                                 })
         }
         lifecycle.register(items)
 
