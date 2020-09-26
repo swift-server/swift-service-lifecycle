@@ -196,7 +196,7 @@ extension ServiceLifecycle {
     }
 }
 
-extension ServiceLifecycle: LifecycleTasksConainer {
+extension ServiceLifecycle: LifecycleTasksContainer {
     public func register(_ tasks: [LifecycleTask]) {
         self.underlying.register(tasks)
     }
@@ -451,7 +451,7 @@ public class ComponentLifecycle: LifecycleTask {
     }
 }
 
-extension ComponentLifecycle: LifecycleTasksConainer {
+extension ComponentLifecycle: LifecycleTasksContainer {
     public func register(_ tasks: [LifecycleTask]) {
         self.stateLock.withLock {
             guard case .idle = self.state else {
@@ -465,7 +465,7 @@ extension ComponentLifecycle: LifecycleTasksConainer {
 }
 
 /// A container of `LifecycleTask`, used to register additional `LifecycleTask`
-public protocol LifecycleTasksConainer {
+public protocol LifecycleTasksContainer {
     /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
     ///
     /// - parameters:
@@ -473,7 +473,7 @@ public protocol LifecycleTasksConainer {
     func register(_ tasks: [LifecycleTask])
 }
 
-extension LifecycleTasksConainer {
+extension LifecycleTasksContainer {
     /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
     ///
     /// - parameters:
