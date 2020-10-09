@@ -26,8 +26,15 @@ import Logging
 /// Represents an item that can be started and shut down
 public protocol LifecycleTask {
     var label: String { get }
+    var shutdownIfNotStarted: Bool { get }
     func start(_ callback: @escaping (Error?) -> Void)
     func shutdown(_ callback: @escaping (Error?) -> Void)
+}
+
+extension LifecycleTask {
+    public var shutdownIfNotStarted: Bool {
+        return false
+    }
 }
 
 // MARK: - LifecycleHandler
@@ -35,13 +42,16 @@ public protocol LifecycleTask {
 /// Supported startup and shutdown method styles
 public struct LifecycleHandler {
     private let body: (@escaping (Error?) -> Void) -> Void
+    internal let noop: Bool
 
     /// Initialize a `LifecycleHandler` based on a completion handler.
     ///
     /// - parameters:
     ///    - callback: the underlying completion handler
-    public init(_ callback: @escaping (@escaping (Error?) -> Void) -> Void) {
+    ///    - noop: the underlying completion handler is a no-op
+    public init(_ callback: @escaping (@escaping (Error?) -> Void) -> Void, noop: Bool = false) {
         self.body = callback
+        self.noop = noop
     }
 
     /// Asynchronous `LifecycleHandler` based on a completion handler.
@@ -57,21 +67,21 @@ public struct LifecycleHandler {
     /// - parameters:
     ///    - body: the underlying function
     public static func sync(_ body: @escaping () throws -> Void) -> LifecycleHandler {
-        return LifecycleHandler { completionHandler in
+        return LifecycleHandler({ completionHandler in
             do {
                 try body()
                 completionHandler(nil)
             } catch {
                 completionHandler(error)
             }
-        }
+        })
     }
 
     /// Noop `LifecycleHandler`.
     public static var none: LifecycleHandler {
-        return LifecycleHandler { callback in
+        return LifecycleHandler({ callback in
             callback(nil)
-        }
+        }, noop: true)
     }
 
     internal func run(_ callback: @escaping (Error?) -> Void) {
@@ -362,7 +372,12 @@ public class ComponentLifecycle: LifecycleTask {
             case .shuttingDown:
                 self.stateLock.unlock()
                 // shutdown was called while starting, or start failed, shutdown what we can
-                let stoppable = started < tasks.count ? Array(tasks.prefix(started + 1)) : tasks
+                let stoppable: [LifecycleTask]
+                if started < tasks.count {
+                    stoppable = tasks.enumerated().filter { $0.offset <= started || $0.element.shutdownIfNotStarted }.map { $0.element }
+                } else {
+                    stoppable = tasks
+                }
                 self._shutdown(on: queue, tasks: stoppable) {
                     callback(error)
                     self.shutdownGroup.leave()
@@ -488,8 +503,8 @@ extension LifecycleTasksContainer {
     ///    - label: label of the item, useful for debugging.
     ///    - start: `Handler` to perform the startup.
     ///    - shutdown: `Handler` to perform the shutdown.
-    public func register(label: String, start: LifecycleHandler, shutdown: LifecycleHandler) {
-        self.register(_LifecycleTask(label: label, start: start, shutdown: shutdown))
+    public func register(label: String, shutdownIfNotStarted: Bool? = nil, start: LifecycleHandler, shutdown: LifecycleHandler) {
+        self.register(_LifecycleTask(label: label, shutdownIfNotStarted: shutdownIfNotStarted, start: start, shutdown: shutdown))
     }
 
     /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
@@ -504,8 +519,16 @@ extension LifecycleTasksContainer {
 
 internal struct _LifecycleTask: LifecycleTask {
     let label: String
+    let shutdownIfNotStarted: Bool
     let start: LifecycleHandler
     let shutdown: LifecycleHandler
+
+    init(label: String, shutdownIfNotStarted: Bool? = nil, start: LifecycleHandler, shutdown: LifecycleHandler) {
+        self.label = label
+        self.shutdownIfNotStarted = shutdownIfNotStarted ?? start.noop
+        self.start = start
+        self.shutdown = shutdown
+    }
 
     func start(_ callback: @escaping (Error?) -> Void) {
         self.start.run(callback)

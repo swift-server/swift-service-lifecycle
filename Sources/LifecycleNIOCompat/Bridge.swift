@@ -21,7 +21,7 @@ extension LifecycleHandler {
     /// - parameters:
     ///    - future: function returning the underlying `EventLoopFuture`
     public static func eventLoopFuture(_ future: @escaping () -> EventLoopFuture<Void>) -> LifecycleHandler {
-        return LifecycleHandler { callback in
+        return LifecycleHandler({ callback in
             future().whenComplete { result in
                 switch result {
                 case .success:
@@ -30,7 +30,7 @@ extension LifecycleHandler {
                     callback(error)
                 }
             }
-        }
+        })
     }
 
     /// `Lifecycle.Handler` that cancels a `RepeatedTask`.
