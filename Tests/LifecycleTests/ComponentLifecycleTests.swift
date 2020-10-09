@@ -851,7 +851,7 @@ final class ComponentLifecycleTests: XCTestCase {
         let async = LifecycleHandler.async { _ in }
         XCTAssertEqual(async.noop, false)
 
-        let custom = LifecycleHandler({ _ in })
+        let custom = LifecycleHandler { _ in }
         XCTAssertEqual(custom.noop, false)
     }
 

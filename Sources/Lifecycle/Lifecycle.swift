@@ -44,14 +44,18 @@ public struct LifecycleHandler {
     private let body: (@escaping (Error?) -> Void) -> Void
     internal let noop: Bool
 
+    private init(_ callback: @escaping (@escaping (Error?) -> Void) -> Void, noop: Bool) {
+        self.body = callback
+        self.noop = noop
+    }
+
     /// Initialize a `LifecycleHandler` based on a completion handler.
     ///
     /// - parameters:
     ///    - callback: the underlying completion handler
     ///    - noop: the underlying completion handler is a no-op
-    public init(_ callback: @escaping (@escaping (Error?) -> Void) -> Void, noop: Bool = false) {
-        self.body = callback
-        self.noop = noop
+    public init(_ callback: @escaping (@escaping (Error?) -> Void) -> Void) {
+        self.init(callback, noop: false)
     }
 
     /// Asynchronous `LifecycleHandler` based on a completion handler.
@@ -67,14 +71,14 @@ public struct LifecycleHandler {
     /// - parameters:
     ///    - body: the underlying function
     public static func sync(_ body: @escaping () throws -> Void) -> LifecycleHandler {
-        return LifecycleHandler({ completionHandler in
+        return LifecycleHandler { completionHandler in
             do {
                 try body()
                 completionHandler(nil)
             } catch {
                 completionHandler(error)
             }
-        })
+        }
     }
 
     /// Noop `LifecycleHandler`.
