@@ -57,7 +57,6 @@ extension ComponentLifecycleTests {
             ("testNOOPHandlers", testNOOPHandlers),
             ("testShutdownOnlyStarted", testShutdownOnlyStarted),
             ("testShutdownWhenStartFailedIfAsked", testShutdownWhenStartFailedIfAsked),
-            ("testShutdownWhenIdleIfAsked", testShutdownWhenIdleIfAsked),
         ]
     }
 }

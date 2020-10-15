@@ -41,28 +41,24 @@ extension LifecycleTask {
 
 /// Supported startup and shutdown method styles
 public struct LifecycleHandler {
-    private let body: (@escaping (Error?) -> Void) -> Void
-    internal let noop: Bool
+    public typealias Callback = (@escaping (Error?) -> Void) -> Void
 
-    private init(_ callback: @escaping (@escaping (Error?) -> Void) -> Void, noop: Bool) {
-        self.body = callback
-        self.noop = noop
-    }
+    private let body: Callback?
 
     /// Initialize a `LifecycleHandler` based on a completion handler.
     ///
     /// - parameters:
     ///    - callback: the underlying completion handler
     ///    - noop: the underlying completion handler is a no-op
-    public init(_ callback: @escaping (@escaping (Error?) -> Void) -> Void) {
-        self.init(callback, noop: false)
+    public init(_ callback: Callback?) {
+        self.body = callback
     }
 
     /// Asynchronous `LifecycleHandler` based on a completion handler.
     ///
     /// - parameters:
     ///    - callback: the underlying completion handler
-    public static func async(_ callback: @escaping (@escaping (Error?) -> Void) -> Void) -> LifecycleHandler {
+    public static func async(_ callback: @escaping Callback) -> LifecycleHandler {
         return LifecycleHandler(callback)
     }
 
@@ -83,13 +79,18 @@ public struct LifecycleHandler {
 
     /// Noop `LifecycleHandler`.
     public static var none: LifecycleHandler {
-        return LifecycleHandler({ callback in
-            callback(nil)
-        }, noop: true)
+        return LifecycleHandler(nil)
     }
 
     internal func run(_ callback: @escaping (Error?) -> Void) {
-        self.body(callback)
+        let body = self.body ?? { callback in
+            callback(nil)
+        }
+        body(callback)
+    }
+
+    internal var noop: Bool {
+        return self.body == nil
     }
 }
 
@@ -324,17 +325,11 @@ public class ComponentLifecycle: LifecycleTask {
 
         self.stateLock.lock()
         switch self.state {
-        case .idle(let tasks) where tasks.isEmpty:
+        case .idle:
             self.state = .shutdown(nil)
             self.stateLock.unlock()
             defer { self.shutdownGroup.leave() }
             callback(nil)
-        case .idle(let tasks):
-            self.stateLock.unlock()
-            let queue = DispatchQueue.global() // is this the best we can do?
-            setupShutdownListener(queue)
-            let stoppable = tasks.filter { $0.shutdownIfNotStarted }
-            self._shutdown(on: queue, tasks: stoppable, callback: self.shutdownGroup.leave)
         case .shutdown:
             self.stateLock.unlock()
             self.log(level: .warning, "already shutdown")
@@ -509,8 +504,8 @@ extension LifecycleTasksContainer {
     ///    - label: label of the item, useful for debugging.
     ///    - start: `Handler` to perform the startup.
     ///    - shutdown: `Handler` to perform the shutdown.
-    public func register(label: String, shutdownIfNotStarted: Bool? = nil, start: LifecycleHandler, shutdown: LifecycleHandler) {
-        self.register(_LifecycleTask(label: label, shutdownIfNotStarted: shutdownIfNotStarted, start: start, shutdown: shutdown))
+    public func register(label: String, start: LifecycleHandler, shutdown: LifecycleHandler) {
+        self.register(_LifecycleTask(label: label, shutdownIfNotStarted: nil, start: start, shutdown: shutdown))
     }
 
     /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
