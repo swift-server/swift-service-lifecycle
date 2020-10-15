@@ -256,11 +256,8 @@ public class ComponentLifecycle: LifecycleTask {
     private let logger: Logger
     internal let shutdownGroup = DispatchGroup()
 
-    private var state = State.idle
+    private var state = State.idle([])
     private let stateLock = Lock()
-
-    private var tasks = [LifecycleTask]()
-    private let tasksLock = Lock()
 
     /// Creates a `ComponentLifecycle` instance.
     ///
@@ -289,7 +286,9 @@ public class ComponentLifecycle: LifecycleTask {
     ///    - on: `DispatchQueue` to run the handlers callback  on
     ///    - callback: The handler which is called after the start operation completes. The parameter will be `nil` on success and contain the `Error` otherwise.
     public func start(on queue: DispatchQueue, _ callback: @escaping (Error?) -> Void) {
-        let tasks = self.tasksLock.withLock { self.tasks }
+        guard case .idle(let tasks) = (self.stateLock.withLock { self.state }) else {
+            preconditionFailure("invalid state, \(self.state)")
+        }
         self._start(on: queue, tasks: tasks, callback: callback)
     }
 
@@ -325,11 +324,17 @@ public class ComponentLifecycle: LifecycleTask {
 
         self.stateLock.lock()
         switch self.state {
-        case .idle:
+        case .idle(let tasks) where tasks.isEmpty:
             self.state = .shutdown(nil)
             self.stateLock.unlock()
             defer { self.shutdownGroup.leave() }
             callback(nil)
+        case .idle(let tasks):
+            self.stateLock.unlock()
+            let queue = DispatchQueue.global() // is this the best we can do?
+            setupShutdownListener(queue)
+            let stoppable = tasks.filter { $0.shutdownIfNotStarted }
+            self._shutdown(on: queue, tasks: stoppable, callback: self.shutdownGroup.leave)
         case .shutdown:
             self.stateLock.unlock()
             self.log(level: .warning, "already shutdown")
@@ -342,7 +347,6 @@ public class ComponentLifecycle: LifecycleTask {
             self.stateLock.unlock()
             setupShutdownListener(queue)
         case .started(let queue, let tasks):
-            self.state = .shuttingDown(queue)
             self.stateLock.unlock()
             setupShutdownListener(queue)
             self._shutdown(on: queue, tasks: tasks, callback: self.shutdownGroup.leave)
@@ -462,7 +466,7 @@ public class ComponentLifecycle: LifecycleTask {
     }
 
     private enum State {
-        case idle
+        case idle([LifecycleTask])
         case starting(DispatchQueue)
         case started(DispatchQueue, [LifecycleTask])
         case shuttingDown(DispatchQueue)
@@ -473,12 +477,10 @@ public class ComponentLifecycle: LifecycleTask {
 extension ComponentLifecycle: LifecycleTasksContainer {
     public func register(_ tasks: [LifecycleTask]) {
         self.stateLock.withLock {
-            guard case .idle = self.state else {
+            guard case .idle(let existing) = self.state else {
                 preconditionFailure("invalid state, \(self.state)")
             }
-        }
-        self.tasksLock.withLock {
-            self.tasks.append(contentsOf: tasks)
+            self.state = .idle(existing + tasks)
         }
     }
 }
