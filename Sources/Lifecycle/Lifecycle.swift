@@ -26,21 +26,31 @@ import Logging
 /// Represents an item that can be started and shut down
 public protocol LifecycleTask {
     var label: String { get }
+    var shutdownIfNotStarted: Bool { get }
     func start(_ callback: @escaping (Error?) -> Void)
     func shutdown(_ callback: @escaping (Error?) -> Void)
+}
+
+extension LifecycleTask {
+    public var shutdownIfNotStarted: Bool {
+        return false
+    }
 }
 
 // MARK: - LifecycleHandler
 
 /// Supported startup and shutdown method styles
 public struct LifecycleHandler {
-    private let body: (@escaping (Error?) -> Void) -> Void
+    public typealias Callback = (@escaping (Error?) -> Void) -> Void
+
+    private let body: Callback?
 
     /// Initialize a `LifecycleHandler` based on a completion handler.
     ///
     /// - parameters:
     ///    - callback: the underlying completion handler
-    public init(_ callback: @escaping (@escaping (Error?) -> Void) -> Void) {
+    ///    - noop: the underlying completion handler is a no-op
+    public init(_ callback: Callback?) {
         self.body = callback
     }
 
@@ -48,7 +58,7 @@ public struct LifecycleHandler {
     ///
     /// - parameters:
     ///    - callback: the underlying completion handler
-    public static func async(_ callback: @escaping (@escaping (Error?) -> Void) -> Void) -> LifecycleHandler {
+    public static func async(_ callback: @escaping Callback) -> LifecycleHandler {
         return LifecycleHandler(callback)
     }
 
@@ -69,13 +79,18 @@ public struct LifecycleHandler {
 
     /// Noop `LifecycleHandler`.
     public static var none: LifecycleHandler {
-        return LifecycleHandler { callback in
-            callback(nil)
-        }
+        return LifecycleHandler(nil)
     }
 
     internal func run(_ callback: @escaping (Error?) -> Void) {
-        self.body(callback)
+        let body = self.body ?? { callback in
+            callback(nil)
+        }
+        body(callback)
+    }
+
+    internal var noop: Bool {
+        return self.body == nil
     }
 }
 
@@ -242,11 +257,8 @@ public class ComponentLifecycle: LifecycleTask {
     private let logger: Logger
     internal let shutdownGroup = DispatchGroup()
 
-    private var state = State.idle
+    private var state = State.idle([])
     private let stateLock = Lock()
-
-    private var tasks = [LifecycleTask]()
-    private let tasksLock = Lock()
 
     /// Creates a `ComponentLifecycle` instance.
     ///
@@ -275,7 +287,9 @@ public class ComponentLifecycle: LifecycleTask {
     ///    - on: `DispatchQueue` to run the handlers callback  on
     ///    - callback: The handler which is called after the start operation completes. The parameter will be `nil` on success and contain the `Error` otherwise.
     public func start(on queue: DispatchQueue, _ callback: @escaping (Error?) -> Void) {
-        let tasks = self.tasksLock.withLock { self.tasks }
+        guard case .idle(let tasks) = (self.stateLock.withLock { self.state }) else {
+            preconditionFailure("invalid state, \(self.state)")
+        }
         self._start(on: queue, tasks: tasks, callback: callback)
     }
 
@@ -328,7 +342,6 @@ public class ComponentLifecycle: LifecycleTask {
             self.stateLock.unlock()
             setupShutdownListener(queue)
         case .started(let queue, let tasks):
-            self.state = .shuttingDown(queue)
             self.stateLock.unlock()
             setupShutdownListener(queue)
             self._shutdown(on: queue, tasks: tasks, callback: self.shutdownGroup.leave)
@@ -362,7 +375,12 @@ public class ComponentLifecycle: LifecycleTask {
             case .shuttingDown:
                 self.stateLock.unlock()
                 // shutdown was called while starting, or start failed, shutdown what we can
-                let stoppable = started < tasks.count ? Array(tasks.prefix(started + 1)) : tasks
+                let stoppable: [LifecycleTask]
+                if started < tasks.count {
+                    stoppable = tasks.enumerated().filter { $0.offset <= started || $0.element.shutdownIfNotStarted }.map { $0.element }
+                } else {
+                    stoppable = tasks
+                }
                 self._shutdown(on: queue, tasks: stoppable) {
                     callback(error)
                     self.shutdownGroup.leave()
@@ -443,7 +461,7 @@ public class ComponentLifecycle: LifecycleTask {
     }
 
     private enum State {
-        case idle
+        case idle([LifecycleTask])
         case starting(DispatchQueue)
         case started(DispatchQueue, [LifecycleTask])
         case shuttingDown(DispatchQueue)
@@ -454,12 +472,10 @@ public class ComponentLifecycle: LifecycleTask {
 extension ComponentLifecycle: LifecycleTasksContainer {
     public func register(_ tasks: [LifecycleTask]) {
         self.stateLock.withLock {
-            guard case .idle = self.state else {
+            guard case .idle(let existing) = self.state else {
                 preconditionFailure("invalid state, \(self.state)")
             }
-        }
-        self.tasksLock.withLock {
-            self.tasks.append(contentsOf: tasks)
+            self.state = .idle(existing + tasks)
         }
     }
 }
@@ -489,7 +505,7 @@ extension LifecycleTasksContainer {
     ///    - start: `Handler` to perform the startup.
     ///    - shutdown: `Handler` to perform the shutdown.
     public func register(label: String, start: LifecycleHandler, shutdown: LifecycleHandler) {
-        self.register(_LifecycleTask(label: label, start: start, shutdown: shutdown))
+        self.register(_LifecycleTask(label: label, shutdownIfNotStarted: nil, start: start, shutdown: shutdown))
     }
 
     /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
@@ -504,8 +520,16 @@ extension LifecycleTasksContainer {
 
 internal struct _LifecycleTask: LifecycleTask {
     let label: String
+    let shutdownIfNotStarted: Bool
     let start: LifecycleHandler
     let shutdown: LifecycleHandler
+
+    init(label: String, shutdownIfNotStarted: Bool? = nil, start: LifecycleHandler, shutdown: LifecycleHandler) {
+        self.label = label
+        self.shutdownIfNotStarted = shutdownIfNotStarted ?? start.noop
+        self.start = start
+        self.shutdown = shutdown
+    }
 
     func start(_ callback: @escaping (Error?) -> Void) {
         self.start.run(callback)

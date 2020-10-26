@@ -54,6 +54,9 @@ extension ComponentLifecycleTests {
             ("testNIOFailure", testNIOFailure),
             ("testInternalState", testInternalState),
             ("testExternalState", testExternalState),
+            ("testNOOPHandlers", testNOOPHandlers),
+            ("testShutdownOnlyStarted", testShutdownOnlyStarted),
+            ("testShutdownWhenStartFailedIfAsked", testShutdownWhenStartFailedIfAsked),
         ]
     }
 }

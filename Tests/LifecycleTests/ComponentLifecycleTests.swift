@@ -82,6 +82,7 @@ final class ComponentLifecycleTests: XCTestCase {
         let items = (1 ... Int.random(in: 10 ... 20)).map { index -> LifecycleTask in
             let id = "item-\(index)"
             return _LifecycleTask(label: id,
+                                  shutdownIfNotStarted: false,
                                   start: .sync {
                                       dispatchPrecondition(condition: .onQueue(testQueue))
                                       startCalls.append(id)
@@ -838,5 +839,149 @@ final class ComponentLifecycleTests: XCTestCase {
         }
         lifecycle.wait()
         XCTAssertEqual(state, .shutdown, "expected item to be shutdown, but \(state)")
+    }
+
+    func testNOOPHandlers() {
+        let none = LifecycleHandler.none
+        XCTAssertEqual(none.noop, true)
+
+        let sync = LifecycleHandler.sync {}
+        XCTAssertEqual(sync.noop, false)
+
+        let async = LifecycleHandler.async { _ in }
+        XCTAssertEqual(async.noop, false)
+
+        let custom = LifecycleHandler { _ in }
+        XCTAssertEqual(custom.noop, false)
+    }
+
+    func testShutdownOnlyStarted() {
+        class Item {
+            let label: String
+            let sempahore: DispatchSemaphore
+            let failStart: Bool
+            let exptectedState: State
+            var state = State.idle
+
+            deinit {
+                XCTAssertEqual(self.state, self.exptectedState, "\"\(self.label)\" should be \(self.exptectedState)")
+                self.sempahore.signal()
+            }
+
+            init(label: String, failStart: Bool, exptectedState: State, sempahore: DispatchSemaphore) {
+                self.label = label
+                self.failStart = failStart
+                self.exptectedState = exptectedState
+                self.sempahore = sempahore
+            }
+
+            func start() throws {
+                self.state = .started
+                if self.failStart {
+                    self.state = .error
+                    throw InitError()
+                }
+            }
+
+            func shutdown() throws {
+                self.state = .shutdown
+            }
+
+            enum State {
+                case idle
+                case started
+                case shutdown
+                case error
+            }
+
+            struct InitError: Error {}
+        }
+
+        let count = Int.random(in: 10 ..< 20)
+        let sempahore = DispatchSemaphore(value: count)
+        let lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: nil))
+
+        for index in 0 ..< count {
+            let item = Item(label: "\(index)", failStart: index == count / 2, exptectedState: index <= count / 2 ? .shutdown : .idle, sempahore: sempahore)
+            lifecycle.register(label: item.label, start: .sync(item.start), shutdown: .sync(item.shutdown))
+        }
+
+        lifecycle.start { error in
+            XCTAssertNotNil(error, "expecting error")
+            lifecycle.shutdown()
+        }
+        lifecycle.wait()
+
+        XCTAssertEqual(.success, sempahore.wait(timeout: .now() + 1))
+    }
+
+    func testShutdownWhenStartFailedIfAsked() {
+        class DestructionSensitive {
+            let label: String
+            let failStart: Bool
+            let sempahore: DispatchSemaphore
+            var state = State.idle
+
+            deinit {
+                XCTAssertEqual(self.state, .shutdown, "\"\(self.label)\" should be shutdown")
+                self.sempahore.signal()
+            }
+
+            init(label: String, failStart: Bool = false, sempahore: DispatchSemaphore) {
+                self.label = label
+                self.failStart = failStart
+                self.sempahore = sempahore
+            }
+
+            func start() throws {
+                self.state = .started
+                if self.failStart {
+                    self.state = .error
+                    throw InitError()
+                }
+            }
+
+            func shutdown() throws {
+                self.state = .shutdown
+            }
+
+            enum State {
+                case idle
+                case started
+                case shutdown
+                case error
+            }
+
+            struct InitError: Error {}
+        }
+
+        let sempahore = DispatchSemaphore(value: 6)
+        let lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: nil))
+
+        let item1 = DestructionSensitive(label: "1", sempahore: sempahore)
+        lifecycle.register(label: item1.label, start: .sync(item1.start), shutdown: .sync(item1.shutdown))
+
+        let item2 = DestructionSensitive(label: "2", sempahore: sempahore)
+        lifecycle.registerShutdown(label: item2.label, .sync(item2.shutdown))
+
+        let item3 = DestructionSensitive(label: "3", failStart: true, sempahore: sempahore)
+        lifecycle.register(label: item3.label, start: .sync(item3.start), shutdown: .sync(item3.shutdown))
+
+        let item4 = DestructionSensitive(label: "4", sempahore: sempahore)
+        lifecycle.registerShutdown(label: item4.label, .sync(item4.shutdown))
+
+        let item5 = DestructionSensitive(label: "5", sempahore: sempahore)
+        lifecycle.register(label: item5.label, start: .none, shutdown: .sync(item5.shutdown))
+
+        let item6 = DestructionSensitive(label: "6", sempahore: sempahore)
+        lifecycle.register(_LifecycleTask(label: item6.label, shutdownIfNotStarted: true, start: .sync(item6.start), shutdown: .sync(item6.shutdown)))
+
+        lifecycle.start { error in
+            XCTAssertNotNil(error, "expecting error")
+            lifecycle.shutdown()
+        }
+        lifecycle.wait()
+
+        XCTAssertEqual(.success, sempahore.wait(timeout: .now() + 1))
     }
 }
