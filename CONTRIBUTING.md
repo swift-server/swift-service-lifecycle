@@ -68,30 +68,30 @@ We require that your commit messages match our template. The easiest way to do t
 SwiftServiceLifecycle uses XCTest to run tests on both macOS and Linux. While the macOS version of XCTest is able to use the Objective-C runtime to discover tests at execution time, the Linux version is not.
 For this reason, whenever you add new tests **you have to run a script** that generates the hooks needed to run those tests on Linux, or our CI will complain that the tests are not all present on Linux. To do this, merely execute `ruby ./scripts/generate_linux_tests.rb` at the root of the package and check the changes it made.
 
-### Run `./scripts/sanity.sh`
+### Run `./scripts/soundness.sh`
 
-The scripts directory contains a [sanity.sh script](scripts/sanity.sh) 
+The scripts directory contains a [soundness.sh script](scripts/soundness.sh)
 that enforces additional checks, like license headers and formatting style.
-Please make sure to `./scripts/sanity.sh` before pushing a change upstream, otherwise it is likely the PR validation will fail
+Please make sure to `./scripts/soundness.sh` before pushing a change upstream, otherwise it is likely the PR validation will fail
 on minor changes such as a missing `self.` or similar formatting issues.
 
 > The script also executes the above mentioned `generate_linux_tests.rb`.
 
 For frequent contributors, we recommend adding the script as a [git pre-push hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks), which you can do via executing the following command
-in the project root directory: 
+in the project root directory:
 
 ```bash
 cat << EOF > .git/hooks/pre-push
 #!/bin/bash
 
-if [[ -f "scripts/sanity.sh" ]]; then
-  scripts/sanity.sh
+if [[ -f "scripts/soundness.sh" ]]; then
+  scripts/soundness.sh
 fi
 EOF
 ```
 Which makes the script execute, and only allow the `git push` to complete if the check has passed.
 
-In the case of formatting issues, you can then `git add` the formatting changes, and attempt the push again. 
+In the case of formatting issues, you can then `git add` the formatting changes, and attempt the push again.
 
 ## How to contribute your work
 
