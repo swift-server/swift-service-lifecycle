@@ -504,8 +504,8 @@ extension LifecycleTasksContainer {
     ///    - label: label of the item, useful for debugging.
     ///    - start: `Handler` to perform the startup.
     ///    - shutdown: `Handler` to perform the shutdown.
-    public func register(label: String, start: LifecycleHandler, shutdown: LifecycleHandler) {
-        self.register(_LifecycleTask(label: label, shutdownIfNotStarted: nil, start: start, shutdown: shutdown))
+    public func register(label: String, start: LifecycleHandler, shutdown: LifecycleHandler, shutdownIfNotStarted: Bool? = nil) {
+        self.register(_LifecycleTask(label: label, shutdownIfNotStarted: shutdownIfNotStarted, start: start, shutdown: shutdown))
     }
 
     /// Adds a `LifecycleTask` to a `LifecycleTasks` collection.
