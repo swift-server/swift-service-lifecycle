@@ -984,4 +984,267 @@ final class ComponentLifecycleTests: XCTestCase {
 
         XCTAssertEqual(.success, sempahore.wait(timeout: .now() + 1))
     }
+
+    func testStatefulSync() {
+        class Item {
+            let id: String = UUID().uuidString
+            var shutdown: Bool = false
+
+            func start() throws -> String {
+                return self.id
+            }
+
+            func shutdown(state: String) throws {
+                XCTAssertEqual(self.id, state)
+                self.shutdown = true // not thread safe but okay for this purpose
+            }
+        }
+
+        let lifecycle = ComponentLifecycle(label: "test")
+
+        let item = Item()
+        lifecycle.registerStateful(label: "test", start: .sync(item.start), shutdown: .sync(item.shutdown))
+
+        lifecycle.start { error in
+            XCTAssertNil(error, "not expecting error")
+            lifecycle.shutdown()
+        }
+        lifecycle.wait()
+        XCTAssertTrue(item.shutdown, "expected item to be shutdown")
+    }
+
+    func testStatefulSyncStartError() {
+        class Item {
+            let id: String = UUID().uuidString
+
+            func start() throws -> String {
+                throw TestError()
+            }
+
+            func shutdown(state: String) throws {
+                XCTFail("should not be shutdown")
+                throw TestError()
+            }
+        }
+
+        let lifecycle = ComponentLifecycle(label: "test")
+
+        let item = Item()
+        lifecycle.registerStateful(label: "test", start: .sync(item.start), shutdown: .sync(item.shutdown))
+
+        XCTAssertThrowsError(try lifecycle.startAndWait()) { error in
+            XCTAssert(error is TestError, "expected error to match")
+        }
+    }
+
+    func testStatefulSyncShutdownError() {
+        class Item {
+            let id: String = UUID().uuidString
+            var shutdown: Bool = false
+
+            func start() throws -> String {
+                return self.id
+            }
+
+            func shutdown(state: String) throws {
+                XCTAssertEqual(self.id, state)
+                throw TestError()
+            }
+        }
+
+        let lifecycle = ComponentLifecycle(label: "test")
+
+        let item = Item()
+        lifecycle.registerStateful(label: "test", start: .sync(item.start), shutdown: .sync(item.shutdown))
+
+        lifecycle.start { error in
+            XCTAssertNil(error, "not expecting error")
+            lifecycle.shutdown { error in
+                guard let shutdownError = error as? ShutdownError else {
+                    return XCTFail("expected error to match")
+                }
+                XCTAssertEqual(shutdownError.errors.count, 1)
+                XCTAssert(shutdownError.errors.values.first! is TestError, "expected error to match")
+            }
+        }
+
+        XCTAssertFalse(item.shutdown, "expected item to be shutdown")
+    }
+
+    func testStatefulAsync() {
+        class Item {
+            let id: String = UUID().uuidString
+            var shutdown: Bool = false
+
+            func start(_ callback: @escaping (Result<String, Error>) -> Void) {
+                callback(.success(self.id))
+            }
+
+            func shutdown(state: String, _ callback: @escaping (Error?) -> Void) {
+                XCTAssertEqual(self.id, state)
+                self.shutdown = true // not thread safe but okay for this purpose
+                callback(nil)
+            }
+        }
+
+        let lifecycle = ComponentLifecycle(label: "test")
+
+        let item = Item()
+        lifecycle.registerStateful(label: "test", start: .async(item.start), shutdown: .async(item.shutdown))
+
+        lifecycle.start { error in
+            XCTAssertNil(error, "not expecting error")
+            lifecycle.shutdown()
+        }
+        lifecycle.wait()
+        XCTAssertTrue(item.shutdown, "expected item to be shutdown")
+    }
+
+    func testStatefulAsyncStartError() {
+        class Item {
+            let id: String = UUID().uuidString
+
+            func start(_ callback: @escaping (Result<String, Error>) -> Void) {
+                callback(.failure(TestError()))
+            }
+
+            func shutdown(state: String, _ callback: @escaping (Error?) -> Void) {
+                XCTFail("should not be shutdown")
+                callback(TestError())
+            }
+        }
+
+        let lifecycle = ComponentLifecycle(label: "test")
+
+        let item = Item()
+        lifecycle.registerStateful(label: "test", start: .async(item.start), shutdown: .async(item.shutdown))
+
+        XCTAssertThrowsError(try lifecycle.startAndWait()) { error in
+            XCTAssert(error is TestError, "expected error to match")
+        }
+    }
+
+    func testStatefulAsyncShutdownError() {
+        class Item {
+            let id: String = UUID().uuidString
+            var shutdown: Bool = false
+
+            func start(_ callback: @escaping (Result<String, Error>) -> Void) {
+                callback(.success(self.id))
+            }
+
+            func shutdown(state: String, _ callback: @escaping (Error?) -> Void) {
+                XCTAssertEqual(self.id, state)
+                callback(TestError())
+            }
+        }
+
+        let lifecycle = ComponentLifecycle(label: "test")
+
+        let item = Item()
+        lifecycle.registerStateful(label: "test", start: .async(item.start), shutdown: .async(item.shutdown))
+
+        lifecycle.start { error in
+            XCTAssertNil(error, "not expecting error")
+            lifecycle.shutdown { error in
+                guard let shutdownError = error as? ShutdownError else {
+                    return XCTFail("expected error to match")
+                }
+                XCTAssertEqual(shutdownError.errors.count, 1)
+                XCTAssert(shutdownError.errors.values.first! is TestError, "expected error to match")
+            }
+        }
+
+        XCTAssertFalse(item.shutdown, "expected item to be shutdown")
+    }
+
+    func testStatefulNIO() {
+        class Item {
+            let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+            let id: String = UUID().uuidString
+            var shutdown: Bool = false
+
+            func start() -> EventLoopFuture<String> {
+                return self.eventLoopGroup.next().makeSucceededFuture(self.id)
+            }
+
+            func shutdown(state: String) -> EventLoopFuture<Void> {
+                XCTAssertEqual(self.id, state)
+                self.shutdown = true // not thread safe but okay for this purpose
+                return self.eventLoopGroup.next().makeSucceededFuture(())
+            }
+        }
+
+        let lifecycle = ComponentLifecycle(label: "test")
+
+        let item = Item()
+        lifecycle.registerStateful(label: "test", start: .eventLoopFuture(item.start), shutdown: .eventLoopFuture(item.shutdown))
+
+        lifecycle.start { error in
+            XCTAssertNil(error, "not expecting error")
+            lifecycle.shutdown()
+        }
+        lifecycle.wait()
+        XCTAssertTrue(item.shutdown, "expected item to be shutdown")
+    }
+
+    func testStatefulNIOStartFailure() {
+        class Item {
+            let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+            let id: String = UUID().uuidString
+
+            func start() -> EventLoopFuture<String> {
+                return self.eventLoopGroup.next().makeFailedFuture(TestError())
+            }
+
+            func shutdown(state: String) -> EventLoopFuture<Void> {
+                XCTFail("should not be shutdown")
+                return self.eventLoopGroup.next().makeFailedFuture(TestError())
+            }
+        }
+
+        let lifecycle = ComponentLifecycle(label: "test")
+
+        let item = Item()
+        lifecycle.registerStateful(label: "test", start: .eventLoopFuture(item.start), shutdown: .eventLoopFuture(item.shutdown))
+
+        XCTAssertThrowsError(try lifecycle.startAndWait()) { error in
+            XCTAssert(error is TestError, "expected error to match")
+        }
+    }
+
+    func testStatefulNIOShutdownFailure() {
+        class Item {
+            let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+            let id: String = UUID().uuidString
+            var shutdown: Bool = false
+
+            func start() -> EventLoopFuture<String> {
+                return self.eventLoopGroup.next().makeSucceededFuture(self.id)
+            }
+
+            func shutdown(state: String) -> EventLoopFuture<Void> {
+                XCTAssertEqual(self.id, state)
+                return self.eventLoopGroup.next().makeFailedFuture(TestError())
+            }
+        }
+
+        let lifecycle = ComponentLifecycle(label: "test")
+
+        let item = Item()
+        lifecycle.registerStateful(label: "test", start: .eventLoopFuture(item.start), shutdown: .eventLoopFuture(item.shutdown))
+
+        lifecycle.start { error in
+            XCTAssertNil(error, "not expecting error")
+            lifecycle.shutdown { error in
+                guard let shutdownError = error as? ShutdownError else {
+                    return XCTFail("expected error to match")
+                }
+                XCTAssertEqual(shutdownError.errors.count, 1)
+                XCTAssert(shutdownError.errors.values.first! is TestError, "expected error to match")
+            }
+        }
+
+        XCTAssertFalse(item.shutdown, "expected item to be shutdown")
+    }
 }

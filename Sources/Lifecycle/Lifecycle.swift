@@ -41,25 +41,25 @@ extension LifecycleTask {
 
 /// Supported startup and shutdown method styles
 public struct LifecycleHandler {
+    @available(*, deprecated)
     public typealias Callback = (@escaping (Error?) -> Void) -> Void
 
-    private let body: Callback?
+    private let underlying: ((@escaping (Error?) -> Void) -> Void)?
 
     /// Initialize a `LifecycleHandler` based on a completion handler.
     ///
     /// - parameters:
-    ///    - callback: the underlying completion handler
-    ///    - noop: the underlying completion handler is a no-op
-    public init(_ callback: Callback?) {
-        self.body = callback
+    ///    - handler: the underlying completion handler
+    public init(_ handler: ((@escaping (Error?) -> Void) -> Void)?) {
+        self.underlying = handler
     }
 
     /// Asynchronous `LifecycleHandler` based on a completion handler.
     ///
     /// - parameters:
-    ///    - callback: the underlying completion handler
-    public static func async(_ callback: @escaping Callback) -> LifecycleHandler {
-        return LifecycleHandler(callback)
+    ///    - handler: the underlying async handler
+    public static func async(_ handler: @escaping (@escaping (Error?) -> Void) -> Void) -> LifecycleHandler {
+        return LifecycleHandler(handler)
     }
 
     /// Asynchronous `LifecycleHandler` based on a blocking, throwing function.
@@ -82,15 +82,97 @@ public struct LifecycleHandler {
         return LifecycleHandler(nil)
     }
 
-    internal func run(_ callback: @escaping (Error?) -> Void) {
-        let body = self.body ?? { callback in
+    internal func run(_ completionHandler: @escaping (Error?) -> Void) {
+        let body = self.underlying ?? { callback in
             callback(nil)
         }
-        body(callback)
+        body(completionHandler)
     }
 
     internal var noop: Bool {
-        return self.body == nil
+        return self.underlying == nil
+    }
+}
+
+// MARK: - Stateful Lifecycle Handlers
+
+/// LifecycleHandler for starting stateful tasks. The state can then be fed into a LifecycleShutdownHandler
+public struct LifecycleStartHandler<State> {
+    private let underlying: (@escaping (Result<State, Error>) -> Void) -> Void
+
+    /// Initialize a `LifecycleHandler` based on a completion handler.
+    ///
+    /// - parameters:
+    ///    - callback: the underlying completion handler
+    public init(_ handler: @escaping (@escaping (Result<State, Error>) -> Void) -> Void) {
+        self.underlying = handler
+    }
+
+    /// Asynchronous `LifecycleStartHandler` based on a completion handler.
+    ///
+    /// - parameters:
+    ///    - handler: the underlying async handler
+    public static func async(_ handler: @escaping (@escaping (Result<State, Error>) -> Void) -> Void) -> LifecycleStartHandler {
+        return LifecycleStartHandler(handler)
+    }
+
+    /// Synchronous `LifecycleStartHandler` based on a blocking, throwing function.
+    ///
+    /// - parameters:
+    ///    - body: the underlying function
+    public static func sync(_ body: @escaping () throws -> State) -> LifecycleStartHandler {
+        return LifecycleStartHandler { completionHandler in
+            do {
+                let state = try body()
+                completionHandler(.success(state))
+            } catch {
+                completionHandler(.failure(error))
+            }
+        }
+    }
+
+    internal func run(_ completionHandler: @escaping (Result<State, Error>) -> Void) {
+        self.underlying(completionHandler)
+    }
+}
+
+/// LifecycleHandler for shutting down stateful tasks. The state comes from a LifecycleStartHandler
+public struct LifecycleShutdownHandler<State> {
+    private let underlying: (State, @escaping (Error?) -> Void) -> Void
+
+    /// Initialize a `LifecycleShutdownHandler` based on a completion handler.
+    ///
+    /// - parameters:
+    ///    - handler: the underlying completion handler
+    public init(_ handler: @escaping (State, @escaping (Error?) -> Void) -> Void) {
+        self.underlying = handler
+    }
+
+    /// Asynchronous `LifecycleShutdownHandler` based on a completion handler.
+    ///
+    /// - parameters:
+    ///    - handler: the underlying async handler
+    public static func async(_ handler: @escaping (State, @escaping (Error?) -> Void) -> Void) -> LifecycleShutdownHandler {
+        return LifecycleShutdownHandler(handler)
+    }
+
+    /// Asynchronous `LifecycleShutdownHandler` based on a blocking, throwing function.
+    ///
+    /// - parameters:
+    ///    - body: the underlying function
+    public static func sync(_ body: @escaping (State) throws -> Void) -> LifecycleShutdownHandler {
+        return LifecycleShutdownHandler { state, completionHandler in
+            do {
+                try body(state)
+                completionHandler(nil)
+            } catch {
+                completionHandler(error)
+            }
+        }
+    }
+
+    internal func run(state: State, _ completionHandler: @escaping (Error?) -> Void) {
+        self.underlying(state, completionHandler)
     }
 }
 
@@ -516,8 +598,19 @@ extension LifecycleTasksContainer {
     public func registerShutdown(label: String, _ handler: LifecycleHandler) {
         self.register(label: label, start: .none, shutdown: handler)
     }
+
+    /// Add a stateful `LifecycleTask` to a `LifecycleTasks` collection.
+    ///
+    /// - parameters:
+    ///    - label: label of the item, useful for debugging.
+    ///    - start: `LifecycleStartHandler` to perform the startup and return the state.
+    ///    - shutdown: `LifecycleShutdownHandler` to perform the shutdown given the state.
+    public func registerStateful<State>(label: String, start: LifecycleStartHandler<State>, shutdown: LifecycleShutdownHandler<State>) {
+        self.register(StatefulLifecycleTask(label: label, start: start, shutdown: shutdown))
+    }
 }
 
+// internal for testing
 internal struct _LifecycleTask: LifecycleTask {
     let label: String
     let shutdownIfNotStarted: Bool
@@ -538,4 +631,44 @@ internal struct _LifecycleTask: LifecycleTask {
     func shutdown(_ callback: @escaping (Error?) -> Void) {
         self.shutdown.run(callback)
     }
+}
+
+// internal for testing
+internal class StatefulLifecycleTask<State>: LifecycleTask {
+    let label: String
+    let shutdownIfNotStarted: Bool = false
+    let start: LifecycleStartHandler<State>
+    let shutdown: LifecycleShutdownHandler<State>
+
+    let stateLock = Lock()
+    var state: State?
+
+    init(label: String, start: LifecycleStartHandler<State>, shutdown: LifecycleShutdownHandler<State>) {
+        self.label = label
+        self.start = start
+        self.shutdown = shutdown
+    }
+
+    func start(_ callback: @escaping (Error?) -> Void) {
+        self.start.run { result in
+            switch result {
+            case .failure(let error):
+                callback(error)
+            case .success(let state):
+                self.stateLock.withLock {
+                    self.state = state
+                }
+                callback(nil)
+            }
+        }
+    }
+
+    func shutdown(_ callback: @escaping (Error?) -> Void) {
+        guard let state = (self.stateLock.withLock { self.state }) else {
+            return callback(UnknownState())
+        }
+        self.shutdown.run(state: state, callback)
+    }
+
+    struct UnknownState: Error {}
 }
