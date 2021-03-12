@@ -183,9 +183,9 @@ extension ServiceLifecycle {
         let signalSource = DispatchSource.makeSignalSource(signal: sig.rawValue, queue: queue)
         signal(sig.rawValue, SIG_IGN)
         signalSource.setEventHandler(handler: {
-        if (cancelAfterTrap) {
-            signalSource.cancel()
-        }
+            if (cancelAfterTrap) {
+                signalSource.cancel()
+            }
             handler(sig)
         })
         signalSource.resume()
@@ -215,7 +215,6 @@ extension ServiceLifecycle {
             case Signal.USR2: result += "USR2, "
             case Signal.HUP: result += "HUP, "
             default: () // ok to ignore
-	    
             }
             result += "rawValue: \(self.rawValue))"
             return result
