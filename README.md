@@ -23,7 +23,7 @@ To add a dependency on the package, declare it in your `Package.swift`:
 and to your application target, add `Lifecycle` to your dependencies:
 
 ```swift
-.target(name: "MyApplication", dependencies: ["Lifecycle"]),
+.target(name: "MyApplication", dependencies: [.product(name: "Lifecycle", package: "swift-service-lifecycle")]),
 ```
 
 ###  Defining the lifecycle
