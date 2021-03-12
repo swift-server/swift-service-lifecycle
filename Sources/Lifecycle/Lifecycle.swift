@@ -158,7 +158,7 @@ public struct ServiceLifecycle {
             let signalSource = ServiceLifecycle.trap(signal: signal, handler: { signal in
                 self.log("intercepted signal: \(signal)")
                 self.shutdown()
-            })
+            }, cancelAfterTrap: true)
             self.underlying.shutdownGroup.notify(queue: .global()) {
                 signalSource.cancel()
             }
@@ -177,7 +177,7 @@ extension ServiceLifecycle {
     ///    - signal: The signal to trap.
     ///    - handler: closure to invoke when the signal is captured.
     /// - returns: a `DispatchSourceSignal` for the given trap. The source must be cancelled by the caller.
-    public static func trap(signal sig: Signal, handler: @escaping (Signal) -> Void, on queue: DispatchQueue = .global(), cancelAfterTrap: Bool = true) -> DispatchSourceSignal {
+    public static func trap(signal sig: Signal, handler: @escaping (Signal) -> Void, on queue: DispatchQueue = .global(), cancelAfterTrap: Bool = false) -> DispatchSourceSignal {
         let signalSource = DispatchSource.makeSignalSource(signal: sig.rawValue, queue: queue)
         signal(sig.rawValue, SIG_IGN)
         signalSource.setEventHandler(handler: {
