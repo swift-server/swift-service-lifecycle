@@ -176,14 +176,16 @@ extension ServiceLifecycle {
     /// - parameters:
     ///    - signal: The signal to trap.
     ///    - handler: closure to invoke when the signal is captured.
+    ///    - on: DispatchQueue to run the signal handler on (default global dispatch queue)
+    ///    - cancelAfterTrap: Defaults to false, which means the signal handler can be run multiple times. If true, the DispatchSignalSource will be cancelled after being trapped once.
     /// - returns: a `DispatchSourceSignal` for the given trap. The source must be cancelled by the caller.
     public static func trap(signal sig: Signal, handler: @escaping (Signal) -> Void, on queue: DispatchQueue = .global(), cancelAfterTrap: Bool = false) -> DispatchSourceSignal {
         let signalSource = DispatchSource.makeSignalSource(signal: sig.rawValue, queue: queue)
         signal(sig.rawValue, SIG_IGN)
         signalSource.setEventHandler(handler: {
-	    if (cancelAfterTrap) {
-	        signalSource.cancel()
-	    }
+        if (cancelAfterTrap) {
+            signalSource.cancel()
+        }
             handler(sig)
         })
         signalSource.resume()
@@ -196,10 +198,10 @@ extension ServiceLifecycle {
 
         public static let TERM = Signal(rawValue: SIGTERM)
         public static let INT = Signal(rawValue: SIGINT)
-	public static let USR1 = Signal(rawValue: SIGUSR1)
+        public static let USR1 = Signal(rawValue: SIGUSR1)
         public static let USR2 = Signal(rawValue: SIGUSR2)
         public static let HUP = Signal(rawValue: SIGHUP)
-	
+
         // for testing
         internal static let ALRM = Signal(rawValue: SIGALRM)
 
