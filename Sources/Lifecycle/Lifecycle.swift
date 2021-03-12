@@ -194,6 +194,9 @@ extension ServiceLifecycle {
 
         public static let TERM = Signal(rawValue: SIGTERM)
         public static let INT = Signal(rawValue: SIGINT)
+	public static let USR1 = Signal(rawValue: SIGUSR1)
+        public static let USR2 = Signal(rawValue: SIGUSR2)
+
         // for testing
         internal static let ALRM = Signal(rawValue: SIGALRM)
 
