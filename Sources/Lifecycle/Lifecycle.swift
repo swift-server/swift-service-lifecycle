@@ -198,7 +198,8 @@ extension ServiceLifecycle {
         public static let INT = Signal(rawValue: SIGINT)
 	public static let USR1 = Signal(rawValue: SIGUSR1)
         public static let USR2 = Signal(rawValue: SIGUSR2)
-
+        public static let HUP = Signal(rawValue: SIGHUP)
+	
         // for testing
         internal static let ALRM = Signal(rawValue: SIGALRM)
 
@@ -208,7 +209,11 @@ extension ServiceLifecycle {
             case Signal.TERM: result += "TERM, "
             case Signal.INT: result += "INT, "
             case Signal.ALRM: result += "ALRM, "
-            default: () // ok to ignore
+            case Signal.USR1: result += "USR1, "
+            case Signal.USR2: result += "USR2, "
+            case Signal.HUP: result += "HUP, "
+
+        default: () // ok to ignore
             }
             result += "rawValue: \(self.rawValue))"
             return result
