@@ -214,8 +214,8 @@ extension ServiceLifecycle {
             case Signal.USR1: result += "USR1, "
             case Signal.USR2: result += "USR2, "
             case Signal.HUP: result += "HUP, "
-
-        default: () // ok to ignore
+            default: () // ok to ignore
+	    
             }
             result += "rawValue: \(self.rawValue))"
             return result
