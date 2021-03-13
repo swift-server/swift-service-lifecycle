@@ -57,6 +57,15 @@ extension ComponentLifecycleTests {
             ("testNOOPHandlers", testNOOPHandlers),
             ("testShutdownOnlyStarted", testShutdownOnlyStarted),
             ("testShutdownWhenStartFailedIfAsked", testShutdownWhenStartFailedIfAsked),
+            ("testStatefulSync", testStatefulSync),
+            ("testStatefulSyncStartError", testStatefulSyncStartError),
+            ("testStatefulSyncShutdownError", testStatefulSyncShutdownError),
+            ("testStatefulAsync", testStatefulAsync),
+            ("testStatefulAsyncStartError", testStatefulAsyncStartError),
+            ("testStatefulAsyncShutdownError", testStatefulAsyncShutdownError),
+            ("testStatefulNIO", testStatefulNIO),
+            ("testStatefulNIOStartFailure", testStatefulNIOStartFailure),
+            ("testStatefulNIOShutdownFailure", testStatefulNIOShutdownFailure),
         ]
     }
 }

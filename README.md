@@ -214,6 +214,32 @@ In more complex cases, when `Signal`-trapping-based shutdown is not appropriate,
 
 `shutdown` is an asynchronous operation. Errors will be logged and bubbled up to the provided completion handler.
 
+### Stateful handlers
+
+In some cases it is useful to have the Start handlers return a state that can be passed on to the Shutdown handlers for shutdown.
+For example, when establishing some sort of a connection that needs to be closed at shutdown.
+
+```swift
+struct Foo {
+  func start() throws -> Connection {
+      return ...
+  }
+
+  func shutdown(state: Connection) throws {
+      ...
+  }
+}
+```
+
+```swift
+let foo = ...
+lifecycle.registerStateful(
+    label: "foo",
+    start: .sync(foo.start),
+    shutdown: .sync(foo.shutdown)
+)
+```
+
 ### Complex Systems and Nesting of Subsystems
 
 In larger Applications (Services) `ComponentLifecycle` can be used to manage the lifecycle of subsystems, such that `ServiceLifecycle` can start and shutdown `ComponentLifecycle`s.

@@ -16,7 +16,7 @@ import Lifecycle
 import NIO
 
 extension LifecycleHandler {
-    /// Asynchronous `Lifecycle.Handler` based on an `EventLoopFuture`.
+    /// Asynchronous `LifecycleHandler` based on an `EventLoopFuture`.
     ///
     /// - parameters:
     ///    - future: function returning the underlying `EventLoopFuture`
@@ -32,8 +32,10 @@ extension LifecycleHandler {
             }
         }
     }
+}
 
-    /// `Lifecycle.Handler` that cancels a `RepeatedTask`.
+extension LifecycleHandler {
+    /// `LifecycleHandler` that cancels a `RepeatedTask`.
     ///
     /// - parameters:
     ///    - task: `RepeatedTask` to be cancelled
@@ -43,6 +45,39 @@ extension LifecycleHandler {
             let promise = eventLoop.makePromise(of: Void.self)
             task.cancel(promise: promise)
             return promise.futureResult
+        }
+    }
+}
+
+extension LifecycleStartHandler {
+    /// Asynchronous `LifecycleStartHandler` based on an `EventLoopFuture`.
+    ///
+    /// - parameters:
+    ///    - future: function returning the underlying `EventLoopFuture`
+    public static func eventLoopFuture(_ future: @escaping () -> EventLoopFuture<State>) -> LifecycleStartHandler {
+        return LifecycleStartHandler { callback in
+            future().whenComplete { result in
+                callback(result)
+            }
+        }
+    }
+}
+
+extension LifecycleShutdownHandler {
+    /// Asynchronous `LifecycleShutdownHandler` based on an `EventLoopFuture`.
+    ///
+    /// - parameters:
+    ///    - future: function returning the underlying `EventLoopFuture`
+    public static func eventLoopFuture(_ future: @escaping (State) -> EventLoopFuture<Void>) -> LifecycleShutdownHandler {
+        return LifecycleShutdownHandler { state, callback in
+            future(state).whenComplete { result in
+                switch result {
+                case .success:
+                    callback(nil)
+                case .failure(let error):
+                    callback(error)
+                }
+            }
         }
     }
 }
