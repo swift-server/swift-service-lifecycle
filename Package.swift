@@ -14,9 +14,24 @@ let package = Package(
         .package(url: "https://github.com/swift-server/swift-backtrace.git", from: "1.1.1"),
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"), // used in tests
     ],
-    targets: [
-        .target(name: "Lifecycle", dependencies: ["Logging", "Metrics", "Backtrace"]),
-        .target(name: "LifecycleNIOCompat", dependencies: ["Lifecycle", "NIO"]),
-        .testTarget(name: "LifecycleTests", dependencies: ["Lifecycle", "LifecycleNIOCompat"]),
-    ]
+    targets: []
 )
+
+#if compiler(>=5.2)
+package.dependencies += [
+    .package(url: "https://github.com/apple/swift-atomics.git", .exact("0.0.3")), // exact since < 1.0
+]
+package.targets += [
+    .target(name: "Lifecycle", dependencies: ["Logging", "Metrics", "Backtrace", "Atomics"]),
+]
+#else
+package.targets += [
+    .target(name: "CLifecycleHelpers", dependencies: []),
+    .target(name: "Lifecycle", dependencies: ["CLifecycleHelpers", "Logging", "Metrics", "Backtrace"]),
+]
+#endif
+
+package.targets += [
+    .target(name: "LifecycleNIOCompat", dependencies: ["Lifecycle", "NIO"]),
+    .testTarget(name: "LifecycleTests", dependencies: ["Lifecycle", "LifecycleNIOCompat"]),
+]
