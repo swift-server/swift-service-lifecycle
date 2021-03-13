@@ -154,7 +154,6 @@ public struct ServiceLifecycle {
     }
 
     private func setupBacktrace() {
-        self.log("installing backtrace done")
         Backtrace.install()
     }
 
