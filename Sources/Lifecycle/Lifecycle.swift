@@ -2,7 +2,7 @@
 //
 // This source file is part of the SwiftServiceLifecycle open source project
 //
-// Copyright (c) 2019-2020 Apple Inc. and the SwiftServiceLifecycle project authors
+// Copyright (c) 2019-2021 Apple Inc. and the SwiftServiceLifecycle project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -20,6 +20,7 @@ import Glibc
 import Backtrace
 import Dispatch
 import Logging
+import Metrics
 
 // MARK: - LifecycleTask
 
@@ -181,13 +182,15 @@ public struct LifecycleShutdownHandler<State> {
 /// `ServiceLifecycle` provides a basic mechanism to cleanly startup and shutdown the application, freeing resources in order before exiting.
 ///  By default, also install shutdown hooks based on `Signal` and backtraces.
 public struct ServiceLifecycle {
+    private static let backtracesInstalled = AtomicBoolean(false)
+
     private let configuration: Configuration
 
     /// The underlying `ComponentLifecycle` instance
     ///
     /// Designed for composition purposes, mainly for frameworks that need to offer both top-level start/stop functionality and composition into larger systems.
     /// In other words, should not be used outside the context of building an Application framework.
-    private let underlying: ComponentLifecycle
+    public let underlying: ComponentLifecycle
 
     /// Creates a `ServiceLifecycle` instance.
     ///
@@ -196,11 +199,8 @@ public struct ServiceLifecycle {
     public init(configuration: Configuration = .init()) {
         self.configuration = configuration
         self.underlying = ComponentLifecycle(label: self.configuration.label, logger: self.configuration.logger)
-        // setup backtrace trap as soon as possible
-        if configuration.installBacktrace {
-            self.log("installing backtrace")
-            Backtrace.install()
-        }
+        // setup backtraces as soon as possible, so if we crash during setup we get a backtrace
+        self.installBacktrace()
     }
 
     /// Starts the provided `LifecycleTask` array.
@@ -209,6 +209,9 @@ public struct ServiceLifecycle {
     /// - parameters:
     ///    - callback: The handler which is called after the start operation completes. The parameter will be `nil` on success and contain the `Error` otherwise.
     public func start(_ callback: @escaping (Error?) -> Void) {
+        guard self.underlying.idle else {
+            preconditionFailure("already started")
+        }
         self.setupShutdownHook()
         self.underlying.start(on: self.configuration.callbackQueue, callback)
     }
@@ -216,6 +219,9 @@ public struct ServiceLifecycle {
     /// Starts the provided `LifecycleTask` array and waits (blocking) until a shutdown `Signal` is captured or `shutdown` is called on another thread.
     /// Startup is performed in the order of items provided.
     public func startAndWait() throws {
+        guard self.underlying.idle else {
+            preconditionFailure("already started")
+        }
         self.setupShutdownHook()
         try self.underlying.startAndWait(on: self.configuration.callbackQueue)
     }
@@ -232,6 +238,13 @@ public struct ServiceLifecycle {
     /// Waits (blocking) until shutdown `Signal` is captured or `shutdown` is invoked on another thread.
     public func wait() {
         self.underlying.wait()
+    }
+
+    private func installBacktrace() {
+        if self.configuration.installBacktrace, ServiceLifecycle.backtracesInstalled.compareAndSwap(expected: false, desired: true) {
+            self.log("installing backtrace")
+            Backtrace.install()
+        }
     }
 
     private func setupShutdownHook() {
@@ -444,6 +457,16 @@ public class ComponentLifecycle: LifecycleTask {
     /// Waits (blocking) until `shutdown` is invoked on another thread.
     public func wait() {
         self.shutdownGroup.wait()
+    }
+
+    // MARK: - internal
+
+    internal var idle: Bool {
+        if case .idle = self.state {
+            return true
+        } else {
+            return false
+        }
     }
 
     // MARK: - private
