@@ -116,8 +116,9 @@ public struct ServiceLifecycle {
         self.underlying = ComponentLifecycle(label: self.configuration.label, logger: self.configuration.logger)
         // setup backtrace trap as soon as possible
         if configuration.installBacktrace {
-            self.log("installing backtrace")
-            Backtrace.install()
+            self.register(label: "Backtrace",
+                          start: .sync(self.setupBacktrace),
+                          shutdown: .none)
         }
     }
 
@@ -150,6 +151,11 @@ public struct ServiceLifecycle {
     /// Waits (blocking) until shutdown `Signal` is captured or `shutdown` is invoked on another thread.
     public func wait() {
         self.underlying.wait()
+    }
+
+    private func setupBacktrace() {
+        self.log("installing backtrace done")
+        Backtrace.install()
     }
 
     private func setupShutdownHook() {
