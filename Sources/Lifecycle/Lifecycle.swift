@@ -183,7 +183,7 @@ extension ServiceLifecycle {
         let signalSource = DispatchSource.makeSignalSource(signal: sig.rawValue, queue: queue)
         signal(sig.rawValue, SIG_IGN)
         signalSource.setEventHandler(handler: {
-            if (cancelAfterTrap) {
+            if cancelAfterTrap {
                 signalSource.cancel()
             }
             handler(sig)
