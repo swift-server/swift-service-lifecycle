@@ -33,6 +33,7 @@ extension ServiceLifecycleTests {
             ("testNesting", testNesting),
             ("testNesting2", testNesting2),
             ("testSignalDescription", testSignalDescription),
+            ("testBacktracesInstalledOnce", testBacktracesInstalledOnce),
         ]
     }
 }
