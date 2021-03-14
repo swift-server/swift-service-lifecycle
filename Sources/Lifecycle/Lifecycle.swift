@@ -201,6 +201,9 @@ public struct ServiceLifecycle {
         self.underlying = ComponentLifecycle(label: self.configuration.label, logger: self.configuration.logger)
         // setup backtraces as soon as possible, so if we crash during setup we get a backtrace
         self.installBacktrace()
+        self.register(label: "Shutdown hooks",
+                      start: .sync(self.setupShutdownHook),
+                      shutdown: .none)
     }
 
     /// Starts the provided `LifecycleTask` array.
@@ -212,7 +215,6 @@ public struct ServiceLifecycle {
         guard self.underlying.idle else {
             preconditionFailure("already started")
         }
-        self.setupShutdownHook()
         self.underlying.start(on: self.configuration.callbackQueue, callback)
     }
 
@@ -222,7 +224,6 @@ public struct ServiceLifecycle {
         guard self.underlying.idle else {
             preconditionFailure("already started")
         }
-        self.setupShutdownHook()
         try self.underlying.startAndWait(on: self.configuration.callbackQueue)
     }
 
