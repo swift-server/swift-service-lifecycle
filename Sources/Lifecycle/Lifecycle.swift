@@ -201,9 +201,11 @@ public struct ServiceLifecycle {
         self.underlying = ComponentLifecycle(label: self.configuration.label, logger: self.configuration.logger)
         // setup backtraces as soon as possible, so if we crash during setup we get a backtrace
         self.installBacktrace()
-        self.register(label: "Shutdown hooks",
-                      start: .sync(self.setupShutdownHook),
-                      shutdown: .none)
+        if self.configuration.shutdownSignal != nil {
+            self.register(label: "Shutdown hooks",
+                          start: .sync(self.setupShutdownHook),
+                          shutdown: .none)
+        }
     }
 
     /// Starts the provided `LifecycleTask` array.
