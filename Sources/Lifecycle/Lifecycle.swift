@@ -269,6 +269,7 @@ public struct ServiceLifecycle {
         for source in ServiceLifecycle.signalHandlerSources {
             source.cancel()
         }
+        ServiceLifecycle.signalHandlerSources = []
     }
 
     private func log(_ message: String) {
