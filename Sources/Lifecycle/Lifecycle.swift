@@ -252,7 +252,7 @@ public struct ServiceLifecycle {
         if self.configuration.shutdownSignal != nil, ServiceLifecycle.signalHandlerInstalled.compareAndSwap(expected: false, desired: true) {
             self.register(label: "Shutdown hooks",
                           start: .sync(self.installShutdownHook),
-                       shutdown: .sync(self.deinstallShutdownHook))
+                          shutdown: .sync(self.deinstallShutdownHook))
         }
     }
 
