@@ -183,6 +183,8 @@ public struct LifecycleShutdownHandler<State> {
 ///  By default, also install shutdown hooks based on `Signal` and backtraces.
 public struct ServiceLifecycle {
     private static let backtracesInstalled = AtomicBoolean(false)
+    private static let signalHandlerInstalled = AtomicBoolean(false)
+    private static var signalHandlerSources = [DispatchSourceSignal]()
 
     private let configuration: Configuration
 
@@ -201,11 +203,7 @@ public struct ServiceLifecycle {
         self.underlying = ComponentLifecycle(label: self.configuration.label, logger: self.configuration.logger)
         // setup backtraces as soon as possible, so if we crash during setup we get a backtrace
         self.installBacktrace()
-        if self.configuration.shutdownSignal != nil {
-            self.register(label: "Shutdown hooks",
-                          start: .sync(self.setupShutdownHook),
-                          shutdown: .none)
-        }
+        self.installSignalhandler()
     }
 
     /// Starts the provided `LifecycleTask` array.
@@ -250,16 +248,26 @@ public struct ServiceLifecycle {
         }
     }
 
+    private func installSignalhandler() {
+        if self.configuration.shutdownSignal != nil, ServiceLifecycle.signalHandlerInstalled.compareAndSwap(expected: false, desired: true) {
+            self.register(label: "Shutdown hooks",
+                          start: .sync(self.setupShutdownHook),
+                       shutdown: .sync(self.teardownShutdownHook))
+        }
+    }
+
     private func setupShutdownHook() {
         self.configuration.shutdownSignal?.forEach { signal in
-            self.log("setting up shutdown hook on \(signal)")
-            let signalSource = ServiceLifecycle.trap(signal: signal, handler: { signal in
+            ServiceLifecycle.signalHandlerSources.append(ServiceLifecycle.trap(signal: signal, handler: { signal in
                 self.log("intercepted signal: \(signal)")
                 self.shutdown()
-            }, cancelAfterTrap: true)
-            self.underlying.shutdownGroup.notify(queue: .global()) {
-                signalSource.cancel()
-            }
+            }, cancelAfterTrap: true))
+        }
+    }
+
+    private func teardownShutdownHook() {
+        for source in ServiceLifecycle.signalHandlerSources {
+            source.cancel()
         }
     }
 
