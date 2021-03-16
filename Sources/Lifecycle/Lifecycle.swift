@@ -183,6 +183,7 @@ public struct LifecycleShutdownHandler<State> {
 ///  By default, also install shutdown hooks based on `Signal` and backtraces.
 public struct ServiceLifecycle {
     private static let backtracesInstalled = AtomicBoolean(false)
+    private static let shutdownHooksInstalled = AtomicBoolean(false)
 
     private let configuration: Configuration
 
@@ -201,6 +202,7 @@ public struct ServiceLifecycle {
         self.underlying = ComponentLifecycle(label: self.configuration.label, logger: self.configuration.logger)
         // setup backtraces as soon as possible, so if we crash during setup we get a backtrace
         self.installBacktrace()
+        self.installShutdownHooks()
     }
 
     /// Starts the provided `LifecycleTask` array.
@@ -212,7 +214,6 @@ public struct ServiceLifecycle {
         guard self.underlying.idle else {
             preconditionFailure("already started")
         }
-        self.setupShutdownHook()
         self.underlying.start(on: self.configuration.callbackQueue, callback)
     }
 
@@ -222,7 +223,6 @@ public struct ServiceLifecycle {
         guard self.underlying.idle else {
             preconditionFailure("already started")
         }
-        self.setupShutdownHook()
         try self.underlying.startAndWait(on: self.configuration.callbackQueue)
     }
 
@@ -247,9 +247,16 @@ public struct ServiceLifecycle {
         }
     }
 
-    private func setupShutdownHook() {
+    private func installShutdownHooks() {
+        if self.configuration.shutdownSignal != nil, ServiceLifecycle.shutdownHooksInstalled.compareAndSwap(expected: false, desired: true) {
+            self.register(label: "Shutdown hooks",
+                          start: .sync(self.installShutdownSignalHooks),
+                          shutdown: .none)
+        }
+    }
+
+    private func installShutdownSignalHooks() {
         self.configuration.shutdownSignal?.forEach { signal in
-            self.log("setting up shutdown hook on \(signal)")
             let signalSource = ServiceLifecycle.trap(signal: signal, handler: { signal in
                 self.log("intercepted signal: \(signal)")
                 self.shutdown()
