@@ -250,12 +250,12 @@ public struct ServiceLifecycle {
     private func installSignalHandler() {
         if self.configuration.shutdownSignal != nil, ServiceLifecycle.signalHandlerInstalled.compareAndSwap(expected: false, desired: true) {
             self.register(label: "Shutdown hooks",
-                          start: .sync(self.installShutdownHook),
+                          start: .sync(self.installShutdownHooks),
                           shutdown: .none)
         }
     }
 
-    private func installShutdownHook() {
+    private func installShutdownHooks() {
         self.configuration.shutdownSignal?.forEach { signal in
             let signalSource = ServiceLifecycle.trap(signal: signal, handler: { signal in
                 self.log("intercepted signal: \(signal)")
