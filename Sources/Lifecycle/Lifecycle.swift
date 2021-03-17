@@ -180,9 +180,12 @@ public struct LifecycleShutdownHandler<State> {
 // MARK: - ServiceLifecycle
 
 /// `ServiceLifecycle` provides a basic mechanism to cleanly startup and shutdown the application, freeing resources in order before exiting.
-///  By default, also install shutdown hooks based on `Signal` and backtraces.
+/// By default, also install shutdown hooks based on `Signal` and backtraces.
+/// `ServiceLifecycle` is designed to be used by executables/applications, and as such there should only a single copy of `ServiceLifecycle` loaded into the memory space
+/// Creating multiple copies of `ServiceLifecycle` will lead to a crash.
+/// Libraries should always use `ComponentLifecycle` for composition.
 public struct ServiceLifecycle {
-    private static let backtracesInstalled = AtomicBoolean(false)
+    private static let initialized = AtomicBoolean(false)
 
     private let configuration: Configuration
 
@@ -196,11 +199,23 @@ public struct ServiceLifecycle {
     ///
     /// - parameters:
     ///    - configuration: Defines lifecycle `Configuration`
-    public init(configuration: Configuration = .init()) {
+    public init(configuration: Configuration = .init(), file: StaticString = #file, line: UInt = #line) {
+        self.init(validateSingleInstance: true, configuration: configuration, file: file, line: line)
+    }
+
+    private init(validateSingleInstance: Bool = true, configuration: Configuration, file: StaticString = #file, line: UInt = #line) {
+        if validateSingleInstance, !ServiceLifecycle.initialized.compareAndSwap(expected: false, desired: true) {
+            fatalError("only a single instance of ServiceLifecycle is allowed per process", file: file, line: line)
+        }
         self.configuration = configuration
         self.underlying = ComponentLifecycle(label: self.configuration.label, logger: self.configuration.logger)
         // setup backtraces as soon as possible, so if we crash during setup we get a backtrace
         self.installBacktrace()
+    }
+
+    // for testing
+    internal static func makeForTesting(configuration: Configuration = .init()) -> ServiceLifecycle {
+        return ServiceLifecycle(validateSingleInstance: false, configuration: configuration)
     }
 
     /// Starts the provided `LifecycleTask` array.
@@ -241,7 +256,7 @@ public struct ServiceLifecycle {
     }
 
     private func installBacktrace() {
-        if self.configuration.installBacktrace, ServiceLifecycle.backtracesInstalled.compareAndSwap(expected: false, desired: true) {
+        if self.configuration.installBacktrace {
             self.log("installing backtrace")
             Backtrace.install()
         }

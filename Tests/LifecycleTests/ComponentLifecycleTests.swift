@@ -899,7 +899,7 @@ final class ComponentLifecycleTests: XCTestCase {
 
         let count = Int.random(in: 10 ..< 20)
         let sempahore = DispatchSemaphore(value: count)
-        let lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: nil))
+        let lifecycle = ServiceLifecycle.makeForTesting(configuration: .init(shutdownSignal: nil))
 
         for index in 0 ..< count {
             let item = Item(label: "\(index)", failStart: index == count / 2, exptectedState: index <= count / 2 ? .shutdown : .idle, sempahore: sempahore)
@@ -956,7 +956,7 @@ final class ComponentLifecycleTests: XCTestCase {
         }
 
         let sempahore = DispatchSemaphore(value: 6)
-        let lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: nil))
+        let lifecycle = ServiceLifecycle.makeForTesting(configuration: .init(shutdownSignal: nil))
 
         let item1 = DestructionSensitive(label: "1", sempahore: sempahore)
         lifecycle.register(label: item1.label, start: .sync(item1.start), shutdown: .sync(item1.shutdown))
