@@ -18,9 +18,9 @@ import Darwin
 import Glibc
 #endif
 import Backtrace
+import CoreMetrics
 import Dispatch
 import Logging
-import Metrics
 
 // MARK: - LifecycleTask
 
@@ -473,9 +473,12 @@ public class ComponentLifecycle: LifecycleTask {
             guard case .idle = self.state else {
                 preconditionFailure("invalid state, \(self.state)")
             }
-            self.log("starting")
             self.state = .starting(queue)
         }
+
+        self.log("starting")
+        Counter(label: "\(self.label).lifecycle.start").increment()
+
         if tasks.count == 0 {
             self.log(level: .notice, "no tasks provided")
         }
@@ -517,7 +520,9 @@ public class ComponentLifecycle: LifecycleTask {
             return callback(index, nil)
         }
         self.log("starting tasks [\(tasks[index].label)]")
+        let startTime = DispatchTime.now()
         start { error in
+            Timer(label: "\(self.label).\(tasks[index].label).lifecycle.start").recordNanoseconds(DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds)
             if let error = error {
                 self.log(level: .error, "failed to start [\(tasks[index].label)]: \(error)")
                 return callback(index, error)
@@ -532,9 +537,12 @@ public class ComponentLifecycle: LifecycleTask {
 
     private func _shutdown(on queue: DispatchQueue, tasks: [LifecycleTask], callback: @escaping () -> Void) {
         self.stateLock.withLock {
-            log("shutting down")
             self.state = .shuttingDown(queue)
         }
+
+        self.log("shutting down")
+        Counter(label: "\(self.label).lifecycle.shutdown").increment()
+
         self.shutdownTask(on: queue, tasks: tasks.reversed(), index: 0, errors: nil) { errors in
             self.stateLock.withLock {
                 guard case .shuttingDown = self.state else {
@@ -555,8 +563,11 @@ public class ComponentLifecycle: LifecycleTask {
         if index >= tasks.count {
             return callback(errors)
         }
+
         self.log("stopping tasks [\(tasks[index].label)]")
+        let startTime = DispatchTime.now()
         shutdown { error in
+            Timer(label: "\(self.label).\(tasks[index].label).lifecycle.shutdown").recordNanoseconds(DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds)
             var errors = errors
             if let error = error {
                 if errors == nil {
