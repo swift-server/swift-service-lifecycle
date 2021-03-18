@@ -13,7 +13,11 @@
 //===----------------------------------------------------------------------===//
 
 #if canImport(Atomics)
+#if swift(>=5.1)
+@_implementationOnly import Atomics
+#else
 import Atomics
+#endif
 #else
 import CLifecycleHelpers
 #endif
