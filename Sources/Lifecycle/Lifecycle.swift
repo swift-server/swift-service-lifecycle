@@ -187,10 +187,7 @@ public struct ServiceLifecycle {
     private let configuration: Configuration
 
     /// The underlying `ComponentLifecycle` instance
-    ///
-    /// Designed for composition purposes, mainly for frameworks that need to offer both top-level start/stop functionality and composition into larger systems.
-    /// In other words, should not be used outside the context of building an Application framework.
-    public let underlying: ComponentLifecycle
+    private let underlying: ComponentLifecycle
 
     /// Creates a `ServiceLifecycle` instance.
     ///
