@@ -1265,7 +1265,7 @@ final class ComponentLifecycleTests: XCTestCase {
         lifecycle.wait()
         XCTAssertEqual(metrics.counters["\(lifecycle.label).lifecycle.start"]?.value, 1, "expected start counter to be 1")
         XCTAssertEqual(metrics.counters["\(lifecycle.label).lifecycle.shutdown"]?.value, 1, "expected shutdown counter to be 1")
-        items.forEach { XCTAssertGreaterThan(metrics.timers["\(lifecycle.label).\($0.label).lifecycle.shutdown"]?.value ?? 0, 0, "expected start timer to be non-zero") }
+        items.forEach { XCTAssertGreaterThan(metrics.timers["\(lifecycle.label).\($0.label).lifecycle.start"]?.value ?? 0, 0, "expected start timer to be non-zero") }
         items.forEach { XCTAssertGreaterThan(metrics.timers["\(lifecycle.label).\($0.label).lifecycle.shutdown"]?.value ?? 0, 0, "expected shutdown timer to be non-zero") }
     }
 }
