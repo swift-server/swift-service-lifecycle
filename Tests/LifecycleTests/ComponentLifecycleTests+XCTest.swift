@@ -66,6 +66,7 @@ extension ComponentLifecycleTests {
             ("testStatefulNIO", testStatefulNIO),
             ("testStatefulNIOStartFailure", testStatefulNIOStartFailure),
             ("testStatefulNIOShutdownFailure", testStatefulNIOShutdownFailure),
+            ("testMetrics", testMetrics),
         ]
     }
 }

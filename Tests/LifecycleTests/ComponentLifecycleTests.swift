@@ -14,6 +14,7 @@
 
 @testable import Lifecycle
 import LifecycleNIOCompat
+import Metrics
 import NIO
 import XCTest
 
@@ -1246,5 +1247,112 @@ final class ComponentLifecycleTests: XCTestCase {
         }
 
         XCTAssertFalse(item.shutdown, "expected item to be shutdown")
+    }
+
+    func testMetrics() {
+        let metrics = TestMetrics()
+        MetricsSystem.bootstrap(metrics)
+
+        let items = (0 ..< 3).map { _ in GoodItem(id: UUID().uuidString, startDelay: 0.1, shutdownDelay: 0.1) }
+        let lifecycle = ComponentLifecycle(label: "test")
+        lifecycle.register(items)
+        lifecycle.start { startError in
+            XCTAssertNil(startError, "not expecting error")
+            lifecycle.shutdown { shutdownErrors in
+                XCTAssertNil(shutdownErrors, "not expecting error")
+            }
+        }
+        lifecycle.wait()
+        XCTAssertEqual(metrics.counters["\(lifecycle.label).lifecycle.start"]?.value, 1, "expected start counter to be 1")
+        XCTAssertEqual(metrics.counters["\(lifecycle.label).lifecycle.shutdown"]?.value, 1, "expected shutdown counter to be 1")
+        items.forEach { XCTAssertGreaterThan(metrics.timers["\(lifecycle.label).\($0.label).lifecycle.shutdown"]?.value ?? 0, 0, "expected start timer to be non-zero") }
+        items.forEach { XCTAssertGreaterThan(metrics.timers["\(lifecycle.label).\($0.label).lifecycle.shutdown"]?.value ?? 0, 0, "expected shutdown timer to be non-zero") }
+    }
+}
+
+class TestMetrics: MetricsFactory, RecorderHandler {
+    var counters = [String: TestCounter]()
+    var timers = [String: TestTimer]()
+    let lock = Lock()
+
+    public init() {}
+
+    public func makeCounter(label: String, dimensions: [(String, String)]) -> CounterHandler {
+        let counter = TestCounter(label: label)
+        self.lock.withLock {
+            self.counters[label] = counter
+        }
+        return counter
+    }
+
+    public func makeRecorder(label: String, dimensions: [(String, String)], aggregate: Bool) -> RecorderHandler {
+        return self
+    }
+
+    public func makeTimer(label: String, dimensions: [(String, String)]) -> TimerHandler {
+        let timer = TestTimer(label: label)
+        self.lock.withLock {
+            self.timers[label] = timer
+        }
+        return timer
+    }
+
+    public func destroyCounter(_: CounterHandler) {}
+    public func destroyRecorder(_: RecorderHandler) {}
+    public func destroyTimer(_: TimerHandler) {}
+
+    public func record(_: Int64) {}
+    public func record(_: Double) {}
+
+    class TestCounter: CounterHandler {
+        let label: String
+        var _value: Int64
+        let lock = Lock()
+
+        init(label: String) {
+            self.label = label
+            self._value = 0
+        }
+
+        public func increment(by: Int64) {
+            self.lock.withLock {
+                self._value += by
+            }
+        }
+
+        public func reset() {
+            self.lock.withLock {
+                self._value = 0
+            }
+        }
+
+        public var value: Int64 {
+            return self.lock.withLock {
+                return self._value
+            }
+        }
+    }
+
+    class TestTimer: TimerHandler {
+        let label: String
+        var _value: Int64
+        let lock = Lock()
+
+        init(label: String) {
+            self.label = label
+            self._value = 0
+        }
+
+        public func recordNanoseconds(_ value: Int64) {
+            self.lock.withLock {
+                self._value = value
+            }
+        }
+
+        public var value: Int64 {
+            return self.lock.withLock {
+                return self._value
+            }
+        }
     }
 }
