@@ -12,6 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if compiler(>=5.5)
+import _Concurrency
+#endif
+
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS)
 import Darwin
 #else
@@ -95,6 +99,28 @@ public struct LifecycleHandler {
     }
 }
 
+#if compiler(>=5.5)
+@available(macOS 12.0, *)
+extension LifecycleHandler {
+    public init(_ handler: @escaping () async throws -> Void) {
+        self = LifecycleHandler { callback in
+            detach {
+                do {
+                    try await handler()
+                    callback(nil)
+                } catch {
+                    callback(error)
+                }
+            }
+        }
+    }
+
+    public static func async(_ handler: @escaping () async throws -> Void) -> LifecycleHandler {
+        return LifecycleHandler(handler)
+    }
+}
+#endif
+
 // MARK: - Stateful Lifecycle Handlers
 
 /// LifecycleHandler for starting stateful tasks. The state can then be fed into a LifecycleShutdownHandler
@@ -137,6 +163,28 @@ public struct LifecycleStartHandler<State> {
     }
 }
 
+#if compiler(>=5.5)
+@available(macOS 12.0, *)
+extension LifecycleStartHandler {
+    public init(_ handler: @escaping () async throws -> State) {
+        self = LifecycleStartHandler { callback in
+            detach {
+                do {
+                    let state = try await handler()
+                    callback(.success(state))
+                } catch {
+                    callback(.failure(error))
+                }
+            }
+        }
+    }
+
+    public static func async(_ handler: @escaping () async throws -> State) -> LifecycleStartHandler {
+        return LifecycleStartHandler(handler)
+    }
+}
+#endif
+
 /// LifecycleHandler for shutting down stateful tasks. The state comes from a LifecycleStartHandler
 public struct LifecycleShutdownHandler<State> {
     private let underlying: (State, @escaping (Error?) -> Void) -> Void
@@ -176,6 +224,28 @@ public struct LifecycleShutdownHandler<State> {
         self.underlying(state, completionHandler)
     }
 }
+
+#if compiler(>=5.5)
+@available(macOS 12.0, *)
+extension LifecycleShutdownHandler {
+    public init(_ handler: @escaping (State) async throws -> Void) {
+        self = LifecycleShutdownHandler { state, callback in
+            detach {
+                do {
+                    try await handler(state)
+                    callback(nil)
+                } catch {
+                    callback(error)
+                }
+            }
+        }
+    }
+
+    public static func async(_ handler: @escaping (State) async throws -> Void) -> LifecycleShutdownHandler {
+        return LifecycleShutdownHandler(handler)
+    }
+}
+#endif
 
 // MARK: - ServiceLifecycle
 
@@ -671,7 +741,7 @@ internal struct _LifecycleTask: LifecycleTask {
     }
 }
 
-// internal for testing
+// internal (instead of private) for testing
 internal class StatefulLifecycleTask<State>: LifecycleTask {
     let label: String
     let shutdownIfNotStarted: Bool = false
