@@ -258,7 +258,7 @@ public struct ServiceLifecycle {
     }
 
     private func log(_ message: String) {
-        self.underlying.log(message)
+        self.underlying.logger.info("\(message)")
     }
 }
 
@@ -357,7 +357,7 @@ struct ShutdownError: Error {
 /// `ComponentLifecycle` provides a basic mechanism to cleanly startup and shutdown a subsystem in a larger application, freeing resources in order before exiting.
 public class ComponentLifecycle: LifecycleTask {
     public let label: String
-    private let logger: Logger
+    fileprivate let logger: Logger
     internal let shutdownGroup = DispatchGroup()
 
     private var state = State.idle([])
@@ -435,7 +435,7 @@ public class ComponentLifecycle: LifecycleTask {
             callback(nil)
         case .shutdown:
             self.stateLock.unlock()
-            self.log(level: .warning, "already shutdown")
+            self.logger.warning("already shutdown")
             callback(nil)
         case .starting(let queue):
             self.state = .shuttingDown(queue)
@@ -476,11 +476,11 @@ public class ComponentLifecycle: LifecycleTask {
             self.state = .starting(queue)
         }
 
-        self.log("starting")
+        self.logger.info("starting")
         Counter(label: "\(self.label).lifecycle.start").increment()
 
         if tasks.count == 0 {
-            self.log(level: .notice, "no tasks provided")
+            self.logger.notice("no tasks provided")
         }
         self.startTask(on: queue, tasks: tasks, index: 0) { started, error in
             self.stateLock.lock()
@@ -519,12 +519,12 @@ public class ComponentLifecycle: LifecycleTask {
         if index >= tasks.count {
             return callback(index, nil)
         }
-        self.log("starting tasks [\(tasks[index].label)]")
+        self.logger.info("starting tasks [\(tasks[index].label)]")
         let startTime = DispatchTime.now()
         start { error in
             Timer(label: "\(self.label).\(tasks[index].label).lifecycle.start").recordNanoseconds(DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds)
             if let error = error {
-                self.log(level: .error, "failed to start [\(tasks[index].label)]: \(error)")
+                self.logger.error("failed to start [\(tasks[index].label)]: \(error)")
                 return callback(index, error)
             }
             // shutdown called while starting
@@ -540,7 +540,7 @@ public class ComponentLifecycle: LifecycleTask {
             self.state = .shuttingDown(queue)
         }
 
-        self.log("shutting down")
+        self.logger.info("shutting down")
         Counter(label: "\(self.label).lifecycle.shutdown").increment()
 
         self.shutdownTask(on: queue, tasks: tasks.reversed(), index: 0, errors: nil) { errors in
@@ -550,7 +550,7 @@ public class ComponentLifecycle: LifecycleTask {
                 }
                 self.state = .shutdown(errors)
             }
-            self.log("bye")
+            self.logger.info("bye")
             callback()
         }
     }
@@ -564,7 +564,7 @@ public class ComponentLifecycle: LifecycleTask {
             return callback(errors)
         }
 
-        self.log("stopping tasks [\(tasks[index].label)]")
+        self.logger.info("stopping tasks [\(tasks[index].label)]")
         let startTime = DispatchTime.now()
         shutdown { error in
             Timer(label: "\(self.label).\(tasks[index].label).lifecycle.shutdown").recordNanoseconds(DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds)
@@ -574,14 +574,10 @@ public class ComponentLifecycle: LifecycleTask {
                     errors = [:]
                 }
                 errors![tasks[index].label] = error
-                self.log(level: .error, "failed to stop [\(tasks[index].label)]: \(error)")
+                self.logger.error("failed to stop [\(tasks[index].label)]: \(error)")
             }
             self.shutdownTask(on: queue, tasks: tasks, index: index + 1, errors: errors, callback: callback)
         }
-    }
-
-    internal func log(level: Logger.Level = .info, _ message: String) {
-        self.logger.log(level: level, "[\(self.label)] \(message)")
     }
 
     private enum State {
