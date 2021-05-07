@@ -14,4 +14,4 @@ services:
       - SKIP_SIGNAL_TEST=true
 
   shell:
-    image: swift-service-lifecycle:20.04-main4
+    image: swift-service-lifecycle:20.04-main
