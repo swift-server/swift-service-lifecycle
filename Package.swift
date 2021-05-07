@@ -20,9 +20,15 @@ let package = Package(
 #if compiler(>=5.2)
 package.dependencies += [
     .package(url: "https://github.com/apple/swift-atomics.git", .exact("0.0.3")), // exact since < 1.0
+    .package(url: "https://github.com/apple/swift-argument-parser.git", from: "0.4.0"), // used in "LifecycleCommand"
 ]
 package.targets += [
     .target(name: "Lifecycle", dependencies: ["Logging", "Metrics", "Backtrace", "Atomics"]),
+    .target(name: "LifecycleCommand", dependencies: ["ArgumentParser", "Lifecycle"]),
+    .testTarget(name: "LifecycleCommandTests", dependencies: ["LifecycleCommand"]),
+]
+package.products += [
+    .library(name: "LifecycleCommand", targets: ["LifecycleCommand"]),
 ]
 #else
 package.targets += [
