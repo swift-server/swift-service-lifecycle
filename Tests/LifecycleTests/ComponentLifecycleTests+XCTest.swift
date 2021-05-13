@@ -66,6 +66,10 @@ extension ComponentLifecycleTests {
             ("testStatefulNIO", testStatefulNIO),
             ("testStatefulNIOStartFailure", testStatefulNIOStartFailure),
             ("testStatefulNIOShutdownFailure", testStatefulNIOShutdownFailure),
+            ("testAsyncAwait", testAsyncAwait),
+            ("testAsyncAwaitStateful", testAsyncAwaitStateful),
+            ("testAsyncAwaitErrorOnStart", testAsyncAwaitErrorOnStart),
+            ("testAsyncAwaitErrorOnShutdown", testAsyncAwaitErrorOnShutdown),
             ("testMetrics", testMetrics),
         ]
     }
