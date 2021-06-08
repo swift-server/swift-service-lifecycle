@@ -306,3 +306,7 @@ lifecycle.registerShutdown(
 -------
 
 Do not hesitate to get in touch as well, over on https://forums.swift.org/c/server.
+
+## Security
+
+Please see [SECURITY.md](SECURITY.md) for details on the security process.
