@@ -20,7 +20,7 @@ import XCTest
 final class ServiceLifecycleTests: XCTestCase {
     func testStartThenShutdown() {
         let items = (5 ... Int.random(in: 10 ... 20)).map { _ in GoodItem() }
-        let lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: nil))
+        let lifecycle = ServiceLifecycle.makeForTesting(configuration: .init(shutdownSignal: nil))
         lifecycle.register(items)
         lifecycle.start { startError in
             XCTAssertNil(startError, "not expecting error")
@@ -39,7 +39,7 @@ final class ServiceLifecycleTests: XCTestCase {
         }
         let signal = ServiceLifecycle.Signal.ALRM
         let items = (0 ... Int.random(in: 10 ... 20)).map { _ in GoodItem() }
-        let lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: [signal]))
+        let lifecycle = ServiceLifecycle.makeForTesting(configuration: .init(shutdownSignal: [signal]))
         lifecycle.register(items)
         lifecycle.start { error in
             XCTAssertNil(error, "not expecting error")
@@ -80,7 +80,7 @@ final class ServiceLifecycleTests: XCTestCase {
             }
         }
 
-        let lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: nil))
+        let lifecycle = ServiceLifecycle.makeForTesting(configuration: .init(shutdownSignal: nil))
         let semaphore = DispatchSemaphore(value: 0)
         DispatchQueue(label: "test").asyncAfter(deadline: .now() + 0.1) {
             semaphore.wait()
@@ -129,7 +129,7 @@ final class ServiceLifecycleTests: XCTestCase {
         }
 
         let signal = ServiceLifecycle.Signal.ALRM
-        let lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: [signal]))
+        let lifecycle = ServiceLifecycle.makeForTesting(configuration: .init(shutdownSignal: [signal]))
         let semaphore = DispatchSemaphore(value: 0)
         DispatchQueue(label: "test").asyncAfter(deadline: .now() + 0.1) {
             semaphore.wait()
@@ -156,7 +156,7 @@ final class ServiceLifecycleTests: XCTestCase {
             }
         }
 
-        let lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: nil))
+        let lifecycle = ServiceLifecycle.makeForTesting(configuration: .init(shutdownSignal: nil))
         lifecycle.register(GoodItem(), BadItem())
         XCTAssertThrowsError(try lifecycle.startAndWait()) { error in
             XCTAssert(error is TestError, "expected error to match")
@@ -172,7 +172,7 @@ final class ServiceLifecycleTests: XCTestCase {
         let subLifecycle2 = ComponentLifecycle(label: "sub2")
         subLifecycle2.register(items2)
 
-        let toplifecycle = ServiceLifecycle()
+        let toplifecycle = ServiceLifecycle.makeForTesting()
         let items3 = (0 ... Int.random(in: 10 ... 20)).map { _ in GoodItem() }
         toplifecycle.register([subLifecycle1, subLifecycle2] + items3)
 
@@ -209,7 +209,7 @@ final class ServiceLifecycleTests: XCTestCase {
             }
         }
 
-        let lifecycle = ServiceLifecycle()
+        let lifecycle = ServiceLifecycle.makeForTesting()
         let subsystem = SubSystem()
         lifecycle.register(subsystem.lifecycle)
 
@@ -230,7 +230,7 @@ final class ServiceLifecycleTests: XCTestCase {
 
     func testBacktracesInstalledOnce() {
         let config = ServiceLifecycle.Configuration(installBacktrace: true)
-        _ = ServiceLifecycle(configuration: config)
-        _ = ServiceLifecycle(configuration: config)
+        _ = ServiceLifecycle.makeForTesting(configuration: config)
+        _ = ServiceLifecycle.makeForTesting(configuration: config)
     }
 }
