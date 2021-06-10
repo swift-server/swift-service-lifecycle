@@ -104,7 +104,7 @@ public struct LifecycleHandler {
 extension LifecycleHandler {
     public init(_ handler: @escaping () async throws -> Void) {
         self = LifecycleHandler { callback in
-            detach {
+            Task {
                 do {
                     try await handler()
                     callback(nil)
@@ -168,7 +168,7 @@ public struct LifecycleStartHandler<State> {
 extension LifecycleStartHandler {
     public init(_ handler: @escaping () async throws -> State) {
         self = LifecycleStartHandler { callback in
-            detach {
+            Task {
                 do {
                     let state = try await handler()
                     callback(.success(state))
@@ -230,7 +230,7 @@ public struct LifecycleShutdownHandler<State> {
 extension LifecycleShutdownHandler {
     public init(_ handler: @escaping (State) async throws -> Void) {
         self = LifecycleShutdownHandler { state, callback in
-            detach {
+            Task {
                 do {
                     try await handler(state)
                     callback(nil)
