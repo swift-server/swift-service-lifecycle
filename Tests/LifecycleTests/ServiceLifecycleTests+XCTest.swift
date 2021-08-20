@@ -34,6 +34,7 @@ extension ServiceLifecycleTests {
             ("testNesting2", testNesting2),
             ("testSignalDescription", testSignalDescription),
             ("testBacktracesInstalledOnce", testBacktracesInstalledOnce),
+            ("testRepeatShutdown", testRepeatShutdown),
         ]
     }
 }

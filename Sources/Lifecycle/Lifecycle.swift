@@ -333,6 +333,9 @@ public struct ServiceLifecycle {
 }
 
 extension ServiceLifecycle {
+    private static var trapped: Set<Int32> = []
+    private static let trappedLock = Lock()
+
     /// Setup a signal trap.
     ///
     /// - parameters:
@@ -342,14 +345,20 @@ extension ServiceLifecycle {
     ///    - cancelAfterTrap: Defaults to false, which means the signal handler can be run multiple times. If true, the DispatchSignalSource will be cancelled after being trapped once.
     /// - returns: a `DispatchSourceSignal` for the given trap. The source must be cancelled by the caller.
     public static func trap(signal sig: Signal, handler: @escaping (Signal) -> Void, on queue: DispatchQueue = .global(), cancelAfterTrap: Bool = false) -> DispatchSourceSignal {
+        // on linux, we can call singal() once per process
+        self.trappedLock.withLockVoid {
+            if !trapped.contains(sig.rawValue) {
+                signal(sig.rawValue, SIG_IGN)
+                trapped.insert(sig.rawValue)
+            }
+        }
         let signalSource = DispatchSource.makeSignalSource(signal: sig.rawValue, queue: queue)
-        signal(sig.rawValue, SIG_IGN)
-        signalSource.setEventHandler(handler: {
+        signalSource.setEventHandler {
             if cancelAfterTrap {
                 signalSource.cancel()
             }
             handler(sig)
-        })
+        }
         signalSource.resume()
         return signalSource
     }

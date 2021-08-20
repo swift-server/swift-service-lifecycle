@@ -233,4 +233,42 @@ final class ServiceLifecycleTests: XCTestCase {
         _ = ServiceLifecycle(configuration: config)
         _ = ServiceLifecycle(configuration: config)
     }
+
+    func testRepeatShutdown() {
+        if ProcessInfo.processInfo.environment["SKIP_SIGNAL_TEST"].flatMap(Bool.init) ?? false {
+            print("skipping testRepeatShutdown")
+            return
+        }
+
+        var count = 0
+
+        struct Service {
+            static let signal = ServiceLifecycle.Signal.ALRM
+
+            let lifecycle: ServiceLifecycle
+
+            init() {
+                self.lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: [Service.signal]))
+                self.lifecycle.register(GoodItem())
+            }
+        }
+
+        func gracefulShutdown() {
+            let service = Service()
+            service.lifecycle.start { error in
+                XCTAssertNil(error, "not expecting error")
+                kill(getpid(), Service.signal.rawValue)
+            }
+
+            service.lifecycle.wait()
+            count = count + 1 // not thread safe but fine for this purpose
+        }
+
+        let attempts = Int.random(in: 2 ..< 5)
+        for _ in 0 ..< attempts {
+            gracefulShutdown()
+        }
+
+        XCTAssertEqual(attempts, count)
+    }
 }
