@@ -159,23 +159,75 @@ final class ComponentLifecycleTests: XCTestCase {
 
     func testShutdownWhenIdle() {
         let lifecycle = ComponentLifecycle(label: "test")
-        lifecycle.register(GoodItem())
 
-        let sempahpore1 = DispatchSemaphore(value: 0)
+        let item = GoodItem()
+        lifecycle.register(item)
+
+        let semaphore1 = DispatchSemaphore(value: 0)
         lifecycle.shutdown { errors in
             XCTAssertNil(errors)
-            sempahpore1.signal()
+            semaphore1.signal()
         }
         lifecycle.wait()
-        XCTAssertEqual(.success, sempahpore1.wait(timeout: .now() + 1))
+        XCTAssertEqual(.success, semaphore1.wait(timeout: .now() + 1))
 
-        let sempahpore2 = DispatchSemaphore(value: 0)
+        let semaphore2 = DispatchSemaphore(value: 0)
         lifecycle.shutdown { errors in
             XCTAssertNil(errors)
-            sempahpore2.signal()
+            semaphore2.signal()
         }
         lifecycle.wait()
-        XCTAssertEqual(.success, sempahpore2.wait(timeout: .now() + 1))
+        XCTAssertEqual(.success, semaphore2.wait(timeout: .now() + 1))
+
+        XCTAssertEqual(item.state, .idle, "expected item to be idle")
+    }
+
+    func testShutdownWhenIdleAndNoItems() {
+        let lifecycle = ComponentLifecycle(label: "test")
+
+        let semaphore1 = DispatchSemaphore(value: 0)
+        lifecycle.shutdown { errors in
+            XCTAssertNil(errors)
+            semaphore1.signal()
+        }
+        lifecycle.wait()
+        XCTAssertEqual(.success, semaphore1.wait(timeout: .now() + 1))
+
+        let semaphore2 = DispatchSemaphore(value: 0)
+        lifecycle.shutdown { errors in
+            XCTAssertNil(errors)
+            semaphore2.signal()
+        }
+        lifecycle.wait()
+        XCTAssertEqual(.success, semaphore2.wait(timeout: .now() + 1))
+    }
+
+    func testIfNotStartedWhenIdle() {
+        var shutdown1Called = false
+        var shutdown2Called = false
+        var shutdown3Called = false
+
+        let lifecycle = ComponentLifecycle(label: "test")
+
+        lifecycle.register(label: "shutdown1",
+                           start: .sync {},
+                           shutdown: .sync { shutdown1Called = true },
+                           shutdownIfNotStarted: true)
+
+        lifecycle.register(label: "shutdown2", start: .none, shutdown: .sync {
+            shutdown2Called = true
+        })
+
+        lifecycle.registerShutdown(label: "shutdown3", .sync {
+            shutdown3Called = true
+        })
+
+        lifecycle.shutdown()
+        lifecycle.wait()
+
+        XCTAssertTrue(shutdown1Called, "expected shutdown to be called")
+        XCTAssertTrue(shutdown2Called, "expected shutdown to be called")
+        XCTAssertTrue(shutdown3Called, "expected shutdown to be called")
     }
 
     func testShutdownWhenShutdown() {
