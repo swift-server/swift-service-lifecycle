@@ -911,21 +911,21 @@ final class ComponentLifecycleTests: XCTestCase {
     func testShutdownOnlyStarted() {
         class Item {
             let label: String
-            let sempahore: DispatchSemaphore
+            let semaphore: DispatchSemaphore
             let failStart: Bool
-            let exptectedState: State
+            let expectedState: State
             var state = State.idle
 
             deinit {
-                XCTAssertEqual(self.state, self.exptectedState, "\"\(self.label)\" should be \(self.exptectedState)")
-                self.sempahore.signal()
+                XCTAssertEqual(self.state, self.expectedState, "\"\(self.label)\" should be \(self.expectedState)")
+                self.semaphore.signal()
             }
 
-            init(label: String, failStart: Bool, exptectedState: State, sempahore: DispatchSemaphore) {
+            init(label: String, failStart: Bool, expectedState: State, semaphore: DispatchSemaphore) {
                 self.label = label
                 self.failStart = failStart
-                self.exptectedState = exptectedState
-                self.sempahore = sempahore
+                self.expectedState = expectedState
+                self.semaphore = semaphore
             }
 
             func start() throws {
@@ -951,11 +951,12 @@ final class ComponentLifecycleTests: XCTestCase {
         }
 
         let count = Int.random(in: 10 ..< 20)
-        let sempahore = DispatchSemaphore(value: count)
+        let semaphore = DispatchSemaphore(value: count)
         let lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: nil))
 
         for index in 0 ..< count {
-            let item = Item(label: "\(index)", failStart: index == count / 2, exptectedState: index <= count / 2 ? .shutdown : .idle, sempahore: sempahore)
+            let failStart = index == count / 2
+            let item = Item(label: "\(index)", failStart: failStart, expectedState: failStart ? .error : index <= count / 2 ? .shutdown : .idle, semaphore: semaphore)
             lifecycle.register(label: item.label, start: .sync(item.start), shutdown: .sync(item.shutdown))
         }
 
@@ -965,25 +966,29 @@ final class ComponentLifecycleTests: XCTestCase {
         }
         lifecycle.wait()
 
-        XCTAssertEqual(.success, sempahore.wait(timeout: .now() + 1))
+        XCTAssertEqual(.success, semaphore.wait(timeout: .now() + 1))
     }
 
     func testShutdownWhenStartFailedIfAsked() {
         class DestructionSensitive {
             let label: String
             let failStart: Bool
-            let sempahore: DispatchSemaphore
+            let semaphore: DispatchSemaphore
             var state = State.idle
 
             deinit {
-                XCTAssertEqual(self.state, .shutdown, "\"\(self.label)\" should be shutdown")
-                self.sempahore.signal()
+                if failStart {
+                    XCTAssertEqual(self.state, .error, "\"\(self.label)\" should be error")
+                } else {
+                    XCTAssertEqual(self.state, .shutdown, "\"\(self.label)\" should be shutdown")
+                }
+                self.semaphore.signal()
             }
 
-            init(label: String, failStart: Bool = false, sempahore: DispatchSemaphore) {
+            init(label: String, failStart: Bool = false, semaphore: DispatchSemaphore) {
                 self.label = label
                 self.failStart = failStart
-                self.sempahore = sempahore
+                self.semaphore = semaphore
             }
 
             func start() throws {
@@ -1008,25 +1013,25 @@ final class ComponentLifecycleTests: XCTestCase {
             struct InitError: Error {}
         }
 
-        let sempahore = DispatchSemaphore(value: 6)
+        let semaphore = DispatchSemaphore(value: 6)
         let lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: nil))
 
-        let item1 = DestructionSensitive(label: "1", sempahore: sempahore)
+        let item1 = DestructionSensitive(label: "1", semaphore: semaphore)
         lifecycle.register(label: item1.label, start: .sync(item1.start), shutdown: .sync(item1.shutdown))
 
-        let item2 = DestructionSensitive(label: "2", sempahore: sempahore)
+        let item2 = DestructionSensitive(label: "2", semaphore: semaphore)
         lifecycle.registerShutdown(label: item2.label, .sync(item2.shutdown))
 
-        let item3 = DestructionSensitive(label: "3", failStart: true, sempahore: sempahore)
+        let item3 = DestructionSensitive(label: "3", failStart: true, semaphore: semaphore)
         lifecycle.register(label: item3.label, start: .sync(item3.start), shutdown: .sync(item3.shutdown))
 
-        let item4 = DestructionSensitive(label: "4", sempahore: sempahore)
+        let item4 = DestructionSensitive(label: "4", semaphore: semaphore)
         lifecycle.registerShutdown(label: item4.label, .sync(item4.shutdown))
 
-        let item5 = DestructionSensitive(label: "5", sempahore: sempahore)
+        let item5 = DestructionSensitive(label: "5", semaphore: semaphore)
         lifecycle.register(label: item5.label, start: .none, shutdown: .sync(item5.shutdown))
 
-        let item6 = DestructionSensitive(label: "6", sempahore: sempahore)
+        let item6 = DestructionSensitive(label: "6", semaphore: semaphore)
         lifecycle.register(_LifecycleTask(label: item6.label, shutdownIfNotStarted: true, start: .sync(item6.start), shutdown: .sync(item6.shutdown)))
 
         lifecycle.start { error in
@@ -1035,7 +1040,99 @@ final class ComponentLifecycleTests: XCTestCase {
         }
         lifecycle.wait()
 
-        XCTAssertEqual(.success, sempahore.wait(timeout: .now() + 1))
+        XCTAssertEqual(.success, semaphore.wait(timeout: .now() + 1))
+    }
+
+    func testShutdownWhenStartFailsAndAsked() {
+        class BadItem: LifecycleTask {
+            let label: String = UUID().uuidString
+            var shutdown: Bool = false
+
+            func start(_ callback: (Error?) -> Void) {
+                callback(TestError())
+            }
+
+            func shutdown(_ callback: (Error?) -> Void) {
+                self.shutdown = true
+                callback(nil)
+            }
+        }
+
+        do {
+            let lifecycle = ComponentLifecycle(label: "test")
+
+            let item = BadItem()
+            lifecycle.register(label: "test", start: .async(item.start), shutdown: .async(item.shutdown), shutdownIfNotStarted: true)
+
+            XCTAssertThrowsError(try lifecycle.startAndWait()) { error in
+                XCTAssert(error is TestError, "expected error to match")
+            }
+
+            XCTAssertTrue(item.shutdown, "expected item to be shutdown")
+        }
+
+        do {
+            let lifecycle = ComponentLifecycle(label: "test")
+
+            let item = BadItem()
+            lifecycle.register(label: "test", start: .async(item.start), shutdown: .async(item.shutdown), shutdownIfNotStarted: false)
+
+            XCTAssertThrowsError(try lifecycle.startAndWait()) { error in
+                XCTAssert(error is TestError, "expected error to match")
+            }
+
+            XCTAssertFalse(item.shutdown, "expected item to be not shutdown")
+        }
+
+        do {
+            let lifecycle = ComponentLifecycle(label: "test")
+
+            let item1 = GoodItem()
+            lifecycle.register(item1)
+
+            let item2 = BadItem()
+            lifecycle.register(label: "test", start: .async(item2.start), shutdown: .async(item2.shutdown), shutdownIfNotStarted: true)
+
+            let item3 = GoodItem()
+            lifecycle.register(item3)
+
+            let item4 = GoodItem()
+            lifecycle.registerShutdown(label: "test", .async(item4.shutdown))
+
+            XCTAssertThrowsError(try lifecycle.startAndWait()) { error in
+                XCTAssert(error is TestError, "expected error to match")
+            }
+
+            XCTAssertEqual(item1.state, .shutdown, "expected item to be shutdown")
+            XCTAssertTrue(item2.shutdown, "expected item to be shutdown")
+            XCTAssertEqual(item3.state, .idle, "expected item to be idle")
+            XCTAssertEqual(item4.state, .shutdown, "expected item to be shutdown")
+        }
+
+        do {
+            let lifecycle = ComponentLifecycle(label: "test")
+
+            let item1 = GoodItem()
+            lifecycle.register(item1)
+
+            let item2 = BadItem()
+            lifecycle.register(label: "test", start: .async(item2.start), shutdown: .async(item2.shutdown), shutdownIfNotStarted: false)
+
+            let item3 = GoodItem()
+            lifecycle.register(item3)
+
+            let item4 = GoodItem()
+            lifecycle.registerShutdown(label: "test", .async(item4.shutdown))
+
+            XCTAssertThrowsError(try lifecycle.startAndWait()) { error in
+                XCTAssert(error is TestError, "expected error to match")
+            }
+
+            XCTAssertEqual(item1.state, .shutdown, "expected item to be shutdown")
+            XCTAssertFalse(item2.shutdown, "expected item to be not shutdown")
+            XCTAssertEqual(item3.state, .idle, "expected item to be idle")
+            XCTAssertEqual(item4.state, .shutdown, "expected item to be shutdown")
+        }
     }
 
     func testStatefulSync() {

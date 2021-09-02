@@ -576,11 +576,13 @@ public class ComponentLifecycle: LifecycleTask {
             case .shuttingDown:
                 self.stateLock.unlock()
                 // shutdown was called while starting, or start failed, shutdown what we can
-                let stoppable: [LifecycleTask]
-                if started < tasks.count {
-                    stoppable = tasks.enumerated().filter { $0.offset <= started || $0.element.shutdownIfNotStarted }.map { $0.element }
-                } else {
-                    stoppable = tasks
+                var stoppable = started
+                if started.count < tasks.count {
+                    let shutdownIfNotStarted = tasks.enumerated()
+                        .filter { $0.offset >= started.count }
+                        .map { $0.element }
+                        .filter { $0.shutdownIfNotStarted }
+                    stoppable.append(contentsOf: shutdownIfNotStarted)
                 }
                 self._shutdown(on: queue, tasks: stoppable) {
                     callback(error)
@@ -596,13 +598,13 @@ public class ComponentLifecycle: LifecycleTask {
         }
     }
 
-    private func startTask(on queue: DispatchQueue, tasks: [LifecycleTask], index: Int, callback: @escaping (Int, Error?) -> Void) {
+    private func startTask(on queue: DispatchQueue, tasks: [LifecycleTask], index: Int, callback: @escaping ([LifecycleTask], Error?) -> Void) {
         // async barrier
         let start = { (callback) -> Void in queue.async { tasks[index].start(callback) } }
         let callback = { (index, error) -> Void in queue.async { callback(index, error) } }
 
         if index >= tasks.count {
-            return callback(index, nil)
+            return callback(tasks, nil)
         }
         self.logger.info("starting tasks [\(tasks[index].label)]")
         let startTime = DispatchTime.now()
@@ -610,11 +612,13 @@ public class ComponentLifecycle: LifecycleTask {
             Timer(label: "\(self.label).\(tasks[index].label).lifecycle.start").recordNanoseconds(DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds)
             if let error = error {
                 self.logger.error("failed to start [\(tasks[index].label)]: \(error)")
-                return callback(index, error)
+                let started = Array(tasks.prefix(index))
+                return callback(started, error)
             }
             // shutdown called while starting
             if case .shuttingDown = self.stateLock.withLock({ self.state }) {
-                return callback(index, nil)
+                let started = index < tasks.count ? Array(tasks.prefix(index + 1)) : tasks
+                return callback(started, nil)
             }
             self.startTask(on: queue, tasks: tasks, index: index + 1, callback: callback)
         }
