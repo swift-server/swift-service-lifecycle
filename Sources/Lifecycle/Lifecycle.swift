@@ -507,11 +507,17 @@ public class ComponentLifecycle: LifecycleTask {
 
         self.stateLock.lock()
         switch self.state {
-        case .idle:
+        case .idle(let tasks) where tasks.isEmpty:
             self.state = .shutdown(nil)
             self.stateLock.unlock()
             defer { self.shutdownGroup.leave() }
             callback(nil)
+        case .idle(let tasks):
+            self.stateLock.unlock()
+            // attempt to shutdown any registered tasks
+            let stoppable = tasks.filter { $0.shutdownIfNotStarted }
+            setupShutdownListener(.global())
+            self._shutdown(on: .global(), tasks: stoppable, callback: self.shutdownGroup.leave)
         case .shutdown:
             self.stateLock.unlock()
             self.logger.warning("already shutdown")

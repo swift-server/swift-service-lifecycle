@@ -30,6 +30,8 @@ extension ComponentLifecycleTests {
             ("testUserDefinedCallbackQueue", testUserDefinedCallbackQueue),
             ("testShutdownWhileStarting", testShutdownWhileStarting),
             ("testShutdownWhenIdle", testShutdownWhenIdle),
+            ("testShutdownWhenIdleAndNoItems", testShutdownWhenIdleAndNoItems),
+            ("testIfNotStartedWhenIdle", testIfNotStartedWhenIdle),
             ("testShutdownWhenShutdown", testShutdownWhenShutdown),
             ("testShutdownDuringHangingStart", testShutdownDuringHangingStart),
             ("testShutdownErrors", testShutdownErrors),
