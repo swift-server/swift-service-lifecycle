@@ -1495,7 +1495,43 @@ final class ComponentLifecycleTests: XCTestCase {
         let lifecycle = ComponentLifecycle(label: "test")
 
         let item = Item()
-        lifecycle.register(label: "test", start: .async(item.start), shutdown: .async(item.shutdown))
+        lifecycle.register(label: "test", start: .async(item.start), shutdown: .async(item.shutdown), shutdownIfNotStarted: false)
+
+        lifecycle.start { error in
+            XCTAssert(error is TestError, "expected error to match")
+            lifecycle.shutdown()
+        }
+        lifecycle.wait()
+        XCTAssertFalse(item.isShutdown, "expected item to be shutdown")
+        #endif
+    }
+
+    func testAsyncAwaitErrorOnStartShutdownRequested() throws {
+        #if compiler(<5.2)
+        return
+        #elseif compiler(<5.5)
+        throw XCTSkip()
+        #else
+        guard #available(macOS 12.0, *) else {
+            throw XCTSkip()
+        }
+
+        class Item {
+            var isShutdown: Bool = false
+
+            func start() async throws {
+                throw TestError()
+            }
+
+            func shutdown() async throws {
+                self.isShutdown = true // not thread safe but okay for this purpose
+            }
+        }
+
+        let lifecycle = ComponentLifecycle(label: "test")
+
+        let item = Item()
+        lifecycle.register(label: "test", start: .async(item.start), shutdown: .async(item.shutdown), shutdownIfNotStarted: true)
 
         lifecycle.start { error in
             XCTAssert(error is TestError, "expected error to match")

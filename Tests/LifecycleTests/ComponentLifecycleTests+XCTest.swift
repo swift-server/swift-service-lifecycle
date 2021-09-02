@@ -59,6 +59,7 @@ extension ComponentLifecycleTests {
             ("testNOOPHandlers", testNOOPHandlers),
             ("testShutdownOnlyStarted", testShutdownOnlyStarted),
             ("testShutdownWhenStartFailedIfAsked", testShutdownWhenStartFailedIfAsked),
+            ("testShutdownWhenStartFailsAndAsked", testShutdownWhenStartFailsAndAsked),
             ("testStatefulSync", testStatefulSync),
             ("testStatefulSyncStartError", testStatefulSyncStartError),
             ("testStatefulSyncShutdownError", testStatefulSyncShutdownError),
@@ -71,6 +72,7 @@ extension ComponentLifecycleTests {
             ("testAsyncAwait", testAsyncAwait),
             ("testAsyncAwaitStateful", testAsyncAwaitStateful),
             ("testAsyncAwaitErrorOnStart", testAsyncAwaitErrorOnStart),
+            ("testAsyncAwaitErrorOnStartShutdownRequested", testAsyncAwaitErrorOnStartShutdownRequested),
             ("testAsyncAwaitErrorOnShutdown", testAsyncAwaitErrorOnShutdown),
             ("testMetrics", testMetrics),
         ]
