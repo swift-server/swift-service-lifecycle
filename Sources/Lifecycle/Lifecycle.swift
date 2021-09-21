@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if canImport(_Concurrency)
+#if compiler(>=5.5) && canImport(_Concurrency)
 import _Concurrency
 #endif
 
@@ -99,7 +99,7 @@ public struct LifecycleHandler {
     }
 }
 
-#if canImport(_Concurrency)
+#if compiler(>=5.5) && canImport(_Concurrency)
 @available(macOS 12.0, *)
 extension LifecycleHandler {
     public init(_ handler: @escaping () async throws -> Void) {
@@ -163,7 +163,7 @@ public struct LifecycleStartHandler<State> {
     }
 }
 
-#if canImport(_Concurrency)
+#if compiler(>=5.5) && canImport(_Concurrency)
 @available(macOS 12.0, *)
 extension LifecycleStartHandler {
     public init(_ handler: @escaping () async throws -> State) {
@@ -225,7 +225,7 @@ public struct LifecycleShutdownHandler<State> {
     }
 }
 
-#if canImport(_Concurrency)
+#if compiler(>=5.5) && canImport(_Concurrency)
 @available(macOS 12.0, *)
 extension LifecycleShutdownHandler {
     public init(_ handler: @escaping (State) async throws -> Void) {
