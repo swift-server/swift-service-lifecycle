@@ -1401,7 +1401,7 @@ final class ComponentLifecycleTests: XCTestCase {
     func testAsyncAwait() throws {
         #if compiler(<5.2)
         return
-        #elseif compiler(<5.5)
+        #elseif !canImport(_Concurrency)
         throw XCTSkip()
         #else
         guard #available(macOS 12.0, *) else {
@@ -1435,7 +1435,7 @@ final class ComponentLifecycleTests: XCTestCase {
     func testAsyncAwaitStateful() throws {
         #if compiler(<5.2)
         return
-        #elseif compiler(<5.5)
+        #elseif !canImport(_Concurrency)
         throw XCTSkip()
         #else
         guard #available(macOS 12.0, *) else {
@@ -1473,7 +1473,7 @@ final class ComponentLifecycleTests: XCTestCase {
     func testAsyncAwaitErrorOnStart() throws {
         #if compiler(<5.2)
         return
-        #elseif compiler(<5.5)
+        #elseif !canImport(_Concurrency)
         throw XCTSkip()
         #else
         guard #available(macOS 12.0, *) else {
@@ -1509,7 +1509,7 @@ final class ComponentLifecycleTests: XCTestCase {
     func testAsyncAwaitErrorOnStartShutdownRequested() throws {
         #if compiler(<5.2)
         return
-        #elseif compiler(<5.5)
+        #elseif !canImport(_Concurrency)
         throw XCTSkip()
         #else
         guard #available(macOS 12.0, *) else {
@@ -1545,7 +1545,7 @@ final class ComponentLifecycleTests: XCTestCase {
     func testAsyncAwaitErrorOnShutdown() throws {
         #if compiler(<5.2)
         return
-        #elseif compiler(<5.5)
+        #elseif !canImport(_Concurrency)
         throw XCTSkip()
         #else
         guard #available(macOS 12.0, *) else {
