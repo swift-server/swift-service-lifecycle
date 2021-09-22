@@ -1403,6 +1403,8 @@ final class ComponentLifecycleTests: XCTestCase {
         return
         #elseif compiler(<5.5)
         throw XCTSkip()
+        #elseif !canImport(_Concurrency)
+        throw XCTSkip()
         #else
         guard #available(macOS 12.0, *) else {
             throw XCTSkip()
@@ -1436,6 +1438,8 @@ final class ComponentLifecycleTests: XCTestCase {
         #if compiler(<5.2)
         return
         #elseif compiler(<5.5)
+        throw XCTSkip()
+        #elseif !canImport(_Concurrency)
         throw XCTSkip()
         #else
         guard #available(macOS 12.0, *) else {
@@ -1475,6 +1479,8 @@ final class ComponentLifecycleTests: XCTestCase {
         return
         #elseif compiler(<5.5)
         throw XCTSkip()
+        #elseif !canImport(_Concurrency)
+        throw XCTSkip()
         #else
         guard #available(macOS 12.0, *) else {
             throw XCTSkip()
@@ -1511,6 +1517,8 @@ final class ComponentLifecycleTests: XCTestCase {
         return
         #elseif compiler(<5.5)
         throw XCTSkip()
+        #elseif !canImport(_Concurrency)
+        throw XCTSkip()
         #else
         guard #available(macOS 12.0, *) else {
             throw XCTSkip()
@@ -1546,6 +1554,8 @@ final class ComponentLifecycleTests: XCTestCase {
         #if compiler(<5.2)
         return
         #elseif compiler(<5.5)
+        throw XCTSkip()
+        #elseif !canImport(_Concurrency)
         throw XCTSkip()
         #else
         guard #available(macOS 12.0, *) else {
