@@ -12,10 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#if compiler(>=5.5) && canImport(_Concurrency)
-import _Concurrency
-#endif
-
 #if os(macOS) || os(iOS) || os(watchOS) || os(tvOS)
 import Darwin
 #else
