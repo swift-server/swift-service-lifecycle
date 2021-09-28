@@ -17,7 +17,7 @@ let package = Package(
     targets: []
 )
 
-#if compiler(>=5.2)
+#if compiler(>=5.3)
 package.dependencies += [
     .package(url: "https://github.com/apple/swift-atomics.git", from: "1.0.0"),
 ]
