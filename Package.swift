@@ -17,9 +17,9 @@ let package = Package(
     targets: []
 )
 
-#if compiler(>=5.2)
+#if compiler(>=5.3)
 package.dependencies += [
-    .package(url: "https://github.com/apple/swift-atomics.git", .exact("0.0.3")), // exact since < 1.0
+    .package(url: "https://github.com/apple/swift-atomics.git", from: "1.0.0"),
 ]
 package.targets += [
     .target(name: "Lifecycle", dependencies: ["Logging", "Metrics", "Backtrace", "Atomics"]),
