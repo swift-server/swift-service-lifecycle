@@ -18,7 +18,7 @@ set -e
 my_path="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 root_path="$my_path/.."
 version=$(git describe --abbrev=0 --tags || echo "0.0.0")
-modules=(Lifecycle)
+modules=(Lifecycle LifecycleNIOCompat)
 
 if [[ "$(uname -s)" == "Linux" ]]; then
   # build code if required
@@ -31,7 +31,7 @@ if [[ "$(uname -s)" == "Linux" ]]; then
   if [[ ! -d "$source_kitten_source_path" ]]; then
     git clone https://github.com/jpsim/SourceKitten.git "$source_kitten_source_path"
   fi
-  source_kitten_path="$source_kitten_source_path/.build/x86_64-unknown-linux/debug"
+  source_kitten_path="$source_kitten_source_path/.build/debug"
   if [[ ! -d "$source_kitten_path" ]]; then
     rm -rf "$source_kitten_source_path/.swift-version"
     cd "$source_kitten_source_path" && swift build && cd "$root_path"
@@ -39,7 +39,7 @@ if [[ "$(uname -s)" == "Linux" ]]; then
   # generate
   for module in "${modules[@]}"; do
     if [[ ! -f "$root_path/.build/sourcekitten/$module.json" ]]; then
-      "$source_kitten_path/sourcekitten" doc --spm-module $module > "$root_path/.build/sourcekitten/$module.json"
+      "$source_kitten_path/sourcekitten" doc --spm --module-name $module > "$root_path/.build/sourcekitten/$module.json"
     fi
   done
 fi
@@ -59,7 +59,13 @@ It also provides a Signal based shutdown hook, to shutdown on signals like TERM 
 SwiftServiceLifecycle is non-framework specific, designed to be integrated with any server framework or directly in an application.
 
 To get started with SwiftServiceLifecycle, [`import Lifecycle`](../Lifecycle/index.html).
+
+SwiftServiceLifecycle contains multiple modules:
 EOF
+
+for module in "${modules[@]}"; do
+  echo " - [$module](../$module/index.html)" >> "$module_switcher"
+done
 
 # run jazzy
 if ! command -v jazzy > /dev/null; then
