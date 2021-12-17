@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>LifecycleTasksContainer Protocol Reference</title>
+    <link rel="stylesheet" type="text/css" href="../css/jazzy.css" />
+    <link rel="stylesheet" type="text/css" href="../css/highlight.css" />
+    <meta charset="utf-8">
+    <script src="../js/jquery.min.js" defer></script>
+    <script src="../js/jazzy.js" defer></script>
+    
+    <script src="../js/lunr.min.js" defer></script>
+    <script src="../js/typeahead.jquery.js" defer></script>
+    <script src="../js/jazzy.search.js" defer></script>
+  </head>
+  <body>
+
+    <a name="//apple_ref/swift/Protocol/LifecycleTasksContainer" class="dashAnchor"></a>
+
+    <a title="LifecycleTasksContainer Protocol Reference"></a>
+
+    <header class="header">
+      <p class="header-col header-col--primary">
+        <a class="header-link" href="../index.html">
+          Lifecycle 1.0.0-alpha.10 Docs
+        </a>
+         (79% documented)
+      </p>
+    
+      <div class="header-col--secondary">
+        <form role="search" action="../search.json">
+          <input type="text" placeholder="Search documentation" data-typeahead>
+        </form>
+      </div>
+    
+        <p class="header-col header-col--secondary">
+          <a class="header-link" href="https://github.com/swift-server/swift-service-lifecycle">
+            <img class="header-icon" src="../img/gh.png" alt="GitHub"/>
+            View on GitHub
+          </a>
+        </p>
+    
+        <p class="header-col header-col--secondary">
+          <a class="header-link" href="dash-feed://https%3A%2F%2Fswift-server.github.io%2Fswift-service-lifecycle%2Fdocs%2F1.0.0-alpha.10%2FLifecycle%2Fdocsets%2FLifecycle.xml">
+            <img class="header-icon" src="../img/dash.png" alt="Dash"/>
+            Install in Dash
+          </a>
+        </p>
+    </header>
+
+    <p class="breadcrumbs">
+      <a class="breadcrumb" href="../index.html">Lifecycle Reference</a>
+      <img class="carat" src="../img/carat.png" alt=""/>
+      LifecycleTasksContainer Protocol Reference
+    </p>
+
+    <div class="content-wrapper">
+      <nav class="navigation">
+        <ul class="nav-groups">
+          <li class="nav-group-name">
+            <a class="nav-group-name-link" href="../Classes.html">Classes</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Classes/ComponentLifecycle.html">ComponentLifecycle</a>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-group-name">
+            <a class="nav-group-name-link" href="../Protocols.html">Protocols</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Protocols/LifecycleTask.html">LifecycleTask</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Protocols/LifecycleTasksContainer.html">LifecycleTasksContainer</a>
+              </li>
+            </ul>
+          </li>
+          <li class="nav-group-name">
+            <a class="nav-group-name-link" href="../Structs.html">Structures</a>
+            <ul class="nav-group-tasks">
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/LifecycleHandler.html">LifecycleHandler</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/LifecycleShutdownHandler.html">LifecycleShutdownHandler</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/LifecycleStartHandler.html">LifecycleStartHandler</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/ServiceLifecycle.html">ServiceLifecycle</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/ServiceLifecycle/Signal.html">– Signal</a>
+              </li>
+              <li class="nav-group-task">
+                <a class="nav-group-task-link" href="../Structs/ServiceLifecycle/Configuration.html">– Configuration</a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </nav>
+      <article class="main-content">
+
+        <section class="section">
+          <div class="section-content top-matter">
+            <h1>LifecycleTasksContainer</h1>
+              <div class="declaration">
+                <div class="language">
+                  
+                  <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">protocol</span> <span class="kt">LifecycleTasksContainer</span></code></pre>
+
+                </div>
+              </div>
+            <p>A container of <code><a href="../Protocols/LifecycleTask.html">LifecycleTask</a></code>, used to register additional <code><a href="../Protocols/LifecycleTask.html">LifecycleTask</a></code></p>
+
+              <div class="slightly-smaller">
+                <a href="https://github.com/swift-server/swift-service-lifecycle/tree/1.0.0-alpha.10/Sources/Lifecycle/Lifecycle.swift#L689-L695">Show on GitHub</a>
+              </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-content">
+            <div class="task-group">
+              <ul class="item-container">
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:9Lifecycle0A14TasksContainerP8registeryySayAA0A4Task_pGF"></a>
+                    <a name="//apple_ref/swift/Method/register(_:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:9Lifecycle0A14TasksContainerP8registeryySayAA0A4Task_pGF">register(_:<wbr>)</a>
+                    </code>
+                      <span class="declaration-note">
+                        Default implementation
+                      </span>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Adds a <code><a href="../Protocols/LifecycleTask.html">LifecycleTask</a></code> to a <code>LifecycleTasks</code> collection.</p>
+
+                      </div>
+                      <h4>Default Implementation</h4>
+                      <div class="default_impl abstract">
+                        <p>Adds a <code>LifecycleTask</code> to a <code>LifecycleTasks</code> collection.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">func</span> <span class="nf">register</span><span class="p">(</span><span class="n">_</span> <span class="nv">tasks</span><span class="p">:</span> <span class="p">[</span><span class="kt"><a href="../Protocols/LifecycleTask.html">LifecycleTask</a></span><span class="p">])</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>tasks</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>array of <code><a href="../Protocols/LifecycleTask.html">LifecycleTask</a></code>.</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <div class="slightly-smaller">
+                        <a href="https://github.com/swift-server/swift-service-lifecycle/tree/1.0.0-alpha.10/Sources/Lifecycle/Lifecycle.swift#L694">Show on GitHub</a>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <div class="task-group">
+              <div class="task-name-container">
+                <a name="/ComponentLifecycle"></a>
+                <a name="//apple_ref/swift/Section/ComponentLifecycle" class="dashAnchor"></a>
+                <div class="section-name-container">
+                  <a class="section-name-link" href="#/ComponentLifecycle"></a>
+                  <h3 class="section-name"><span>ComponentLifecycle</span>
+</h3>
+                </div>
+              </div>
+              <ul class="item-container">
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:9Lifecycle0A14TasksContainerPAAE8register5label5start8shutdown0G12IfNotStartedySS_AA0A7HandlerVAJSbSgtF"></a>
+                    <a name="//apple_ref/swift/Method/register(label:start:shutdown:shutdownIfNotStarted:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:9Lifecycle0A14TasksContainerPAAE8register5label5start8shutdown0G12IfNotStartedySS_AA0A7HandlerVAJSbSgtF">register(label:<wbr>start:<wbr>shutdown:<wbr>shutdownIfNotStarted:<wbr>)</a>
+                    </code>
+                      <span class="declaration-note">
+                        Extension method
+                      </span>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Adds a <code><a href="../Protocols/LifecycleTask.html">LifecycleTask</a></code> to a <code>LifecycleTasks</code> collection.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">register</span><span class="p">(</span><span class="nv">label</span><span class="p">:</span> <span class="kt">String</span><span class="p">,</span> <span class="nv">start</span><span class="p">:</span> <span class="kt"><a href="../Structs/LifecycleHandler.html">LifecycleHandler</a></span><span class="p">,</span> <span class="nv">shutdown</span><span class="p">:</span> <span class="kt"><a href="../Structs/LifecycleHandler.html">LifecycleHandler</a></span><span class="p">,</span> <span class="nv">shutdownIfNotStarted</span><span class="p">:</span> <span class="kt">Bool</span><span class="p">?</span> <span class="o">=</span> <span class="kc">nil</span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>label</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>label of the item, useful for debugging.</p>
+                                </div>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>start</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p><code>Handler</code> to perform the startup.</p>
+                                </div>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>shutdown</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p><code>Handler</code> to perform the shutdown.</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <div class="slightly-smaller">
+                        <a href="https://github.com/swift-server/swift-service-lifecycle/tree/1.0.0-alpha.10/Sources/Lifecycle/Lifecycle.swift#L712-L714">Show on GitHub</a>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:9Lifecycle0A14TasksContainerPAAE16registerShutdown5label_ySS_AA0A7HandlerVtF"></a>
+                    <a name="//apple_ref/swift/Method/registerShutdown(label:_:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:9Lifecycle0A14TasksContainerPAAE16registerShutdown5label_ySS_AA0A7HandlerVtF">registerShutdown(label:<wbr>_:<wbr>)</a>
+                    </code>
+                      <span class="declaration-note">
+                        Extension method
+                      </span>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Adds a <code><a href="../Protocols/LifecycleTask.html">LifecycleTask</a></code> to a <code>LifecycleTasks</code> collection.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="nf">registerShutdown</span><span class="p">(</span><span class="nv">label</span><span class="p">:</span> <span class="kt">String</span><span class="p">,</span> <span class="n">_</span> <span class="nv">handler</span><span class="p">:</span> <span class="kt"><a href="../Structs/LifecycleHandler.html">LifecycleHandler</a></span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>label</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>label of the item, useful for debugging.</p>
+                                </div>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>handler</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p><code>Handler</code> to perform the shutdown.</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <div class="slightly-smaller">
+                        <a href="https://github.com/swift-server/swift-service-lifecycle/tree/1.0.0-alpha.10/Sources/Lifecycle/Lifecycle.swift#L721-L723">Show on GitHub</a>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+                <li class="item">
+                  <div>
+                    <code>
+                    <a name="/s:9Lifecycle0A14TasksContainerPAAE16registerStateful5label5start8shutdownySS_AA0A12StartHandlerVyqd__GAA0a8ShutdownJ0Vyqd__GtlF"></a>
+                    <a name="//apple_ref/swift/Method/registerStateful(label:start:shutdown:)" class="dashAnchor"></a>
+                    <a class="token" href="#/s:9Lifecycle0A14TasksContainerPAAE16registerStateful5label5start8shutdownySS_AA0A12StartHandlerVyqd__GAA0a8ShutdownJ0Vyqd__GtlF">registerStateful(label:<wbr>start:<wbr>shutdown:<wbr>)</a>
+                    </code>
+                      <span class="declaration-note">
+                        Extension method
+                      </span>
+                  </div>
+                  <div class="height-container">
+                    <div class="pointer-container"></div>
+                    <section class="section">
+                      <div class="pointer"></div>
+                      <div class="abstract">
+                        <p>Add a stateful <code><a href="../Protocols/LifecycleTask.html">LifecycleTask</a></code> to a <code>LifecycleTasks</code> collection.</p>
+
+                      </div>
+                      <div class="declaration">
+                        <h4>Declaration</h4>
+                        <div class="language">
+                          <p class="aside-title">Swift</p>
+                          <pre class="highlight swift"><code><span class="kd">public</span> <span class="kd">func</span> <span class="n">registerStateful</span><span class="o">&lt;</span><span class="kt">State</span><span class="o">&gt;</span><span class="p">(</span><span class="nv">label</span><span class="p">:</span> <span class="kt">String</span><span class="p">,</span> <span class="nv">start</span><span class="p">:</span> <span class="kt"><a href="../Structs/LifecycleStartHandler.html">LifecycleStartHandler</a></span><span class="o">&lt;</span><span class="kt">State</span><span class="o">&gt;</span><span class="p">,</span> <span class="nv">shutdown</span><span class="p">:</span> <span class="kt"><a href="../Structs/LifecycleShutdownHandler.html">LifecycleShutdownHandler</a></span><span class="o">&lt;</span><span class="kt">State</span><span class="o">&gt;</span><span class="p">)</span></code></pre>
+
+                        </div>
+                      </div>
+                      <div>
+                        <h4>Parameters</h4>
+                        <table class="graybox">
+                          <tbody>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>label</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p>label of the item, useful for debugging.</p>
+                                </div>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>start</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p><code><a href="../Structs/LifecycleStartHandler.html">LifecycleStartHandler</a></code> to perform the startup and return the state.</p>
+                                </div>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>
+                                <code>
+                                <em>shutdown</em>
+                                </code>
+                              </td>
+                              <td>
+                                <div>
+                                  <p><code><a href="../Structs/LifecycleShutdownHandler.html">LifecycleShutdownHandler</a></code> to perform the shutdown given the state.</p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <div class="slightly-smaller">
+                        <a href="https://github.com/swift-server/swift-service-lifecycle/tree/1.0.0-alpha.10/Sources/Lifecycle/Lifecycle.swift#L731-L733">Show on GitHub</a>
+                      </div>
+                    </section>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+      </article>
+    </div>
+    <section class="footer">
+      <p>&copy; 2021 <a class="link" href="https://github.com/swift-server/swift-service-lifecycle" target="_blank" rel="external noopener">SwiftServiceLifecycle team</a>. All rights reserved. (Last updated: 2021-12-17)</p>
+      <p>Generated by <a class="link" href="https://github.com/realm/jazzy" target="_blank" rel="external noopener">jazzy ♪♫ v0.14.1</a>, a <a class="link" href="https://realm.io" target="_blank" rel="external noopener">Realm</a> project.</p>
+    </section>
+  </body>
+</html>
