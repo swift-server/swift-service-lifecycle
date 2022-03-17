@@ -1,0 +1,17 @@
+version: "3"
+
+services:
+
+  runtime-setup:
+    image: swift-service-lifecycle:20.04-5.7
+    build:
+      args:
+        base_image: "swiftlang/swift:nightly-main-focal"
+
+  test:
+    image: swift-service-lifecycle:20.04-5.7
+    environment:
+      - SKIP_SIGNAL_TEST=true
+
+  shell:
+    image: swift-service-lifecycle:20.04-5.7

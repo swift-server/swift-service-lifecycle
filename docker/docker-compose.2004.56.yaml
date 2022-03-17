@@ -1,0 +1,18 @@
+version: "3"
+
+services:
+
+  runtime-setup:
+    image: swift-service-lifecycle:20.04-5.6
+    build:
+      args:
+        ubuntu_version: "focal"
+        swift_version: "5.6"
+
+  test:
+    image: swift-service-lifecycle:20.04-5.6
+    environment:
+      - SKIP_SIGNAL_TEST=true
+
+  shell:
+    image: swift-service-lifecycle:20.04-5.6
