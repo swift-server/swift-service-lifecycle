@@ -30,11 +30,21 @@ public protocol LifecycleTask {
     var shutdownIfNotStarted: Bool { get }
     func start(_ callback: @escaping (Error?) -> Void)
     func shutdown(_ callback: @escaping (Error?) -> Void)
+    var logStart: Bool { get }
+    var logShutdown: Bool { get }
 }
 
 extension LifecycleTask {
     public var shutdownIfNotStarted: Bool {
         return false
+    }
+
+    public var logStart: Bool {
+        return true
+    }
+
+    public var logShutdown: Bool {
+        return true
     }
 }
 
@@ -317,9 +327,14 @@ public struct ServiceLifecycle {
                 self.log("intercepted signal: \(signal)")
                 self.shutdown()
             }, cancelAfterTrap: true)
-            self.underlying.shutdownGroup.notify(queue: .global()) {
-                signalSource.cancel()
-            }
+            // register cleanup as the last task
+            self.registerShutdown(label: "\(signal) shutdown hook cleanup", .sync {
+                // cancel if not already canceled by the trap
+                if !signalSource.isCancelled {
+                    signalSource.cancel()
+                    ServiceLifecycle.removeTrap(signal: signal)
+                }
+            })
         }
     }
 
@@ -343,20 +358,32 @@ extension ServiceLifecycle {
     public static func trap(signal sig: Signal, handler: @escaping (Signal) -> Void, on queue: DispatchQueue = .global(), cancelAfterTrap: Bool = false) -> DispatchSourceSignal {
         // on linux, we can call singal() once per process
         self.trappedLock.withLockVoid {
-            if !trapped.contains(sig.rawValue) {
+            if !self.trapped.contains(sig.rawValue) {
                 signal(sig.rawValue, SIG_IGN)
-                trapped.insert(sig.rawValue)
+                self.trapped.insert(sig.rawValue)
             }
         }
         let signalSource = DispatchSource.makeSignalSource(signal: sig.rawValue, queue: queue)
         signalSource.setEventHandler {
+            // run handler first
+            handler(sig)
+            // then cancel trap if so requested
             if cancelAfterTrap {
                 signalSource.cancel()
+                self.removeTrap(signal: sig)
             }
-            handler(sig)
         }
         signalSource.resume()
         return signalSource
+    }
+
+    public static func removeTrap(signal sig: Signal) {
+        self.trappedLock.withLockVoid {
+            if self.trapped.contains(sig.rawValue) {
+                signal(sig.rawValue, SIG_DFL)
+                self.trapped.remove(sig.rawValue)
+            }
+        }
     }
 
     /// A system signal
@@ -433,7 +460,7 @@ struct ShutdownError: Error {
 public class ComponentLifecycle: LifecycleTask {
     public let label: String
     fileprivate let logger: Logger
-    internal let shutdownGroup = DispatchGroup()
+    fileprivate let shutdownGroup = DispatchGroup()
 
     private var state = State.idle([])
     private let stateLock = Lock()
@@ -596,13 +623,15 @@ public class ComponentLifecycle: LifecycleTask {
 
     private func startTask(on queue: DispatchQueue, tasks: [LifecycleTask], index: Int, callback: @escaping ([LifecycleTask], Error?) -> Void) {
         // async barrier
-        let start = { (callback) -> Void in queue.async { tasks[index].start(callback) } }
-        let callback = { (index, error) -> Void in queue.async { callback(index, error) } }
+        let start = { callback in queue.async { tasks[index].start(callback) } }
+        let callback = { index, error in queue.async { callback(index, error) } }
 
         if index >= tasks.count {
             return callback(tasks, nil)
         }
-        self.logger.info("starting tasks [\(tasks[index].label)]")
+        if tasks[index].logStart {
+            self.logger.info("starting tasks [\(tasks[index].label)]")
+        }
         let startTime = DispatchTime.now()
         start { error in
             Timer(label: "\(self.label).\(tasks[index].label).lifecycle.start").recordNanoseconds(DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds)
@@ -642,14 +671,16 @@ public class ComponentLifecycle: LifecycleTask {
 
     private func shutdownTask(on queue: DispatchQueue, tasks: [LifecycleTask], index: Int, errors: [String: Error]?, callback: @escaping ([String: Error]?) -> Void) {
         // async barrier
-        let shutdown = { (callback) -> Void in queue.async { tasks[index].shutdown(callback) } }
-        let callback = { (errors) -> Void in queue.async { callback(errors) } }
+        let shutdown = { callback in queue.async { tasks[index].shutdown(callback) } }
+        let callback = { errors in queue.async { callback(errors) } }
 
         if index >= tasks.count {
             return callback(errors)
         }
 
-        self.logger.info("stopping tasks [\(tasks[index].label)]")
+        if tasks[index].logShutdown {
+            self.logger.info("stopping tasks [\(tasks[index].label)]")
+        }
         let startTime = DispatchTime.now()
         shutdown { error in
             Timer(label: "\(self.label).\(tasks[index].label).lifecycle.shutdown").recordNanoseconds(DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds)
@@ -739,12 +770,16 @@ internal struct _LifecycleTask: LifecycleTask {
     let shutdownIfNotStarted: Bool
     let start: LifecycleHandler
     let shutdown: LifecycleHandler
+    let logStart: Bool
+    let logShutdown: Bool
 
     init(label: String, shutdownIfNotStarted: Bool? = nil, start: LifecycleHandler, shutdown: LifecycleHandler) {
         self.label = label
         self.shutdownIfNotStarted = shutdownIfNotStarted ?? start.noop
         self.start = start
         self.shutdown = shutdown
+        self.logStart = !start.noop
+        self.logShutdown = !shutdown.noop
     }
 
     func start(_ callback: @escaping (Error?) -> Void) {
