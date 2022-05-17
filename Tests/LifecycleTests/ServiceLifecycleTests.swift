@@ -274,7 +274,7 @@ final class ServiceLifecycleTests: XCTestCase {
 
     func testShutdownCancelSignal() {
         if ProcessInfo.processInfo.environment["SKIP_SIGNAL_TEST"].flatMap(Bool.init) ?? false {
-            print("skipping testRepeatShutdown")
+            print("skipping testShutdownCancelSignal")
             return
         }
 
