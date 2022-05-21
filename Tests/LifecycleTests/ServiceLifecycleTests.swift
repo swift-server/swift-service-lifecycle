@@ -271,4 +271,47 @@ final class ServiceLifecycleTests: XCTestCase {
 
         XCTAssertEqual(attempts, count)
     }
+
+    func testShutdownCancelSignal() {
+        if ProcessInfo.processInfo.environment["SKIP_SIGNAL_TEST"].flatMap(Bool.init) ?? false {
+            print("skipping testShutdownCancelSignal")
+            return
+        }
+
+        struct Service {
+            static let signal = ServiceLifecycle.Signal.ALRM
+
+            let lifecycle: ServiceLifecycle
+
+            init() {
+                self.lifecycle = ServiceLifecycle(configuration: .init(shutdownSignal: [Service.signal]))
+                self.lifecycle.register(GoodItem())
+            }
+        }
+
+        let service = Service()
+        service.lifecycle.start { error in
+            XCTAssertNil(error, "not expecting error")
+            kill(getpid(), Service.signal.rawValue)
+        }
+        service.lifecycle.wait()
+
+        var count = 0
+        let sync = DispatchGroup()
+        sync.enter()
+        let signalSource = ServiceLifecycle.trap(signal: Service.signal, handler: { _ in
+            count = count + 1 // not thread safe but fine for this purpose
+            sync.leave()
+        }, cancelAfterTrap: false)
+
+        // since we are removing the hook added by lifecycle on shutdown,
+        // this will fail unless a new hook is set up as done above
+        kill(getpid(), Service.signal.rawValue)
+
+        XCTAssertEqual(.success, sync.wait(timeout: .now() + 2))
+        XCTAssertEqual(count, 1)
+
+        signalSource.cancel()
+        ServiceLifecycle.removeTrap(signal: Service.signal)
+    }
 }

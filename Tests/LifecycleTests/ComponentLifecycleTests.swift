@@ -53,7 +53,7 @@ final class ComponentLifecycleTests: XCTestCase {
                                       dispatchPrecondition(condition: .onQueue(.global()))
                                       XCTAssertTrue(startCalls.contains(id))
                                       stopCalls.append(id)
-                                 })
+                                  })
         }
         lifecycle.register(items)
 
@@ -92,7 +92,7 @@ final class ComponentLifecycleTests: XCTestCase {
                                       dispatchPrecondition(condition: .onQueue(testQueue))
                                       XCTAssertTrue(startCalls.contains(id))
                                       stopCalls.append(id)
-                                 })
+                                  })
         }
         lifecycle.register(items)
 

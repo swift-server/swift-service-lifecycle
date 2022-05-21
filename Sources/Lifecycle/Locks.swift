@@ -81,7 +81,7 @@ extension Lock {
     /// - Parameter body: The block to execute while holding the lock.
     /// - Returns: The value returned by the block.
     @inlinable
-    internal func withLock<T>(_ body: () throws -> T) rethrows -> T {
+    func withLock<T>(_ body: () throws -> T) rethrows -> T {
         self.lock()
         defer {
             self.unlock()
@@ -91,7 +91,7 @@ extension Lock {
 
     // specialise Void return (for performance)
     @inlinable
-    internal func withLockVoid(_ body: () throws -> Void) rethrows {
+    func withLockVoid(_ body: () throws -> Void) rethrows {
         try self.withLock(body)
     }
 }
