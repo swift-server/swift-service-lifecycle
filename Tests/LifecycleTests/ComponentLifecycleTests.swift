@@ -33,6 +33,73 @@ final class ComponentLifecycleTests: XCTestCase {
         items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
     }
 
+    func testDeregsiter() {
+        class BadItem: LifecycleTask {
+            let label: String = UUID().uuidString
+
+            func start(_ callback: (Error?) -> Void) {
+                callback(TestError())
+            }
+
+            func shutdown(_ callback: (Error?) -> Void) {
+                callback(TestError())
+            }
+        }
+
+        let lifecycle = ComponentLifecycle(label: "test")
+        let itemToDeregister1 = BadItem()
+        let itemToDeregister2 = BadItem()
+        lifecycle.register(GoodItem())
+        let key1 = lifecycle.register(itemToDeregister1)
+        lifecycle.register(GoodItem())
+        lifecycle.register(GoodItem())
+        let key2 = lifecycle.register(itemToDeregister2)
+
+        lifecycle.deregister(key1)
+        lifecycle.deregister(key2)
+
+        lifecycle.start { startError in
+            XCTAssertNil(startError, "not expecting error")
+            lifecycle.shutdown { shutdownErrors in
+                XCTAssertNil(shutdownErrors, "not expecting error")
+            }
+        }
+        lifecycle.wait()
+    }
+
+    func testDeregsiterAfterStart() {
+        class BadItem: LifecycleTask {
+            let label: String = UUID().uuidString
+
+            func start(_ callback: (Error?) -> Void) {
+                callback(.none) // okay
+            }
+
+            func shutdown(_ callback: (Error?) -> Void) {
+                callback(TestError())
+            }
+        }
+
+        let lifecycle = ComponentLifecycle(label: "test")
+        let itemToDeregister1 = BadItem()
+        let itemToDeregister2 = BadItem()
+        lifecycle.register(GoodItem())
+        let key1 = lifecycle.register(itemToDeregister1)
+        lifecycle.register(GoodItem())
+        lifecycle.register(GoodItem())
+        let key2 = lifecycle.register(itemToDeregister2)
+
+        lifecycle.start { startError in
+            XCTAssertNil(startError, "not expecting error")
+            lifecycle.deregister(key1)
+            lifecycle.deregister(key2)
+            lifecycle.shutdown { shutdownErrors in
+                XCTAssertNil(shutdownErrors, "not expecting error")
+            }
+        }
+        lifecycle.wait()
+    }
+
     func testDefaultCallbackQueue() throws {
         guard #available(OSX 10.12, *) else {
             return
