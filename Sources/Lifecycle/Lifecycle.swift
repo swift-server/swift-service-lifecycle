@@ -891,8 +891,10 @@ private class Registry {
 
     func add(_ tasks: [LifecycleTask]) -> [RegistrationKey] {
         // FIXME: better id generation scheme (cant use UUID)
-        let random = UInt64.random(in: UInt64.min ..< UInt64.max).addingReportingOverflow(DispatchTime.now().uptimeNanoseconds).partialValue
-        let keys = tasks.map { _ in "task-\(random)" }
+        let keys: [RegistrationKey] = tasks.map { _ in
+            let random = UInt64.random(in: UInt64.min ..< UInt64.max).addingReportingOverflow(DispatchTime.now().uptimeNanoseconds).partialValue
+            return "task-\(random)"
+        }
         self.lock.withLock {
             self._tasks.append(contentsOf: tasks)
             self.keys.append(contentsOf: keys)
