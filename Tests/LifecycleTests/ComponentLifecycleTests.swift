@@ -33,7 +33,7 @@ final class ComponentLifecycleTests: XCTestCase {
         items.forEach { XCTAssertEqual($0.state, .shutdown, "expected item to be shutdown, but \($0.state)") }
     }
 
-    func testDeregsiter() {
+    func testDeregister() {
         class BadItem: LifecycleTask {
             let label: String = UUID().uuidString
 
