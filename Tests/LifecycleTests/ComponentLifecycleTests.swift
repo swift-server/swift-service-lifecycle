@@ -67,7 +67,7 @@ final class ComponentLifecycleTests: XCTestCase {
         lifecycle.wait()
     }
 
-    func testDeregsiterAfterStart() {
+    func testDeregisterAfterStart() {
         class BadItem: LifecycleTask {
             let label: String = UUID().uuidString
 
