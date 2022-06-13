@@ -26,6 +26,8 @@ extension ComponentLifecycleTests {
     static var allTests: [(String, (ComponentLifecycleTests) -> () throws -> Void)] {
         return [
             ("testStartThenShutdown", testStartThenShutdown),
+            ("testDeregister", testDeregister),
+            ("testDeregisterAfterStart", testDeregisterAfterStart),
             ("testDefaultCallbackQueue", testDefaultCallbackQueue),
             ("testUserDefinedCallbackQueue", testUserDefinedCallbackQueue),
             ("testShutdownWhileStarting", testShutdownWhileStarting),
