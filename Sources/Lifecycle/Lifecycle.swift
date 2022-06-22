@@ -100,7 +100,7 @@ public struct LifecycleHandler {
 }
 
 #if compiler(>=5.5)
-@available(macOS 12.0, *)
+@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 extension LifecycleHandler {
     public init(_ handler: @escaping () async throws -> Void) {
         self = LifecycleHandler { callback in
@@ -164,7 +164,7 @@ public struct LifecycleStartHandler<State> {
 }
 
 #if compiler(>=5.5)
-@available(macOS 12.0, *)
+@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 extension LifecycleStartHandler {
     public init(_ handler: @escaping () async throws -> State) {
         self = LifecycleStartHandler { callback in
@@ -226,7 +226,7 @@ public struct LifecycleShutdownHandler<State> {
 }
 
 #if compiler(>=5.5)
-@available(macOS 12.0, *)
+@available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
 extension LifecycleShutdownHandler {
     public init(_ handler: @escaping (State) async throws -> Void) {
         self = LifecycleShutdownHandler { state, callback in
