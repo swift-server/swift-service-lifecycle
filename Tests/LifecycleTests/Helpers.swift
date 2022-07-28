@@ -29,7 +29,8 @@ class GoodItem: LifecycleTask {
 
     init(id: String = UUID().uuidString,
          startDelay: Double = Double.random(in: 0.01 ... 0.1),
-         shutdownDelay: Double = Double.random(in: 0.01 ... 0.1)) {
+         shutdownDelay: Double = Double.random(in: 0.01 ... 0.1))
+    {
         self.id = id
         self.startDelay = startDelay
         self.shutdownDelay = shutdownDelay
@@ -72,7 +73,8 @@ class NIOItem {
     init(eventLoopGroup: EventLoopGroup,
          id: String = UUID().uuidString,
          startDelay: Int64 = Int64.random(in: 10 ... 20),
-         shutdownDelay: Int64 = Int64.random(in: 10 ... 20)) {
+         shutdownDelay: Int64 = Int64.random(in: 10 ... 20))
+    {
         self.id = id
         self.eventLoopGroup = eventLoopGroup
         self.startDelay = startDelay
