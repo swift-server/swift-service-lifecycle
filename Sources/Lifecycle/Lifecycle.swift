@@ -445,8 +445,7 @@ public extension ServiceLifecycle {
                     logger: Logger? = nil,
                     callbackQueue: DispatchQueue = .global(),
                     shutdownSignal: [Signal]? = [.TERM, .INT],
-                    installBacktrace: Bool = true)
-        {
+                    installBacktrace: Bool = true) {
             self.label = label
             self.logger = logger ?? Logger(label: label)
             self.callbackQueue = callbackQueue
