@@ -12,6 +12,7 @@ services:
     image: swift-service-lifecycle:20.04-5.7
     environment:
       - SKIP_SIGNAL_TEST=true
+      - FORCE_TEST_DISCOVERY=--enable-test-discovery
 
   shell:
     image: swift-service-lifecycle:20.04-5.7
