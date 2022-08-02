@@ -34,16 +34,16 @@ public protocol LifecycleTask {
     var logShutdown: Bool { get }
 }
 
-public extension LifecycleTask {
-    var shutdownIfNotStarted: Bool {
+extension LifecycleTask {
+    public var shutdownIfNotStarted: Bool {
         return false
     }
 
-    var logStart: Bool {
+    public var logStart: Bool {
         return true
     }
 
-    var logShutdown: Bool {
+    public var logShutdown: Bool {
         return true
     }
 }
@@ -107,8 +107,8 @@ public struct LifecycleHandler {
 
 #if canImport(_Concurrency) && compiler(>=5.5.2)
 @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
-public extension LifecycleHandler {
-    init(_ handler: @escaping () async throws -> Void) {
+extension LifecycleHandler {
+    public init(_ handler: @escaping () async throws -> Void) {
         self = LifecycleHandler { callback in
             Task {
                 do {
@@ -121,7 +121,7 @@ public extension LifecycleHandler {
         }
     }
 
-    static func async(_ handler: @escaping () async throws -> Void) -> LifecycleHandler {
+    public static func async(_ handler: @escaping () async throws -> Void) -> LifecycleHandler {
         return LifecycleHandler(handler)
     }
 }
@@ -171,8 +171,8 @@ public struct LifecycleStartHandler<State> {
 
 #if canImport(_Concurrency) && compiler(>=5.5.2)
 @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
-public extension LifecycleStartHandler {
-    init(_ handler: @escaping () async throws -> State) {
+extension LifecycleStartHandler {
+    public init(_ handler: @escaping () async throws -> State) {
         self = LifecycleStartHandler { callback in
             Task {
                 do {
@@ -185,7 +185,7 @@ public extension LifecycleStartHandler {
         }
     }
 
-    static func async(_ handler: @escaping () async throws -> State) -> LifecycleStartHandler {
+    public static func async(_ handler: @escaping () async throws -> State) -> LifecycleStartHandler {
         return LifecycleStartHandler(handler)
     }
 }
@@ -233,8 +233,8 @@ public struct LifecycleShutdownHandler<State> {
 
 #if canImport(_Concurrency) && compiler(>=5.5.2)
 @available(macOS 10.15, iOS 13, tvOS 13, watchOS 6, *)
-public extension LifecycleShutdownHandler {
-    init(_ handler: @escaping (State) async throws -> Void) {
+extension LifecycleShutdownHandler {
+    public init(_ handler: @escaping (State) async throws -> Void) {
         self = LifecycleShutdownHandler { state, callback in
             Task {
                 do {
@@ -247,7 +247,7 @@ public extension LifecycleShutdownHandler {
         }
     }
 
-    static func async(_ handler: @escaping (State) async throws -> Void) -> LifecycleShutdownHandler {
+    public static func async(_ handler: @escaping (State) async throws -> Void) -> LifecycleShutdownHandler {
         return LifecycleShutdownHandler(handler)
     }
 }
@@ -343,7 +343,7 @@ public struct ServiceLifecycle {
     }
 }
 
-public extension ServiceLifecycle {
+extension ServiceLifecycle {
     private static var trapped: Set<Int32> = []
     private static let trappedLock = Lock()
 
@@ -355,7 +355,7 @@ public extension ServiceLifecycle {
     ///    - on: DispatchQueue to run the signal handler on (default global dispatch queue)
     ///    - cancelAfterTrap: Defaults to false, which means the signal handler can be run multiple times. If true, the `DispatchSignalSource` will be cancelled after being trapped once.
     /// - returns: a `DispatchSourceSignal` for the given trap. The source must be cancelled by the caller.
-    static func trap(signal sig: Signal, handler: @escaping (Signal) -> Void, on queue: DispatchQueue = .global(), cancelAfterTrap: Bool = false) -> DispatchSourceSignal {
+    public static func trap(signal sig: Signal, handler: @escaping (Signal) -> Void, on queue: DispatchQueue = .global(), cancelAfterTrap: Bool = false) -> DispatchSourceSignal {
         // on linux, we can call singal() once per process
         self.trappedLock.withLockVoid {
             if !self.trapped.contains(sig.rawValue) {
@@ -377,7 +377,7 @@ public extension ServiceLifecycle {
         return signalSource
     }
 
-    static func removeTrap(signal sig: Signal) {
+    public static func removeTrap(signal sig: Signal) {
         self.trappedLock.withLockVoid {
             if self.trapped.contains(sig.rawValue) {
                 signal(sig.rawValue, SIG_DFL)
@@ -387,7 +387,7 @@ public extension ServiceLifecycle {
     }
 
     /// A system signal
-    struct Signal: Equatable, CustomStringConvertible {
+    public struct Signal: Equatable, CustomStringConvertible {
         internal var rawValue: CInt
 
         public static let TERM = Signal(rawValue: SIGTERM)
@@ -427,9 +427,9 @@ extension ServiceLifecycle: LifecycleTasksContainer {
     }
 }
 
-public extension ServiceLifecycle {
+extension ServiceLifecycle {
     /// ``ServiceLifecycle`` configuration options.
-    struct Configuration {
+    public struct Configuration {
         /// Defines the `label` for the lifeycle and its Logger
         public var label: String
         /// Defines the `Logger` to log with.
@@ -763,13 +763,13 @@ public protocol LifecycleTasksContainer {
     func deregister(_ key: RegistrationKey)
 }
 
-public extension LifecycleTasksContainer {
+extension LifecycleTasksContainer {
     /// Register a ``LifecycleTask`` with a ``LifecycleTasksContainer``.
     ///
     /// - parameters:
     ///    - tasks: one or more ``LifecycleTask``.
     @discardableResult
-    func register(_ tasks: LifecycleTask ...) -> [RegistrationKey] {
+    public func register(_ tasks: LifecycleTask ...) -> [RegistrationKey] {
         return self.register(tasks)
     }
 
@@ -778,7 +778,7 @@ public extension LifecycleTasksContainer {
     /// - parameters:
     ///    - tasks: one or more ``LifecycleTask``.
     @discardableResult
-    func register(_ tasks: LifecycleTask) -> RegistrationKey {
+    public func register(_ tasks: LifecycleTask) -> RegistrationKey {
         return self.register(tasks).first! // force the optional on the first in this case is safe
     }
 
@@ -789,7 +789,7 @@ public extension LifecycleTasksContainer {
     ///    - start: ``LifecycleHandler`` to perform the startup.
     ///    - shutdown: ``LifecycleHandler`` to perform the shutdown.
     @discardableResult
-    func register(label: String, start: LifecycleHandler, shutdown: LifecycleHandler, shutdownIfNotStarted: Bool? = nil) -> RegistrationKey {
+    public func register(label: String, start: LifecycleHandler, shutdown: LifecycleHandler, shutdownIfNotStarted: Bool? = nil) -> RegistrationKey {
         return self.register(_LifecycleTask(label: label, shutdownIfNotStarted: shutdownIfNotStarted, start: start, shutdown: shutdown))
     }
 
@@ -799,7 +799,7 @@ public extension LifecycleTasksContainer {
     ///    - label: label of the item, useful for debugging.
     ///    - handler: ``LifecycleHandler`` to perform the shutdown.
     @discardableResult
-    func registerShutdown(label: String, _ handler: LifecycleHandler) -> RegistrationKey {
+    public func registerShutdown(label: String, _ handler: LifecycleHandler) -> RegistrationKey {
         return self.register(label: label, start: .none, shutdown: handler)
     }
 
@@ -810,7 +810,7 @@ public extension LifecycleTasksContainer {
     ///    - start: ``LifecycleStartHandler`` to perform the startup and return the state.
     ///    - shutdown: ``LifecycleShutdownHandler`` to perform the shutdown given the state.
     @discardableResult
-    func registerStateful<State>(label: String, start: LifecycleStartHandler<State>, shutdown: LifecycleShutdownHandler<State>) -> RegistrationKey {
+    public func registerStateful<State>(label: String, start: LifecycleStartHandler<State>, shutdown: LifecycleShutdownHandler<State>) -> RegistrationKey {
         return self.register(StatefulLifecycleTask(label: label, start: start, shutdown: shutdown))
     }
 }
