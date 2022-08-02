@@ -15,12 +15,12 @@
 import Lifecycle
 import NIO
 
-public extension LifecycleHandler {
+extension LifecycleHandler {
     /// Asynchronous `LifecycleHandler` based on an `EventLoopFuture`.
     ///
     /// - parameters:
     ///    - future: function returning the underlying `EventLoopFuture`
-    static func eventLoopFuture(_ future: @escaping () -> EventLoopFuture<Void>) -> LifecycleHandler {
+    public static func eventLoopFuture(_ future: @escaping () -> EventLoopFuture<Void>) -> LifecycleHandler {
         return LifecycleHandler { callback in
             future().whenComplete { result in
                 switch result {
@@ -34,13 +34,13 @@ public extension LifecycleHandler {
     }
 }
 
-public extension LifecycleHandler {
+extension LifecycleHandler {
     /// `LifecycleHandler` that cancels a `RepeatedTask`.
     ///
     /// - parameters:
     ///    - task: `RepeatedTask` to be cancelled
     ///    - on: `EventLoop` to use for cancelling the task
-    static func cancelRepeatedTask(_ task: RepeatedTask, on eventLoop: EventLoop) -> LifecycleHandler {
+    public static func cancelRepeatedTask(_ task: RepeatedTask, on eventLoop: EventLoop) -> LifecycleHandler {
         return self.eventLoopFuture {
             let promise = eventLoop.makePromise(of: Void.self)
             task.cancel(promise: promise)
@@ -49,12 +49,12 @@ public extension LifecycleHandler {
     }
 }
 
-public extension LifecycleStartHandler {
+extension LifecycleStartHandler {
     /// Asynchronous `LifecycleStartHandler` based on an `EventLoopFuture`.
     ///
     /// - parameters:
     ///    - future: function returning the underlying `EventLoopFuture`
-    static func eventLoopFuture(_ future: @escaping () -> EventLoopFuture<State>) -> LifecycleStartHandler {
+    public static func eventLoopFuture(_ future: @escaping () -> EventLoopFuture<State>) -> LifecycleStartHandler {
         return LifecycleStartHandler { callback in
             future().whenComplete { result in
                 callback(result)
@@ -63,12 +63,12 @@ public extension LifecycleStartHandler {
     }
 }
 
-public extension LifecycleShutdownHandler {
+extension LifecycleShutdownHandler {
     /// Asynchronous `LifecycleShutdownHandler` based on an `EventLoopFuture`.
     ///
     /// - parameters:
     ///    - future: function returning the underlying `EventLoopFuture`
-    static func eventLoopFuture(_ future: @escaping (State) -> EventLoopFuture<Void>) -> LifecycleShutdownHandler {
+    public static func eventLoopFuture(_ future: @escaping (State) -> EventLoopFuture<Void>) -> LifecycleShutdownHandler {
         return LifecycleShutdownHandler { state, callback in
             future(state).whenComplete { result in
                 switch result {
@@ -82,13 +82,13 @@ public extension LifecycleShutdownHandler {
     }
 }
 
-public extension ComponentLifecycle {
+extension ComponentLifecycle {
     /// Starts the provided `LifecycleItem` array.
     /// Startup is performed in the order of items provided.
     ///
     /// - parameters:
     ///    - eventLoop: The `eventLoop` which is used to generate the `EventLoopFuture` that is returned. After the start the future is fulfilled:
-    func start(on eventLoop: EventLoop) -> EventLoopFuture<Void> {
+    public func start(on eventLoop: EventLoop) -> EventLoopFuture<Void> {
         let promise = eventLoop.makePromise(of: Void.self)
         self.start { error in
             if let error = error {
