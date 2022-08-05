@@ -3,7 +3,7 @@
 ##
 ## This source file is part of the SwiftServiceLifecycle open source project
 ##
-## Copyright (c) 2017-2018 Apple Inc. and the SwiftServiceLifecycle project authors
+## Copyright (c) 2017-2022 Apple Inc. and the SwiftServiceLifecycle project authors
 ## Licensed under Apache License v2.0
 ##
 ## See LICENSE.txt for license information
@@ -19,7 +19,7 @@ here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 function replace_acceptable_years() {
     # this needs to replace all acceptable forms with 'YEARS'
-    sed -e 's/2017-2018/YEARS/' -e 's/2019-2020/YEARS/' -e 's/2019-2021/YEARS/' -e 's/2019/YEARS/' -e 's/2020/YEARS/' -e 's/2021/YEARS/'
+    sed -e 's/20[12][78901]-202[012]/YEARS/' -e 's/2019/YEARS/' -e 's/202[012]/YEARS/'
 }
 
 printf "=> Checking for unacceptable language... "
@@ -73,7 +73,7 @@ for language in swift-or-c bash dtrace; do
   matching_files=( -name '*' )
   case "$language" in
       swift-or-c)
-        exceptions=( -name Package.swift )
+        exceptions=( -name Package.swift -o -name Package@*.swift )
         matching_files=( -name '*.swift' -o -name '*.c' -o -name '*.h' )
         cat > "$tmp" <<"EOF"
 //===----------------------------------------------------------------------===//

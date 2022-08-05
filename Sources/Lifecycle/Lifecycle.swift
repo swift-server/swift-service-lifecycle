@@ -2,7 +2,7 @@
 //
 // This source file is part of the SwiftServiceLifecycle open source project
 //
-// Copyright (c) 2019-2021 Apple Inc. and the SwiftServiceLifecycle project authors
+// Copyright (c) 2019-2022 Apple Inc. and the SwiftServiceLifecycle project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -24,7 +24,7 @@ import Logging
 
 // MARK: - LifecycleTask
 
-/// Represents an item that can be started and shut down
+/// Represents an item that can be started and shut down.
 public protocol LifecycleTask {
     var label: String { get }
     var shutdownIfNotStarted: Bool { get }
@@ -50,14 +50,14 @@ extension LifecycleTask {
 
 // MARK: - LifecycleHandler
 
-/// Supported startup and shutdown method styles
+/// Supported startup and shutdown method styles.
 public struct LifecycleHandler {
     @available(*, deprecated)
     public typealias Callback = (@escaping (Error?) -> Void) -> Void
 
     private let underlying: ((@escaping (Error?) -> Void) -> Void)?
 
-    /// Initialize a `LifecycleHandler` based on a completion handler.
+    /// Initialize a ``LifecycleHandler`` based on a completion handler.
     ///
     /// - parameters:
     ///    - handler: the underlying completion handler
@@ -65,7 +65,7 @@ public struct LifecycleHandler {
         self.underlying = handler
     }
 
-    /// Asynchronous `LifecycleHandler` based on a completion handler.
+    /// Asynchronous ``LifecycleHandler`` based on a completion handler.
     ///
     /// - parameters:
     ///    - handler: the underlying async handler
@@ -73,7 +73,7 @@ public struct LifecycleHandler {
         return LifecycleHandler(handler)
     }
 
-    /// Asynchronous `LifecycleHandler` based on a blocking, throwing function.
+    /// Asynchronous ``LifecycleHandler`` based on a blocking, throwing function.
     ///
     /// - parameters:
     ///    - body: the underlying function
@@ -88,7 +88,7 @@ public struct LifecycleHandler {
         }
     }
 
-    /// Noop `LifecycleHandler`.
+    /// Noop ``LifecycleHandler``.
     public static var none: LifecycleHandler {
         return LifecycleHandler(nil)
     }
@@ -129,7 +129,7 @@ extension LifecycleHandler {
 
 // MARK: - Stateful Lifecycle Handlers
 
-/// LifecycleHandler for starting stateful tasks. The state can then be fed into a LifecycleShutdownHandler
+/// LifecycleHandler for starting stateful tasks. The state can then be fed into a ``LifecycleShutdownHandler``.
 public struct LifecycleStartHandler<State> {
     private let underlying: (@escaping (Result<State, Error>) -> Void) -> Void
 
@@ -141,7 +141,7 @@ public struct LifecycleStartHandler<State> {
         self.underlying = handler
     }
 
-    /// Asynchronous `LifecycleStartHandler` based on a completion handler.
+    /// Asynchronous ``LifecycleStartHandler`` based on a completion handler.
     ///
     /// - parameters:
     ///    - handler: the underlying async handler
@@ -149,7 +149,7 @@ public struct LifecycleStartHandler<State> {
         return LifecycleStartHandler(handler)
     }
 
-    /// Synchronous `LifecycleStartHandler` based on a blocking, throwing function.
+    /// Synchronous ``LifecycleStartHandler`` based on a blocking, throwing function.
     ///
     /// - parameters:
     ///    - body: the underlying function
@@ -191,11 +191,11 @@ extension LifecycleStartHandler {
 }
 #endif
 
-/// LifecycleHandler for shutting down stateful tasks. The state comes from a LifecycleStartHandler
+/// LifecycleHandler for shutting down stateful tasks. The state comes from a ``LifecycleStartHandler``.
 public struct LifecycleShutdownHandler<State> {
     private let underlying: (State, @escaping (Error?) -> Void) -> Void
 
-    /// Initialize a `LifecycleShutdownHandler` based on a completion handler.
+    /// Initialize a ``LifecycleShutdownHandler`` based on a completion handler.
     ///
     /// - parameters:
     ///    - handler: the underlying completion handler
@@ -203,7 +203,7 @@ public struct LifecycleShutdownHandler<State> {
         self.underlying = handler
     }
 
-    /// Asynchronous `LifecycleShutdownHandler` based on a completion handler.
+    /// Asynchronous ``LifecycleShutdownHandler`` based on a completion handler.
     ///
     /// - parameters:
     ///    - handler: the underlying async handler
@@ -211,7 +211,7 @@ public struct LifecycleShutdownHandler<State> {
         return LifecycleShutdownHandler(handler)
     }
 
-    /// Asynchronous `LifecycleShutdownHandler` based on a blocking, throwing function.
+    /// Asynchronous ``LifecycleShutdownHandler`` based on a blocking, throwing function.
     ///
     /// - parameters:
     ///    - body: the underlying function
@@ -255,20 +255,20 @@ extension LifecycleShutdownHandler {
 
 // MARK: - ServiceLifecycle
 
-/// `ServiceLifecycle` provides a basic mechanism to cleanly startup and shutdown the application, freeing resources in order before exiting.
+/// ``ServiceLifecycle`` provides a basic mechanism to cleanly startup and shutdown the application, freeing resources in order before exiting.
 ///  By default, also install shutdown hooks based on `Signal` and backtraces.
 public struct ServiceLifecycle {
     private static let backtracesInstalled = AtomicBoolean(false)
 
     private let configuration: Configuration
 
-    /// The underlying `ComponentLifecycle` instance
+    /// The underlying ``ComponentLifecycle`` instance
     private let underlying: ComponentLifecycle
 
-    /// Creates a `ServiceLifecycle` instance.
+    /// Creates a ``ServiceLifecycle`` instance.
     ///
     /// - parameters:
-    ///    - configuration: Defines lifecycle `Configuration`
+    ///    - configuration: Defines lifecycle ``Configuration``
     public init(configuration: Configuration = .init()) {
         self.configuration = configuration
         self.underlying = ComponentLifecycle(label: self.configuration.label, logger: self.configuration.logger)
@@ -276,7 +276,7 @@ public struct ServiceLifecycle {
         self.installBacktrace()
     }
 
-    /// Starts the provided `LifecycleTask` array.
+    /// Starts the provided ``LifecycleTask`` array.
     /// Startup is performed in the order of items provided.
     ///
     /// - parameters:
@@ -289,7 +289,7 @@ public struct ServiceLifecycle {
         self.underlying.start(on: self.configuration.callbackQueue, callback)
     }
 
-    /// Starts the provided `LifecycleTask` array and waits (blocking) until a shutdown `Signal` is captured or `shutdown` is called on another thread.
+    /// Starts the provided ``LifecycleTask`` array and waits (blocking) until a shutdown `Signal` is captured or ``shutdown(_:)`` is called on another thread.
     /// Startup is performed in the order of items provided.
     public func startAndWait() throws {
         guard self.underlying.idle else {
@@ -299,7 +299,7 @@ public struct ServiceLifecycle {
         try self.underlying.startAndWait(on: self.configuration.callbackQueue)
     }
 
-    /// Shuts down the `LifecycleTask` array provided in `start` or `startAndWait`.
+    /// Shuts down the ``LifecycleTask`` array provided in ``start(_:)`` or ``startAndWait()``.
     /// Shutdown is performed in reverse order of items provided.
     ///
     /// - parameters:
@@ -308,7 +308,7 @@ public struct ServiceLifecycle {
         self.underlying.shutdown(callback)
     }
 
-    /// Waits (blocking) until shutdown `Signal` is captured or `shutdown` is invoked on another thread.
+    /// Waits (blocking) until shutdown `Signal` is captured or ``shutdown(_:)`` is invoked on another thread.
     public func wait() {
         self.underlying.wait()
     }
@@ -353,7 +353,7 @@ extension ServiceLifecycle {
     ///    - signal: The signal to trap.
     ///    - handler: closure to invoke when the signal is captured.
     ///    - on: DispatchQueue to run the signal handler on (default global dispatch queue)
-    ///    - cancelAfterTrap: Defaults to false, which means the signal handler can be run multiple times. If true, the DispatchSignalSource will be cancelled after being trapped once.
+    ///    - cancelAfterTrap: Defaults to false, which means the signal handler can be run multiple times. If true, the `DispatchSignalSource` will be cancelled after being trapped once.
     /// - returns: a `DispatchSourceSignal` for the given trap. The source must be cancelled by the caller.
     public static func trap(signal sig: Signal, handler: @escaping (Signal) -> Void, on queue: DispatchQueue = .global(), cancelAfterTrap: Bool = false) -> DispatchSourceSignal {
         // on linux, we can call singal() once per process
@@ -428,7 +428,7 @@ extension ServiceLifecycle: LifecycleTasksContainer {
 }
 
 extension ServiceLifecycle {
-    /// `ServiceLifecycle` configuration options.
+    /// ``ServiceLifecycle`` configuration options.
     public struct Configuration {
         /// Defines the `label` for the lifeycle and its Logger
         public var label: String
@@ -461,7 +461,7 @@ struct ShutdownError: Error {
 
 // MARK: - ComponentLifecycle
 
-/// `ComponentLifecycle` provides a basic mechanism to cleanly startup and shutdown a subsystem in a larger application, freeing resources in order before exiting.
+/// ``ComponentLifecycle`` provides a basic mechanism to cleanly startup and shutdown a subsystem in a larger application, freeing resources in order before exiting.
 public class ComponentLifecycle: LifecycleTask {
     public let label: String
     fileprivate let logger: Logger
@@ -470,7 +470,7 @@ public class ComponentLifecycle: LifecycleTask {
     private var state = State.idle(Registry())
     private let stateLock = Lock()
 
-    /// Creates a `ComponentLifecycle` instance.
+    /// Creates a ``ComponentLifecycle`` instance.
     ///
     /// - parameters:
     ///    - label: label of the item, useful for debugging.
@@ -481,7 +481,7 @@ public class ComponentLifecycle: LifecycleTask {
         self.shutdownGroup.enter()
     }
 
-    /// Starts the provided `LifecycleTask` array.
+    /// Starts the provided ``LifecycleTask`` array.
     /// Startup is performed in the order of items provided.
     ///
     /// - parameters:
@@ -490,7 +490,7 @@ public class ComponentLifecycle: LifecycleTask {
         self.start(on: .global(), callback)
     }
 
-    /// Starts the provided `LifecycleTask` array.
+    /// Starts the provided ``LifecycleTask`` array.
     /// Startup is performed in the order of items provided.
     ///
     /// - parameters:
@@ -503,7 +503,7 @@ public class ComponentLifecycle: LifecycleTask {
         self._start(on: queue, registry: registry, callback: callback)
     }
 
-    /// Starts the provided `LifecycleTask` array and waits (blocking) until `shutdown` is called on another thread.
+    /// Starts the provided ``LifecycleTask`` array and waits (blocking) until ``shutdown(_:)`` is called on another thread.
     /// Startup is performed in the order of items provided.
     ///
     /// - parameters:
@@ -521,7 +521,7 @@ public class ComponentLifecycle: LifecycleTask {
         self.wait()
     }
 
-    /// Shuts down the `LifecycleTask` array provided in `start` or `startAndWait`.
+    /// Shuts down the ``LifecycleTask`` array provided in ``start(on:_:)`` or ``startAndWait(on:)``.
     /// Shutdown is performed in reverse order of items provided.
     public func shutdown(_ callback: @escaping (Error?) -> Void = { _ in }) {
         let setupShutdownListener = { (queue: DispatchQueue) in
@@ -564,7 +564,7 @@ public class ComponentLifecycle: LifecycleTask {
         }
     }
 
-    /// Waits (blocking) until `shutdown` is invoked on another thread.
+    /// Waits (blocking) until ``shutdown(_:)`` is invoked on another thread.
     public func wait() {
         self.shutdownGroup.wait()
     }
@@ -745,18 +745,18 @@ extension ComponentLifecycle: LifecycleTasksContainer {
     }
 }
 
-/// A container of `LifecycleTask`, used to register additional `LifecycleTask`
+/// A container of ``LifecycleTask``, used to register additional ``LifecycleTask``.
 public protocol LifecycleTasksContainer {
     typealias RegistrationKey = String
 
-    /// Register a `LifecycleTask` with a `LifecycleTasksContainer`.
+    /// Register a ``LifecycleTask`` with a ``LifecycleTasksContainer``.
     ///
     /// - parameters:
-    ///    - tasks: array of `LifecycleTask`.
+    ///    - tasks: array of ``LifecycleTask``.
     @discardableResult
     func register(_ tasks: [LifecycleTask]) -> [RegistrationKey]
 
-    /// De-register a `LifecycleTask` from a `LifecycleTasksContainer`.
+    /// De-register a ``LifecycleTask`` from a ``LifecycleTasksContainer``.
     ///
     /// - parameters:
     ///    - registrationKey: The key returned by a register operation.
@@ -764,51 +764,51 @@ public protocol LifecycleTasksContainer {
 }
 
 extension LifecycleTasksContainer {
-    /// Register a `LifecycleTask` with a `LifecycleTasksContainer`.
+    /// Register a ``LifecycleTask`` with a ``LifecycleTasksContainer``.
     ///
     /// - parameters:
-    ///    - tasks: one or more `LifecycleTask`.
+    ///    - tasks: one or more ``LifecycleTask``.
     @discardableResult
     public func register(_ tasks: LifecycleTask ...) -> [RegistrationKey] {
         return self.register(tasks)
     }
 
-    /// Register a `LifecycleTask` with a `LifecycleTasksContainer`.
+    /// Register a ``LifecycleTask`` with a ``LifecycleTasksContainer``.
     ///
     /// - parameters:
-    ///    - tasks: one or more `LifecycleTask`.
+    ///    - tasks: one or more ``LifecycleTask``.
     @discardableResult
     public func register(_ tasks: LifecycleTask) -> RegistrationKey {
         return self.register(tasks).first! // force the optional on the first in this case is safe
     }
 
-    /// Register a `LifecycleTask` with a `LifecycleTasksContainer`.
+    /// Register a ``LifecycleTask`` with a ``LifecycleTasksContainer``.
     ///
     /// - parameters:
     ///    - label: label of the item, useful for debugging.
-    ///    - start: `Handler` to perform the startup.
-    ///    - shutdown: `Handler` to perform the shutdown.
+    ///    - start: ``LifecycleHandler`` to perform the startup.
+    ///    - shutdown: ``LifecycleHandler`` to perform the shutdown.
     @discardableResult
     public func register(label: String, start: LifecycleHandler, shutdown: LifecycleHandler, shutdownIfNotStarted: Bool? = nil) -> RegistrationKey {
         return self.register(_LifecycleTask(label: label, shutdownIfNotStarted: shutdownIfNotStarted, start: start, shutdown: shutdown))
     }
 
-    /// Register a `LifecycleTask` with a `LifecycleTasksContainer`.
+    /// Register a ``LifecycleTask`` with a ``LifecycleTasksContainer``.
     ///
     /// - parameters:
     ///    - label: label of the item, useful for debugging.
-    ///    - handler: `Handler` to perform the shutdown.
+    ///    - handler: ``LifecycleHandler`` to perform the shutdown.
     @discardableResult
     public func registerShutdown(label: String, _ handler: LifecycleHandler) -> RegistrationKey {
         return self.register(label: label, start: .none, shutdown: handler)
     }
 
-    /// Register a stateful `LifecycleTask` with a `LifecycleTasksContainer`.
+    /// Register a stateful ``LifecycleTask`` with a ``LifecycleTasksContainer``.
     ///
     /// - parameters:
     ///    - label: label of the item, useful for debugging.
-    ///    - start: `LifecycleStartHandler` to perform the startup and return the state.
-    ///    - shutdown: `LifecycleShutdownHandler` to perform the shutdown given the state.
+    ///    - start: ``LifecycleStartHandler`` to perform the startup and return the state.
+    ///    - shutdown: ``LifecycleShutdownHandler`` to perform the shutdown given the state.
     @discardableResult
     public func registerStateful<State>(label: String, start: LifecycleStartHandler<State>, shutdown: LifecycleShutdownHandler<State>) -> RegistrationKey {
         return self.register(StatefulLifecycleTask(label: label, start: start, shutdown: shutdown))
