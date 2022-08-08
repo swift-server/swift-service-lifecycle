@@ -1,5 +1,4 @@
 #!/bin/bash
-
 ##===----------------------------------------------------------------------===##
 ##
 ## This source file is part of the SwiftServiceLifecycle open source project
@@ -28,4 +27,4 @@
 ##
 ##===----------------------------------------------------------------------===##
 
-xcrun swift package --disable-sandbox preview-documentation --target $1
+swift package --disable-sandbox preview-documentation --target $1
