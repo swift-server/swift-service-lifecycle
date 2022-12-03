@@ -1,4 +1,4 @@
 version: 1
 builder:
   configs:
-    - documentation_targets: [Lifecycle]
+    - documentation_targets: [Lifecycle, LifecycleNIOCompat]
