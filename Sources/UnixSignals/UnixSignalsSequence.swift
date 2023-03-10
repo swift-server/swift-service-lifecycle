@@ -1,0 +1,297 @@
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
+import Dispatch
+
+/// An unterminated `AsyncSequence` of ``UnixSignal``s.
+///
+/// This can be combined with a `TaskGroup` to signal cancellation by trapping Unix signals. As an
+/// example:
+///
+/// ```
+/// @main
+/// struct Server {
+///   static func main() async throws {
+///     await withTaskGroup(of: Void.self) { group in
+///       group.addTask {
+///         let server = Server()
+///         // Run until cancelled; cancellation triggers graceful shutdown.
+///         await server.run()
+///       }
+///
+///       group.addTask {
+///         for await signal in await UnixSignals(trapping: .sigterm) {
+///           print("caught \(signal), cancelling...")
+///           return
+///         }
+///       }
+///
+///       // Wait for either the server to finish, or SIGTERM to be trapped, then cancel
+///       // the remaining tasks.
+///       await group.next()
+///       group.cancelAll()
+///     }
+///   }
+/// }
+/// ```
+public struct UnixSignalsSequence: AsyncSequence, Sendable {
+    private static let queue = DispatchQueue(label: "com.service-lifecycle.unix-signals")
+
+    public typealias Element = UnixSignal
+
+    fileprivate struct Source {
+        var dispatchSource: any DispatchSourceSignal
+        var signal: UnixSignal
+    }
+
+    private let storage: Storage
+
+    public init(trapping signals: UnixSignal...) async {
+        await self.init(trapping: signals)
+    }
+
+    public init(trapping signals: [UnixSignal]) async {
+        // We are converting the signals to a Set here to remove duplicates
+        self.storage = await .init(signals: Set(signals))
+    }
+
+    public func makeAsyncIterator() -> AsyncIterator {
+        return .init(iterator: self.storage.makeAsyncIterator(), storage: self.storage)
+    }
+
+    public struct AsyncIterator: AsyncIteratorProtocol {
+        private var iterator: AsyncStream<UnixSignal>.Iterator
+        // We need to keep the underlying `DispatchSourceSignal` alive to receive notifications.
+        private let storage: Storage
+
+        fileprivate init(iterator: AsyncStream<UnixSignal>.Iterator, storage: Storage) {
+            self.iterator = iterator
+            self.storage = storage
+        }
+
+        public mutating func next() async -> UnixSignal? {
+            return await self.iterator.next()
+        }
+    }
+}
+
+extension UnixSignalsSequence {
+    fileprivate final class Storage: @unchecked Sendable {
+        private let stateMachine: LockedValueBox<StateMachine>
+
+        init(signals: Set<UnixSignal>) async {
+            let sources: [Source] = signals.map { sig in
+                #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+                // On Darwin platforms Dispatch's signal source uses kqueue and EVFILT_SIGNAL for
+                // delivering signals. This exists alongside but with lower precedence than signal and
+                // sigaction: ignore signal handling here to kqueue can deliver signals.
+                signal(sig.rawValue, SIG_IGN)
+                #endif
+                return .init(
+                    dispatchSource: DispatchSource.makeSignalSource(signal: sig.rawValue, queue: UnixSignalsSequence.queue),
+                    signal: sig
+                )
+            }
+
+            let stream = AsyncStream<UnixSignal> { continuation in
+                for source in sources {
+                    source.dispatchSource.setEventHandler {
+                        continuation.yield(source.signal)
+                    }
+                    source.dispatchSource.setCancelHandler {
+                        continuation.finish()
+                    }
+                }
+
+                // Don't wait forever if there's nothing to wait for.
+                if sources.isEmpty {
+                    continuation.finish()
+                }
+            }
+
+            self.stateMachine = .init(.init(sources: sources, stream: stream))
+
+            // Registering sources is async: await their registration so we don't miss early signals.
+            await withTaskCancellationHandler {
+                for source in sources {
+                    await withCheckedContinuation { continuation in
+                        let action = self.stateMachine.withLockedValue { $0.registeringSignal(continuation: continuation) }
+                        switch action {
+                        case .setRegistrationHandlerAndResumeDispatchSource:
+                            source.dispatchSource.setRegistrationHandler {
+                                let action = self.stateMachine.withLockedValue { $0.registeredSignal() }
+
+                                switch action {
+                                case .none:
+                                    break
+
+                                case .resumeContinuation(let continuation):
+                                    continuation.resume()
+                                }
+                            }
+                            source.dispatchSource.resume()
+
+                        case .resumeContinuation(let continuation):
+                            continuation.resume()
+                        }
+                    }
+                }
+            } onCancel: {
+                let action = self.stateMachine.withLockedValue { $0.cancelledInit() }
+
+                switch action {
+                case .none:
+                    break
+
+                case .cancelAllSources:
+                    for source in sources {
+                        source.dispatchSource.cancel()
+                    }
+
+                case .resumeContinuationAndCancelAllSources(let continuation):
+                    continuation.resume()
+
+                    for source in sources {
+                        source.dispatchSource.cancel()
+                    }
+                }
+            }
+        }
+
+        func makeAsyncIterator() -> AsyncStream<UnixSignal>.AsyncIterator {
+            return self.stateMachine.withLockedValue { $0.makeAsyncIterator() }
+        }
+    }
+}
+
+extension UnixSignalsSequence {
+    fileprivate struct StateMachine {
+        private enum State {
+            /// The initial state.
+            case canRegisterSignal(
+                sources: [Source],
+                stream: AsyncStream<UnixSignal>
+            )
+            /// The state once we started to register a signal handler.
+            ///
+            /// - Note: We can enter this state multiple times. One for each signal handler.
+            case registeringSignal(
+                sources: [Source],
+                stream: AsyncStream<UnixSignal>,
+                continuation: CheckedContinuation<Void, Never>
+            )
+            /// The state once an iterator has been created.
+            case producing(
+                sources: [Source],
+                stream: AsyncStream<UnixSignal>
+            )
+            /// The state when the task that creates the UnixSignals gets cancelled during init.
+            case cancelled(
+                stream: AsyncStream<UnixSignal>
+            )
+        }
+
+        private var state: State
+
+        init(sources: [Source], stream: AsyncStream<UnixSignal>) {
+            self.state = .canRegisterSignal(sources: sources, stream: stream)
+        }
+
+        enum RegisteringSignalAction {
+            case setRegistrationHandlerAndResumeDispatchSource
+            case resumeContinuation(CheckedContinuation<Void, Never>)
+        }
+
+        mutating func registeringSignal(continuation: CheckedContinuation<Void, Never>) -> RegisteringSignalAction {
+            switch self.state {
+            case .canRegisterSignal(let sources, let stream):
+                self.state = .registeringSignal(sources: sources, stream: stream, continuation: continuation)
+
+                return .setRegistrationHandlerAndResumeDispatchSource
+
+            case .registeringSignal:
+                fatalError("UnixSignals tried to register multiple signals at once")
+
+            case .producing:
+                fatalError("UnixSignals tried to create an iterator before the init was done")
+
+            case .cancelled:
+                return .resumeContinuation(continuation)
+            }
+        }
+
+        enum RegisteredSignalAction {
+            case resumeContinuation(CheckedContinuation<Void, Never>)
+        }
+
+        mutating func registeredSignal() -> RegisteredSignalAction? {
+            switch self.state {
+            case .canRegisterSignal:
+                fatalError("UnixSignals tried to register signals more than once")
+
+            case .registeringSignal(let sources, let stream, let continuation):
+                self.state = .canRegisterSignal(sources: sources, stream: stream)
+
+                return .resumeContinuation(continuation)
+
+            case .producing:
+                fatalError("UnixSignals tried to create an iterator before the init was done")
+
+            case .cancelled:
+                // This is okay. The registration and cancelling the source might race.
+                return .none
+            }
+        }
+
+        enum CancelledInitAction {
+            case cancelAllSources
+            case resumeContinuationAndCancelAllSources(CheckedContinuation<Void, Never>)
+        }
+
+        mutating func cancelledInit() -> CancelledInitAction? {
+            switch self.state {
+            case .canRegisterSignal(_, let stream):
+                self.state = .cancelled(stream: stream)
+
+                return .cancelAllSources
+
+            case .registeringSignal(_, let stream, let continuation):
+                self.state = .cancelled(stream: stream)
+
+                return .resumeContinuationAndCancelAllSources(continuation)
+
+            case .producing:
+                // This is a weird one. The task that created the UnixSignals
+                // got cancelled but we already made an iterator. I guess
+                // this can happen while we are racing so let's just tolerate that
+                // and do nothing. If the task that created the UnixSignals and is
+                // consuming it is the same one then the stream will terminate anyhow.
+                return .none
+
+            case .cancelled:
+                fatalError("UnixSignals registration cancelled more than once")
+            }
+        }
+
+        mutating func makeAsyncIterator() -> AsyncStream<UnixSignal>.AsyncIterator {
+            switch self.state {
+            case .canRegisterSignal(let sources, let stream):
+                // This can happen when we created a UnixSignal without any signals
+                self.state = .producing(sources: sources, stream: stream)
+
+                return stream.makeAsyncIterator()
+
+            case .registeringSignal:
+                fatalError("UnixSignals tried to create iterator before all handlers were installed")
+
+            case .producing:
+                fatalError("UnixSignals only allows a single iterator to be created")
+
+            case .cancelled(let stream):
+                return stream.makeAsyncIterator()
+            }
+        }
+    }
+}
