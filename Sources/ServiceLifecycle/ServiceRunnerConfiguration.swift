@@ -43,7 +43,7 @@ public struct ServiceRunnerConfiguration: Hashable, Sendable {
     ///
     /// - Parameter gracefulShutdownSignals: The signals that lead to graceful shutdown.
     public init(gracefulShutdownSignals: [UnixSignal] = []) {
-        self.gracefulShutdownSignals = []
+        self.gracefulShutdownSignals = gracefulShutdownSignals
         self.loggingConfiguration = .init()
     }
 }

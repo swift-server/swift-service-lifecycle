@@ -19,5 +19,7 @@
 --disable redundantReturn
 --disable preferKeyPath
 --disable sortedSwitchCases
+--disable hoistTry
+--disable hoistAwait
 
 # rules

@@ -1,3 +1,17 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the SwiftServiceLifecycle open source project
+//
+// Copyright (c) 2023 Apple Inc. and the SwiftServiceLifecycle project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of SwiftServiceLifecycle project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
 import Logging
 import ServiceLifecycle
 import UnixSignals
@@ -19,8 +33,6 @@ private actor MockService: Service, CustomStringConvertible {
 
     private var runContinuation: CheckedContinuation<Void, Error>?
 
-    private var shutdownGracefullyContinuation: CheckedContinuation<Void, Error>?
-
     nonisolated let description: String
 
     init(
@@ -37,39 +49,31 @@ private actor MockService: Service, CustomStringConvertible {
     func run() async throws {
         self.eventsContinuation.yield(.run)
         try await withTaskCancellationHandler {
-            try await withThrowingTaskGroup(of: Void.self) { group in
-                group.addTask {
-                    while true {
-                        try await Task.sleep(nanoseconds: 100_000_000)
-                        self.eventsContinuation.yield(.runPing)
+            try await withShutdownGracefulHandler {
+                try await withThrowingTaskGroup(of: Void.self) { group in
+                    group.addTask {
+                        while true {
+                            try await Task.sleep(nanoseconds: 100_000_000)
+                            self.eventsContinuation.yield(.runPing)
+                        }
                     }
-                }
 
-                try await withCheckedThrowingContinuation {
-                    self.runContinuation = $0
-                }
+                    try await withCheckedThrowingContinuation {
+                        self.runContinuation = $0
+                    }
 
-                group.cancelAll()
+                    group.cancelAll()
+                }
+            } onGracefulShutdown: {
+                self.eventsContinuation.yield(.shutdownGracefully)
             }
         } onCancel: {
             self.eventsContinuation.yield(.runCancelled)
         }
     }
 
-    func shutdownGracefully() async throws {
-        self.eventsContinuation.yield(.shutdownGracefully)
-
-        try await withCheckedThrowingContinuation {
-            self.shutdownGracefullyContinuation = $0
-        }
-    }
-
     func resumeRunContinuation(with result: Result<Void, Error>) {
         self.runContinuation?.resume(with: result)
-    }
-
-    func resumeShutdownGracefullyContinuation(with result: Result<Void, Error>) {
-        self.shutdownGracefullyContinuation?.resume(with: result)
     }
 }
 
@@ -148,7 +152,6 @@ final class ServiceRunnerTests: XCTestCase {
             await XCTAsyncAssertEqual(await eventIterator.next(), .shutdownGracefully)
 
             await mockService.resumeRunContinuation(with: .success(()))
-            await mockService.resumeShutdownGracefullyContinuation(with: .success(()))
         }
     }
 
@@ -254,43 +257,6 @@ final class ServiceRunnerTests: XCTestCase {
         }
     }
 
-    func testRun_whenShuttingDownGracefullyThrows() async throws {
-        let configuration = ServiceRunnerConfiguration(gracefulShutdownSignals: [.sigalrm])
-        let service1 = MockService(isLongRunning: true, description: "Service1")
-        let service2 = MockService(isLongRunning: true, description: "Service2")
-        let runner = self.makeServiceRunner(services: [service1, service2], configuration: configuration)
-
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            struct ExampleError: Error, Hashable {}
-
-            group.addTask {
-                try await runner.run()
-            }
-
-            var service1EventIterator = service1.events.makeAsyncIterator()
-            var service2EventIterator = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await service1EventIterator.next(), .run)
-            await XCTAsyncAssertEqual(await service2EventIterator.next(), .run)
-            await XCTAsyncAssertEqual(await service1EventIterator.next(), .runPing)
-            await XCTAsyncAssertEqual(await service2EventIterator.next(), .runPing)
-
-            let pid = getpid()
-            kill(pid, UnixSignal.sigalrm.rawValue)
-            await XCTAsyncAssertEqual(await service2EventIterator.next(), .shutdownGracefully)
-
-            await service2.resumeShutdownGracefullyContinuation(with: .failure(ExampleError()))
-
-            await XCTAsyncAssertEqual(await service1EventIterator.next(), .runCancelled)
-
-            await service1.resumeRunContinuation(with: .success(()))
-            await service2.resumeRunContinuation(with: .success(()))
-
-            try await XCTAsyncAssertThrowsError(await group.next()) {
-                XCTAssertTrue($0 is ExampleError)
-            }
-        }
-    }
-
     // MARK: - Helpers
 
     private func makeServiceRunner(
@@ -305,45 +271,5 @@ final class ServiceRunnerTests: XCTestCase {
             configuration: configuration,
             logger: logger
         )
-    }
-}
-
-private func XCTAsyncAssertEqual<T>(
-    _ expression1: @autoclosure () async throws -> T,
-    _ expression2: @autoclosure () async throws -> T,
-    _ message: @autoclosure () -> String = "",
-    file: StaticString = #filePath,
-    line: UInt = #line
-) async rethrows where T: Equatable {
-    let result1 = try await expression1()
-    let result2 = try await expression2()
-    XCTAssertEqual(result1, result2, message(), file: file, line: line)
-}
-
-private func XCTAsyncAssertThrowsError<T>(
-    _ expression: @autoclosure () async throws -> T,
-    _ message: @autoclosure () -> String = "",
-    file: StaticString = #filePath,
-    line: UInt = #line,
-    _ errorHandler: (_ error: Error) -> Void = { _ in }
-) async {
-    do {
-        _ = try await expression()
-        XCTFail(message(), file: file, line: line)
-    } catch {
-        errorHandler(error)
-    }
-}
-
-private func XCTAssertNoThrow<T>(
-    _ expression: @autoclosure () async throws -> T,
-    _ message: @autoclosure () -> String = "",
-    file: StaticString = #filePath,
-    line: UInt = #line
-) async {
-    do {
-        _ = try await expression()
-    } catch {
-        XCTFail("Threw error \(error)", file: file, line: line)
     }
 }

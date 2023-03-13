@@ -27,25 +27,4 @@ public protocol Service: Sendable {
     /// - Handling incoming connections and requests
     /// - Background refreshes
     func run() async throws
-
-    /// This method is called when the ``ServiceRunner`` receives a graceful shutdown signal.
-    ///
-    /// Concrete implementations can implement this if they support graceful shutdown.
-    func shutdownGracefully() async throws
-}
-
-extension Service {
-    public var isLongRunning: Bool {
-        // By default all services are treated as long running services.
-        true
-    }
-
-    public func run() async throws {
-        // We are just going to suspend here until we get cancelled.
-        try await CancellableContinuation().run()
-    }
-
-    public func shutdownGracefully() async throws {
-        // no-op
-    }
 }
