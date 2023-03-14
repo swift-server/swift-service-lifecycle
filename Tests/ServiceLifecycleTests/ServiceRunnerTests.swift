@@ -25,8 +25,6 @@ private actor MockService: Service, CustomStringConvertible {
         case shutdownGracefully
     }
 
-    let isLongRunning: Bool
-
     let events: AsyncStream<Event>
 
     private let eventsContinuation: AsyncStream<Event>.Continuation
@@ -36,10 +34,8 @@ private actor MockService: Service, CustomStringConvertible {
     nonisolated let description: String
 
     init(
-        isLongRunning: Bool,
         description: String
     ) {
-        self.isLongRunning = isLongRunning
         var continuation: AsyncStream<Event>.Continuation!
         self.events = AsyncStream<Event> { continuation = $0 }
         self.eventsContinuation = continuation!
@@ -79,7 +75,7 @@ private actor MockService: Service, CustomStringConvertible {
 
 final class ServiceRunnerTests: XCTestCase {
     func testRun_whenAlreadyRunning() async throws {
-        let mockService = MockService(isLongRunning: true, description: "Service1")
+        let mockService = MockService(description: "Service1")
         let runner = self.makeServiceRunner(services: [mockService], configuration: .init(gracefulShutdownSignals: []))
 
         try await withThrowingTaskGroup(of: Void.self) { group in
@@ -116,7 +112,7 @@ final class ServiceRunnerTests: XCTestCase {
     }
 
     func testRun_whenNoSignal() async throws {
-        let mockService = MockService(isLongRunning: true, description: "Service1")
+        let mockService = MockService(description: "Service1")
         let runner = self.makeServiceRunner(services: [mockService], configuration: .init(gracefulShutdownSignals: []))
 
         await withThrowingTaskGroup(of: Void.self) { group in
@@ -136,7 +132,7 @@ final class ServiceRunnerTests: XCTestCase {
 
     func test_whenRun_ShutdownGracefully() async throws {
         let configuration = ServiceRunnerConfiguration(gracefulShutdownSignals: [.sigalrm])
-        let mockService = MockService(isLongRunning: true, description: "Service1")
+        let mockService = MockService(description: "Service1")
         let runner = self.makeServiceRunner(services: [mockService], configuration: configuration)
 
         await withThrowingTaskGroup(of: Void.self) { group in
@@ -155,9 +151,9 @@ final class ServiceRunnerTests: XCTestCase {
         }
     }
 
-    func testRun_whenServiceExitsEarly_andLongRunning() async throws {
+    func testRun_whenServiceExitsEarly() async throws {
         let configuration = ServiceRunnerConfiguration(gracefulShutdownSignals: [.sigalrm])
-        let mockService = MockService(isLongRunning: true, description: "Service1")
+        let mockService = MockService(description: "Service1")
         let runner = self.makeServiceRunner(services: [mockService], configuration: configuration)
 
         try await withThrowingTaskGroup(of: Void.self) { group in
@@ -176,29 +172,10 @@ final class ServiceRunnerTests: XCTestCase {
         }
     }
 
-    func testRun_whenServiceExitsEarly_andNotLongRunning() async throws {
+    func testRun_whenServiceExitsEarly_andOtherRunningService() async throws {
         let configuration = ServiceRunnerConfiguration(gracefulShutdownSignals: [.sigalrm])
-        let mockService = MockService(isLongRunning: false, description: "Service1")
-        let runner = self.makeServiceRunner(services: [mockService], configuration: configuration)
-
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            group.addTask {
-                try await runner.run()
-            }
-
-            var eventIterator = mockService.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator.next(), .run)
-
-            await mockService.resumeRunContinuation(with: .success(()))
-
-            await XCTAssertNoThrow(try await group.next())
-        }
-    }
-
-    func testRun_whenServiceExitsEarly_andOtherLongRunningService() async throws {
-        let configuration = ServiceRunnerConfiguration(gracefulShutdownSignals: [.sigalrm])
-        let shortService = MockService(isLongRunning: false, description: "Service1")
-        let longService = MockService(isLongRunning: true, description: "Service2")
+        let shortService = MockService(description: "Service1")
+        let longService = MockService(description: "Service2")
         let runner = self.makeServiceRunner(services: [shortService, longService], configuration: configuration)
 
         try await withThrowingTaskGroup(of: Void.self) { group in
@@ -215,7 +192,7 @@ final class ServiceRunnerTests: XCTestCase {
             await shortService.resumeRunContinuation(with: .success(()))
 
             // Checking that the long running service is still running
-            await XCTAsyncAssertEqual(await longServiceEventIterator.next(), .runPing)
+            await XCTAsyncAssertEqual(await longServiceEventIterator.next(), .runCancelled)
             // Finishing the long running service here
             await longService.resumeRunContinuation(with: .success(()))
 
@@ -227,8 +204,8 @@ final class ServiceRunnerTests: XCTestCase {
 
     func testRun_whenServiceThrows() async throws {
         let configuration = ServiceRunnerConfiguration(gracefulShutdownSignals: [.sigalrm])
-        let service1 = MockService(isLongRunning: true, description: "Service1")
-        let service2 = MockService(isLongRunning: true, description: "Service2")
+        let service1 = MockService(description: "Service1")
+        let service2 = MockService(description: "Service2")
         let runner = self.makeServiceRunner(services: [service1, service2], configuration: configuration)
 
         try await withThrowingTaskGroup(of: Void.self) { group in
