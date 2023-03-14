@@ -15,21 +15,21 @@
 /// Errors thrown by the ``ServiceRunner``.
 public struct ServiceRunnerError: Error, Hashable, Sendable {
     /// A struct representing the possible error codes.
-    public struct ErrorCode: Hashable, Sendable, CustomStringConvertible {
-        private enum _ErrorCode: Hashable, Sendable {
+    public struct Code: Hashable, Sendable, CustomStringConvertible {
+        private enum _Code: Hashable, Sendable {
             case alreadyRunning
             case alreadyFinished
             case serviceFinishedUnexpectedly
         }
 
-        private var errorCode: _ErrorCode
+        private var code: _Code
 
-        private init(errorCode: _ErrorCode) {
-            self.errorCode = errorCode
+        private init(code: _Code) {
+            self.code = code
         }
 
         public var description: String {
-            switch self.errorCode {
+            switch self.code {
             case .alreadyRunning:
                 return "The service runner is already running the services."
             case .alreadyFinished:
@@ -40,20 +40,20 @@ public struct ServiceRunnerError: Error, Hashable, Sendable {
         }
 
         /// Indicates that the service runner is already running.
-        public static let alreadyRunning = ErrorCode(errorCode: .alreadyRunning)
+        public static let alreadyRunning = Code(code: .alreadyRunning)
         /// Indicates that the service runner has already finished running.
-        public static let alreadyFinished = ErrorCode(errorCode: .alreadyFinished)
+        public static let alreadyFinished = Code(code: .alreadyFinished)
         /// Indicates that a service finished unexpectedly even though it indicated it is a long running service.
-        public static let serviceFinishedUnexpectedly = ErrorCode(errorCode: .serviceFinishedUnexpectedly)
+        public static let serviceFinishedUnexpectedly = Code(code: .serviceFinishedUnexpectedly)
     }
 
     /// Internal class that contains the actual error code.
     private final class Backing: Hashable, Sendable, CustomStringConvertible {
-        let errorCode: ErrorCode
+        let errorCode: Code
         let file: String
         let line: Int
 
-        init(errorCode: ErrorCode, file: String, line: Int) {
+        init(errorCode: Code, file: String, line: Int) {
             self.errorCode = errorCode
             self.file = file
             self.line = line
@@ -78,7 +78,7 @@ public struct ServiceRunnerError: Error, Hashable, Sendable {
     /// The error code.
     ///
     /// - Note: This is the only thing used for the `Equatable` and `Hashable` comparison.
-    public var errorCode: ErrorCode {
+    public var errorCode: Code {
         self.backing.errorCode
     }
 
@@ -101,7 +101,7 @@ public struct ServiceRunnerError: Error, Hashable, Sendable {
     public static func alreadyFinished(file: String = #fileID, line: Int = #line) -> Self {
         Self(
             .init(
-                errorCode: .alreadyRunning,
+                errorCode: .alreadyFinished,
                 file: file,
                 line: line
             )

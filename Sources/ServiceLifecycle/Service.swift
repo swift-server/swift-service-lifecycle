@@ -17,8 +17,6 @@ public protocol Service: Sendable {
     /// This indicates if the service is expected to be running for the entire duration.
     /// If a long running service is returning from the ``Service/run()-1ougx`` method it is treated
     /// as an unexpected early exit and all other services are going be cancelled.
-    ///
-    /// By default this is set to `true`.
     var isLongRunning: Bool { get }
 
     /// This method is called when the ``ServiceRunner`` is starting all the services.

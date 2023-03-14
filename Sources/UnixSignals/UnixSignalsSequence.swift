@@ -21,35 +21,10 @@ import Dispatch
 
 /// An unterminated `AsyncSequence` of ``UnixSignal``s.
 ///
-/// This can be combined with a `TaskGroup` to signal cancellation by trapping Unix signals. As an
-/// example:
+/// This can be used to setup signal handlers and receive the signals on the sequence.
 ///
-/// ```
-/// @main
-/// struct Server {
-///   static func main() async throws {
-///     await withTaskGroup(of: Void.self) { group in
-///       group.addTask {
-///         let server = Server()
-///         // Run until cancelled; cancellation triggers graceful shutdown.
-///         await server.run()
-///       }
-///
-///       group.addTask {
-///         for await signal in await UnixSignals(trapping: .sigterm) {
-///           print("caught \(signal), cancelling...")
-///           return
-///         }
-///       }
-///
-///       // Wait for either the server to finish, or SIGTERM to be trapped, then cancel
-///       // the remaining tasks.
-///       await group.next()
-///       group.cancelAll()
-///     }
-///   }
-/// }
-/// ```
+/// - Important: There can only be a single signal handler for a signal installed. So you should avoid creating multiple handlers
+/// for the same signal.
 public struct UnixSignalsSequence: AsyncSequence, Sendable {
     private static let queue = DispatchQueue(label: "com.service-lifecycle.unix-signals")
 

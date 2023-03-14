@@ -80,7 +80,7 @@ private actor MockService: Service, CustomStringConvertible {
 final class ServiceRunnerTests: XCTestCase {
     func testRun_whenAlreadyRunning() async throws {
         let mockService = MockService(isLongRunning: true, description: "Service1")
-        let runner = self.makeServiceRunner(services: [mockService], configuration: .init())
+        let runner = self.makeServiceRunner(services: [mockService], configuration: .init(gracefulShutdownSignals: []))
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
@@ -100,7 +100,7 @@ final class ServiceRunnerTests: XCTestCase {
     }
 
     func testRun_whenAlreadyFinished() async throws {
-        let runner = self.makeServiceRunner(services: [], configuration: .init())
+        let runner = self.makeServiceRunner(services: [], configuration: .init(gracefulShutdownSignals: []))
 
         try await runner.run()
 
@@ -110,14 +110,14 @@ final class ServiceRunnerTests: XCTestCase {
     }
 
     func testRun_whenNoService_andNoSignal() async throws {
-        let runner = self.makeServiceRunner(services: [], configuration: .init())
+        let runner = self.makeServiceRunner(services: [], configuration: .init(gracefulShutdownSignals: []))
 
         try await runner.run()
     }
 
     func testRun_whenNoSignal() async throws {
         let mockService = MockService(isLongRunning: true, description: "Service1")
-        let runner = self.makeServiceRunner(services: [mockService], configuration: .init())
+        let runner = self.makeServiceRunner(services: [mockService], configuration: .init(gracefulShutdownSignals: []))
 
         await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {

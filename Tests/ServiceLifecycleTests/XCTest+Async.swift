@@ -26,8 +26,8 @@ func XCTAsyncAssertEqual<T>(
     XCTAssertEqual(result1, result2, message(), file: file, line: line)
 }
 
-func XCTAsyncAssertThrowsError<T>(
-    _ expression: @autoclosure () async throws -> T,
+func XCTAsyncAssertThrowsError(
+    _ expression: @autoclosure () async throws -> some Any,
     _ message: @autoclosure () -> String = "",
     file: StaticString = #filePath,
     line: UInt = #line,
@@ -41,8 +41,8 @@ func XCTAsyncAssertThrowsError<T>(
     }
 }
 
-func XCTAssertNoThrow<T>(
-    _ expression: @autoclosure () async throws -> T,
+func XCTAssertNoThrow(
+    _ expression: @autoclosure () async throws -> some Any,
     _ message: @autoclosure () -> String = "",
     file: StaticString = #filePath,
     line: UInt = #line

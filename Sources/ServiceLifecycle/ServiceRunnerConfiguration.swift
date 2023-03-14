@@ -37,13 +37,13 @@ public struct ServiceRunnerConfiguration: Hashable, Sendable {
     public var gracefulShutdownSignals: [UnixSignal]
 
     /// The runner's logging configuration.
-    public var loggingConfiguration: LoggingConfiguration
+    public var logging: LoggingConfiguration
 
     /// Initializes a new ``ServiceRunnerConfiguration``.
     ///
     /// - Parameter gracefulShutdownSignals: The signals that lead to graceful shutdown.
-    public init(gracefulShutdownSignals: [UnixSignal] = []) {
+    public init(gracefulShutdownSignals: [UnixSignal]) {
         self.gracefulShutdownSignals = gracefulShutdownSignals
-        self.loggingConfiguration = .init()
+        self.logging = .init()
     }
 }

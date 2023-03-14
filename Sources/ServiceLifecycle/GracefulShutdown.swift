@@ -20,18 +20,18 @@ public func withShutdownGracefulHandler<T>(
     onGracefulShutdown handler: @Sendable @escaping () -> Void
 ) async rethrows -> T {
     guard let gracefulShutdownManager = TaskLocals.gracefulShutdownManager else {
-        print("Trying to setup a graceful shutdown handler inside a task that doesn't have access to the ShutdownGracefulManager. This happens either when unstructured Concurrency is used like Task.detached {} or when you tried to setup a shutdown graceful handler outside the ServiceRunner.run method. Not setting up the handler.")
+        print("WARNING: Trying to setup a graceful shutdown handler inside a task that doesn't have access to the ShutdownGracefulManager. This happens either when unstructured Concurrency is used like Task.detached {} or when you tried to setup a shutdown graceful handler outside the ServiceRunner.run method. Not setting up the handler.")
         return try await operation()
     }
 
     // We have to keep track of our handler here to remove it once the operation is finished.
-    let handlerNumber = await gracefulShutdownManager.registerHandler(handler)
+    let handlerID = await gracefulShutdownManager.registerHandler(handler)
 
     let result = try await operation()
 
     // Great the operation is finished. If we have a number we need to remove the handler.
-    if let handlerNumber = handlerNumber {
-        await gracefulShutdownManager.removeHandler(handlerNumber)
+    if let handlerID {
+        await gracefulShutdownManager.removeHandler(handlerID)
     }
 
     return result
@@ -44,10 +44,35 @@ public enum TaskLocals {
     public static var gracefulShutdownManager: GracefulShutdownManager?
 }
 
+extension Task {
+    /// Indicates that the task should shutdown gracefully.
+    ///
+    /// Calling this method on a task that doesn’t support graceful shutdown has no effect.
+    /// Likewise, if the task has already run past the last point where it would stop early, calling this method has no effect.
+    ///
+    /// - Note: This method is mostly relevant for testing graceful shutdown. In your application, the ``ServiceRunner``
+    /// should be the instance that triggers the graceful shutdown.
+    public func shutdownGracefully() async {
+        guard let gracefulShutdownManager = TaskLocals.gracefulShutdownManager else {
+            print("WARNING: Trying to shutdown gracefully inside a task that doesn't have access to the ShutdownGracefulManager. This happens either when unstructured Concurrency is used like Task.detached {} or when you tried to shutdown gracefully outside the ServiceRunner.run method.")
+            return
+        }
+
+        await gracefulShutdownManager.shutdownGracefully()
+    }
+}
+
 @_spi(Testing)
 public actor GracefulShutdownManager {
+    struct Handler {
+        /// The id of the handler.
+        var id: UInt64
+        /// The actual handler.
+        var handler: () -> Void
+    }
+
     /// The currently registered handlers.
-    private var handlers = [(UInt64, () -> Void)]()
+    private var handlers = [Handler]()
     /// A counter to assign a unique number to each handler.
     private var handlerCounter: UInt64 = 0
     /// A boolean indicating if we have been shutdown already.
@@ -64,26 +89,31 @@ public actor GracefulShutdownManager {
             defer {
                 self.handlerCounter += 1
             }
-            let handlerNumber = self.handlerCounter
-            self.handlers.append((handlerNumber, handler))
+            let handlerID = self.handlerCounter
+            self.handlers.append(.init(id: handlerID, handler: handler))
 
-            return handlerNumber
+            return handlerID
         }
     }
 
-    func removeHandler(_ handlerNumber: UInt64) {
-        self.handlers.removeAll { $0.0 == handlerNumber }
+    func removeHandler(_ handlerID: UInt64) {
+        guard let index = self.handlers.firstIndex(where: { $0.id == handlerID }) else {
+            // This can happen because if shutdownGracefully ran while the operation was still in progress
+            return
+        }
+
+        self.handlers.remove(at: index)
     }
 
     @_spi(Testing)
     public func shutdownGracefully() {
         guard !self.isShuttingDown else {
-            fatalError("Tried to shutdown gracefully more than once")
+            return
         }
         self.isShuttingDown = true
 
         for handler in self.handlers {
-            handler.1()
+            handler.handler()
         }
 
         self.handlers.removeAll()

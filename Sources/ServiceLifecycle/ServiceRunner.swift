@@ -82,8 +82,8 @@ public actor ServiceRunner: Sendable {
         self.logger.info(
             "Starting service lifecycle",
             metadata: [
-                self.configuration.loggingConfiguration.signalsKey: "\(self.configuration.gracefulShutdownSignals)",
-                self.configuration.loggingConfiguration.servicesKey: "\(self.services)",
+                self.configuration.logging.signalsKey: "\(self.configuration.gracefulShutdownSignals)",
+                self.configuration.logging.servicesKey: "\(self.services)",
             ]
         )
 
@@ -96,7 +96,9 @@ public actor ServiceRunner: Sendable {
 
         let shutdownGracefullyManager = GracefulShutdownManager()
         try await TaskLocals.$gracefulShutdownManager.withValue(shutdownGracefullyManager) {
-            try await withThrowingTaskGroup(of: ChildTaskResult.self) { group in
+            // Using a result here since we want a task group that has non-throwing child tasks
+            // but the body itself is throwing
+            let result = await withTaskGroup(of: ChildTaskResult.self, returning: Result<Void, Error>.self) { group in
                 // First we have to register our signals.
                 let unixSignals = await UnixSignalsSequence(trapping: self.configuration.gracefulShutdownSignals)
 
@@ -112,7 +114,7 @@ public actor ServiceRunner: Sendable {
                     self.logger.debug(
                         "Starting service",
                         metadata: [
-                            self.configuration.loggingConfiguration.serviceKey: "\(service)",
+                            self.configuration.logging.serviceKey: "\(service)",
                         ]
                     )
 
@@ -132,7 +134,7 @@ public actor ServiceRunner: Sendable {
                 // the signal sequence to throw an error.
                 while !group.isEmpty {
                     // No child task is actually throwing here so the try! is safe
-                    let result = try! await group.next()
+                    let result = await group.next()
 
                     switch result {
                     case .serviceFinished(let service):
@@ -142,19 +144,19 @@ public actor ServiceRunner: Sendable {
                             self.logger.error(
                                 "Service finished unexpectedly",
                                 metadata: [
-                                    self.configuration.loggingConfiguration.serviceKey: "\(service)",
+                                    self.configuration.logging.serviceKey: "\(service)",
                                 ]
                             )
 
                             group.cancelAll()
-                            throw ServiceRunnerError.serviceFinishedUnexpectedly()
+                            return .failure(ServiceRunnerError.serviceFinishedUnexpectedly())
                         } else {
                             // This service finished early but we expected it.
                             // So we are just going to wait for the next service
                             self.logger.debug(
                                 "Service finished",
                                 metadata: [
-                                    self.configuration.loggingConfiguration.serviceKey: "\(service)",
+                                    self.configuration.logging.serviceKey: "\(service)",
                                 ]
                             )
 
@@ -165,7 +167,7 @@ public actor ServiceRunner: Sendable {
                                 // Every service finished. We can cancel the signal handling now
                                 // and return
                                 group.cancelAll()
-                                return
+                                return .success(())
                             } else {
                                 // There are still running services that we have to wait for
                                 continue
@@ -177,13 +179,13 @@ public actor ServiceRunner: Sendable {
                         self.logger.error(
                             "Service threw error. Cancelling all other services now",
                             metadata: [
-                                self.configuration.loggingConfiguration.serviceKey: "\(service)",
-                                self.configuration.loggingConfiguration.errorKey: "\(error)",
+                                self.configuration.logging.serviceKey: "\(service)",
+                                self.configuration.logging.errorKey: "\(error)",
                             ]
                         )
                         group.cancelAll()
 
-                        throw error
+                        return .failure(error)
 
                     case .signalCaught(let unixSignal):
                         // We got a signal. Let's initiate graceful shutdown in reverse order than we started the
@@ -192,7 +194,7 @@ public actor ServiceRunner: Sendable {
                         self.logger.info(
                             "Signal caught. Shutting down services",
                             metadata: [
-                                self.configuration.loggingConfiguration.signalKey: "\(unixSignal)",
+                                self.configuration.logging.signalKey: "\(unixSignal)",
                             ]
                         )
 
@@ -208,7 +210,11 @@ public actor ServiceRunner: Sendable {
                         fatalError("Invalid result from group.next(). We checked if the group is empty before and still got nil")
                     }
                 }
+
+                return .success(())
             }
+
+            try result.get()
         }
 
         self.logger.info(
