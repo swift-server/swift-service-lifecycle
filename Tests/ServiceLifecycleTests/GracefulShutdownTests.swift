@@ -134,4 +134,89 @@ final class GracefulShutdownTests: XCTestCase {
             XCTAssertNil(weakFoo)
         }
     }
+
+    func testTaskShutdownGracefully() async {
+        let shutdownGracefulManager = GracefulShutdownManager()
+        await TaskLocals.$gracefulShutdownManager.withValue(shutdownGracefulManager) {
+            let task = Task {
+                var cont: AsyncStream<Void>.Continuation!
+                let stream = AsyncStream<Void> { cont = $0 }
+                let continuation = cont!
+
+                await withShutdownGracefulHandler {
+                    await withTaskGroup(of: Void.self) { group in
+                        group.addTask {
+                            await stream.first { _ in true }
+                        }
+
+                        await group.waitForAll()
+                    }
+                } onGracefulShutdown: {
+                    continuation.finish()
+                }
+            }
+
+            await task.shutdownGracefully()
+
+            await task.value
+        }
+    }
+
+    func testTaskGroupShutdownGracefully() async {
+        let shutdownGracefulManager = GracefulShutdownManager()
+        await TaskLocals.$gracefulShutdownManager.withValue(shutdownGracefulManager) {
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    var cont: AsyncStream<Void>.Continuation!
+                    let stream = AsyncStream<Void> { cont = $0 }
+                    let continuation = cont!
+
+                    await withShutdownGracefulHandler {
+                        await withTaskGroup(of: Void.self) { group in
+                            group.addTask {
+                                await stream.first { _ in true }
+                            }
+
+                            await group.waitForAll()
+                        }
+                    } onGracefulShutdown: {
+                        continuation.finish()
+                    }
+                }
+
+                await group.shutdownGracefullyAll()
+
+                await group.waitForAll()
+            }
+        }
+    }
+
+    func testThrowingTaskGroupShutdownGracefully() async {
+        let shutdownGracefulManager = GracefulShutdownManager()
+        await TaskLocals.$gracefulShutdownManager.withValue(shutdownGracefulManager) {
+            await withThrowingTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    var cont: AsyncStream<Void>.Continuation!
+                    let stream = AsyncStream<Void> { cont = $0 }
+                    let continuation = cont!
+
+                    await withShutdownGracefulHandler {
+                        await withTaskGroup(of: Void.self) { group in
+                            group.addTask {
+                                await stream.first { _ in true }
+                            }
+
+                            await group.waitForAll()
+                        }
+                    } onGracefulShutdown: {
+                        continuation.finish()
+                    }
+                }
+
+                await group.shutdownGracefullyAll()
+
+                try! await group.waitForAll()
+            }
+        }
+    }
 }
