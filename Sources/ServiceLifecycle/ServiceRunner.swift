@@ -15,7 +15,7 @@
 import Logging
 import UnixSignals
 
-/// A ``ServiceRunner`` is responsible for running a number of services, setting up signal handling and shutting down services in the correct order.
+/// A ``ServiceRunner`` is responsible for running a number of services, setting up signal handling and signalling graceful shutdown to the services.
 public actor ServiceRunner: Sendable {
     /// The internal state of the ``ServiceRunner``.
     private enum State {
@@ -128,8 +128,6 @@ public actor ServiceRunner: Sendable {
                     }
                 }
 
-                var finishedServiceCount = 0
-
                 // We are going to wait for any of the services to finish or
                 // the signal sequence to throw an error.
                 while !group.isEmpty {
@@ -138,41 +136,17 @@ public actor ServiceRunner: Sendable {
 
                     switch result {
                     case .serviceFinished(let service):
-                        if service.isLongRunning {
-                            // If a long running service finishes early we treat this as an unexpected
-                            // early exit and have to cancel the rest of the services.
-                            self.logger.error(
-                                "Service finished unexpectedly",
-                                metadata: [
-                                    self.configuration.logging.serviceKey: "\(service)",
-                                ]
-                            )
+                        // If a long running service finishes early we treat this as an unexpected
+                        // early exit and have to cancel the rest of the services.
+                        self.logger.error(
+                            "Service finished unexpectedly",
+                            metadata: [
+                                self.configuration.logging.serviceKey: "\(service)",
+                            ]
+                        )
 
-                            group.cancelAll()
-                            return .failure(ServiceRunnerError.serviceFinishedUnexpectedly())
-                        } else {
-                            // This service finished early but we expected it.
-                            // So we are just going to wait for the next service
-                            self.logger.debug(
-                                "Service finished",
-                                metadata: [
-                                    self.configuration.logging.serviceKey: "\(service)",
-                                ]
-                            )
-
-                            // We have to keep track of how many services finished to make sure
-                            // to stop when only the signal child task is left
-                            finishedServiceCount += 1
-                            if finishedServiceCount == self.services.count {
-                                // Every service finished. We can cancel the signal handling now
-                                // and return
-                                group.cancelAll()
-                                return .success(())
-                            } else {
-                                // There are still running services that we have to wait for
-                                continue
-                            }
-                        }
+                        group.cancelAll()
+                        return .failure(ServiceRunnerError.serviceFinishedUnexpectedly())
 
                     case .serviceThrew(let service, let error):
                         // One of the servers threw an error. We have to cancel everything else now.

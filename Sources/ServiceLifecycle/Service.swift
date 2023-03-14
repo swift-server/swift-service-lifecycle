@@ -14,15 +14,13 @@
 
 /// This is the basic protocol that a service has to implement.
 public protocol Service: Sendable {
-    /// This indicates if the service is expected to be running for the entire duration.
-    /// If a long running service is returning from the ``Service/run()-1ougx`` method it is treated
-    /// as an unexpected early exit and all other services are going be cancelled.
-    var isLongRunning: Bool { get }
-
     /// This method is called when the ``ServiceRunner`` is starting all the services.
     ///
     /// Concrete implementation should execute their long running work in this method such as:
     /// - Handling incoming connections and requests
     /// - Background refreshes
+    ///
+    /// - Important: Returning or throwing from this method is indicating a failure of the service and will cause the ``ServiceRunner``
+    /// to cancel the child tasks of all other running services.
     func run() async throws
 }

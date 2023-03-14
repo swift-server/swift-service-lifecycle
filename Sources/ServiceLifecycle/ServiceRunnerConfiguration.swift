@@ -29,7 +29,7 @@ public struct ServiceRunnerConfiguration: Hashable, Sendable {
         /// The logging key used for logging an error.
         public var errorKey = "error"
 
-        /// Initializes a new ``ServiceRunnerConfiguration/LoggingConfiguration-swift.struct``.
+        /// Initializes a new ``ServiceRunnerConfiguration/LoggingConfiguration``.
         public init() {}
     }
 
