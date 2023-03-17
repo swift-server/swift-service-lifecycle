@@ -43,7 +43,7 @@ public struct ServiceRunnerError: Error, Hashable, Sendable {
         public static let alreadyRunning = Code(code: .alreadyRunning)
         /// Indicates that the service runner has already finished running.
         public static let alreadyFinished = Code(code: .alreadyFinished)
-        /// Indicates that a service finished unexpectedly even though it indicated it is a long running service.
+        /// Indicates that a service finished unexpectedly.
         public static let serviceFinishedUnexpectedly = Code(code: .serviceFinishedUnexpectedly)
     }
 
