@@ -12,7 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-@_spi(Testing) import ServiceLifecycle
+import ServiceLifecycle
+import ServiceLifecycleTestKit
 import XCTest
 
 final class GracefulShutdownTests: XCTestCase {
@@ -21,15 +22,14 @@ final class GracefulShutdownTests: XCTestCase {
         let stream = AsyncStream<Void> { cont = $0 }
         let continuation = cont!
 
-        let shutdownGracefulManager = GracefulShutdownManager()
-        await TaskLocals.$gracefulShutdownManager.withValue(shutdownGracefulManager) {
+        await testGracefulShutdown { gracefulShutdownTestTrigger in
             await withShutdownGracefulHandler {
                 await withTaskGroup(of: Void.self) { group in
                     group.addTask {
                         await stream.first { _ in true }
                     }
 
-                    await shutdownGracefulManager.shutdownGracefully()
+                    await gracefulShutdownTestTrigger.triggerGracefulShutdown()
 
                     await group.waitForAll()
                 }
@@ -44,10 +44,10 @@ final class GracefulShutdownTests: XCTestCase {
         let stream = AsyncStream<String> { cont = $0 }
         let continuation = cont!
 
-        let shutdownGracefulManager = GracefulShutdownManager()
-        await shutdownGracefulManager.shutdownGracefully()
-        await TaskLocals.$gracefulShutdownManager.withValue(shutdownGracefulManager) {
-            await withShutdownGracefulHandler {
+        await testGracefulShutdown { gracefulShutdownTestTrigger in
+            await gracefulShutdownTestTrigger.triggerGracefulShutdown()
+
+            _ = await withShutdownGracefulHandler {
                 continuation.yield("operation")
             } onGracefulShutdown: {
                 continuation.yield("onGracefulShutdown")
@@ -65,8 +65,7 @@ final class GracefulShutdownTests: XCTestCase {
         let stream = AsyncStream<String> { cont = $0 }
         let continuation = cont!
 
-        let shutdownGracefulManager = GracefulShutdownManager()
-        await TaskLocals.$gracefulShutdownManager.withValue(shutdownGracefulManager) {
+        await testGracefulShutdown { gracefulShutdownTestTrigger in
             await withShutdownGracefulHandler {
                 continuation.yield("outerOperation")
 
@@ -100,7 +99,7 @@ final class GracefulShutdownTests: XCTestCase {
                     await XCTAsyncAssertEqual(await iterator.next(), "innerOperation")
                     await XCTAsyncAssertEqual(await iterator.next(), "innerOperation")
 
-                    await shutdownGracefulManager.shutdownGracefully()
+                    await gracefulShutdownTestTrigger.triggerGracefulShutdown()
 
                     await XCTAsyncAssertEqual(await iterator.next(), "outerOnGracefulShutdown")
                     await XCTAsyncAssertEqual(await iterator.next(), "innerOnGracefulShutdown")
@@ -125,8 +124,7 @@ final class GracefulShutdownTests: XCTestCase {
         var foo: Foo! = Foo()
         weak var weakFoo: Foo? = foo
 
-        let shutdownGracefulManager = GracefulShutdownManager()
-        await TaskLocals.$gracefulShutdownManager.withValue(shutdownGracefulManager) {
+        await testGracefulShutdown { _ in
             await foo.run()
 
             XCTAssertNotNil(weakFoo)
@@ -136,8 +134,7 @@ final class GracefulShutdownTests: XCTestCase {
     }
 
     func testTaskShutdownGracefully() async {
-        let shutdownGracefulManager = GracefulShutdownManager()
-        await TaskLocals.$gracefulShutdownManager.withValue(shutdownGracefulManager) {
+        await testGracefulShutdown { gracefulShutdownTestTrigger in
             let task = Task {
                 var cont: AsyncStream<Void>.Continuation!
                 let stream = AsyncStream<Void> { cont = $0 }
@@ -156,15 +153,14 @@ final class GracefulShutdownTests: XCTestCase {
                 }
             }
 
-            await task.shutdownGracefully()
+            await gracefulShutdownTestTrigger.triggerGracefulShutdown()
 
             await task.value
         }
     }
 
     func testTaskGroupShutdownGracefully() async {
-        let shutdownGracefulManager = GracefulShutdownManager()
-        await TaskLocals.$gracefulShutdownManager.withValue(shutdownGracefulManager) {
+        await testGracefulShutdown { gracefulShutdownTestTrigger in
             await withTaskGroup(of: Void.self) { group in
                 group.addTask {
                     var cont: AsyncStream<Void>.Continuation!
@@ -184,7 +180,7 @@ final class GracefulShutdownTests: XCTestCase {
                     }
                 }
 
-                await group.shutdownGracefullyAll()
+                await gracefulShutdownTestTrigger.triggerGracefulShutdown()
 
                 await group.waitForAll()
             }
@@ -192,8 +188,7 @@ final class GracefulShutdownTests: XCTestCase {
     }
 
     func testThrowingTaskGroupShutdownGracefully() async {
-        let shutdownGracefulManager = GracefulShutdownManager()
-        await TaskLocals.$gracefulShutdownManager.withValue(shutdownGracefulManager) {
+        await testGracefulShutdown { gracefulShutdownTestTrigger in
             await withThrowingTaskGroup(of: Void.self) { group in
                 group.addTask {
                     var cont: AsyncStream<Void>.Continuation!
@@ -213,7 +208,7 @@ final class GracefulShutdownTests: XCTestCase {
                     }
                 }
 
-                await group.shutdownGracefullyAll()
+                await gracefulShutdownTestTrigger.triggerGracefulShutdown()
 
                 try! await group.waitForAll()
             }

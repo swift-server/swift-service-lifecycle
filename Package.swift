@@ -16,6 +16,10 @@ let package = Package(
             targets: ["ServiceLifecycle"]
         ),
         .library(
+            name: "ServiceLifecycleTestKit",
+            targets: ["ServiceLifecycleTestKit"]
+        ),
+        .library(
             name: "UnixSignals",
             targets: ["UnixSignals"]
         ),
@@ -42,13 +46,20 @@ let package = Package(
             ]
         ),
         .target(
+            name: "ServiceLifecycleTestKit",
+            dependencies: [
+                .target(name: "ServiceLifecycle"),
+            ],
+        ),
+        .target(
             name: "UnixSignals"
         ),
         .testTarget(
             name: "ServiceLifecycleTests",
             dependencies: [
                 .target(name: "ServiceLifecycle"),
-            ]
+                .target(name: "ServiceLifecycleTestKit"),
+            ],
         ),
         .testTarget(
             name: "UnixSignalsTests",

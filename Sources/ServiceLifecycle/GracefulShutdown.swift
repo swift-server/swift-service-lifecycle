@@ -1,3 +1,16 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the SwiftServiceLifecycle open source project
+//
+// Copyright (c) 2023 Apple Inc. and the SwiftServiceLifecycle project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of SwiftServiceLifecycle project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
 /// Execute an operation with a graceful shutdown handler that’s immediately invoked if the current task is shutting down gracefully.
 ///
 /// This doesn’t check for graceful shutdown, and always executes the passed operation.
@@ -42,57 +55,6 @@ public enum TaskLocals {
     @TaskLocal
     @_spi(Testing)
     public static var gracefulShutdownManager: GracefulShutdownManager?
-}
-
-extension Task {
-    /// Indicates that the task should shutdown gracefully.
-    ///
-    /// Calling this method on a task that doesn’t support graceful shutdown has no effect.
-    ///
-    /// - Note: This method is mostly relevant for testing graceful shutdown. In your application, the ``ServiceRunner``
-    /// should be the instance that triggers the graceful shutdown.
-    public func shutdownGracefully() async {
-        guard let gracefulShutdownManager = TaskLocals.gracefulShutdownManager else {
-            print("WARNING: Trying to shutdown gracefully inside a task that doesn't have access to the ShutdownGracefulManager. This happens either when unstructured Concurrency is used like Task.detached {} or when you tried to shutdown gracefully outside the ServiceRunner.run method.")
-            return
-        }
-
-        await gracefulShutdownManager.shutdownGracefully()
-    }
-}
-
-extension TaskGroup {
-    /// Indicates all of the tasks in the group to shutdown gracefully.
-    ///
-    /// Calling this method on a task that doesn’t support graceful shutdown has no effect.
-    ///
-    /// - Note: This method is mostly relevant for testing graceful shutdown. In your application, the ``ServiceRunner``
-    /// should be the instance that triggers the graceful shutdown.
-    public func shutdownGracefullyAll() async {
-        guard let gracefulShutdownManager = TaskLocals.gracefulShutdownManager else {
-            print("WARNING: Trying to shutdown gracefully inside a task that doesn't have access to the ShutdownGracefulManager. This happens either when unstructured Concurrency is used like Task.detached {} or when you tried to shutdown gracefully outside the ServiceRunner.run method.")
-            return
-        }
-
-        await gracefulShutdownManager.shutdownGracefully()
-    }
-}
-
-extension ThrowingTaskGroup {
-    /// Indicates all of the tasks in the group to shutdown gracefully.
-    ///
-    /// Calling this method on a task that doesn’t support graceful shutdown has no effect.
-    ///
-    /// - Note: This method is mostly relevant for testing graceful shutdown. In your application, the ``ServiceRunner``
-    /// should be the instance that triggers the graceful shutdown.
-    public func shutdownGracefullyAll() async {
-        guard let gracefulShutdownManager = TaskLocals.gracefulShutdownManager else {
-            print("WARNING: Trying to shutdown gracefully inside a task that doesn't have access to the ShutdownGracefulManager. This happens either when unstructured Concurrency is used like Task.detached {} or when you tried to shutdown gracefully outside the ServiceRunner.run method.")
-            return
-        }
-
-        await gracefulShutdownManager.shutdownGracefully()
-    }
 }
 
 @_spi(Testing)

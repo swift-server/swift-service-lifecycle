@@ -19,6 +19,9 @@ import Glibc
 #endif
 import Dispatch
 
+/// A struct representing a Unix signal.
+///
+/// Signals are standardized messages sent to a running program to trigger specific behavior, such as quitting or error handling
 public struct UnixSignal: Hashable, Sendable, CustomStringConvertible {
     internal enum Wrapped {
         case sighup
@@ -42,8 +45,11 @@ public struct UnixSignal: Hashable, Sendable, CustomStringConvertible {
         return String(describing: self.wrapped)
     }
 
+    /// Hang up detected on controlling terminal or death of controlling process.
     public static let sighup = Self(.sighup)
+    /// Issued if the user sends an interrupt signal.
     public static let sigint = Self(.sigint)
+    /// Software termination signal.
     public static let sigterm = Self(.sigterm)
     public static let sigusr1 = Self(.sigusr1)
     public static let sigusr2 = Self(.sigusr2)
