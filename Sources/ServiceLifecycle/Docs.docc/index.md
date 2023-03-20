@@ -16,7 +16,7 @@ safely orchestrate the individual services in separate child tasks. Furthermore,
 complements the cooperative task cancellation from Structured Concurrency with a new mechanism called
 _graceful shutdown_. Cancellation is indicating the tasks to stop their work as soon as possible
 whereas _graceful shutdown_ just indicates them that they should come to an end but it is up
-to their business  logic if and how to do that.
+to their business logic if and how to do that.
 
 ``ServiceLifecycle`` should be used by both library and application authors to create a seamless experience.
 Library authors should conform their services to the ``Service`` protocol and application authors

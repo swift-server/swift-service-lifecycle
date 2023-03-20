@@ -17,6 +17,7 @@ import Darwin
 #elseif canImport(Glibc)
 import Glibc
 #endif
+import ConcurrencyHelpers
 import Dispatch
 
 /// An unterminated `AsyncSequence` of ``UnixSignal``s.
