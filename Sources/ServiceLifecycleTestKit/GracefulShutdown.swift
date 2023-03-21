@@ -11,7 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-@_spi(Testing) import ServiceLifecycle
+@_spi(TestKit) import ServiceLifecycle
 
 /// This struct is used in testing graceful shutdown.
 ///

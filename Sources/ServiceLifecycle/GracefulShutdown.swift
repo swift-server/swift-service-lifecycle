@@ -50,14 +50,14 @@ public func withShutdownGracefulHandler<T>(
     return result
 }
 
-@_spi(Testing)
+@_spi(TestKit)
 public enum TaskLocals {
     @TaskLocal
-    @_spi(Testing)
+    @_spi(TestKit)
     public static var gracefulShutdownManager: GracefulShutdownManager?
 }
 
-@_spi(Testing)
+@_spi(TestKit)
 public actor GracefulShutdownManager {
     struct Handler {
         /// The id of the handler.
@@ -73,7 +73,7 @@ public actor GracefulShutdownManager {
     /// A boolean indicating if we have been shutdown already.
     private var isShuttingDown = false
 
-    @_spi(Testing)
+    @_spi(TestKit)
     public init() {}
 
     func registerHandler(_ handler: @Sendable @escaping () -> Void) -> UInt64? {
@@ -100,7 +100,7 @@ public actor GracefulShutdownManager {
         self.handlers.remove(at: index)
     }
 
-    @_spi(Testing)
+    @_spi(TestKit)
     public func shutdownGracefully() {
         guard !self.isShuttingDown else {
             return

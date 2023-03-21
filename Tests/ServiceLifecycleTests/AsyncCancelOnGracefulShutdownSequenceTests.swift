@@ -18,26 +18,24 @@ import ServiceLifecycleTestKit
 import XCTest
 
 final class AsyncCancelOnGracefulShutdownSequenceTests: XCTestCase {
-    func test() async throws {
+    func testCancelOnGracefulShutdown_finishesWhenShutdown() async throws {
         await testGracefulShutdown { gracefulShutdownTrigger in
             let stream = AsyncStream<Int> {
                 try? await Task.sleep(nanoseconds: 100_000_000)
                 return 1
             }
 
-            var cont: AsyncStream<Int>.Continuation!
-            let results = AsyncStream<Int> { cont = $0 }
-            let continuation = cont!
+            let (resultStream, resultContinuation) = AsyncStream<Int>.makeStream()
 
             await withTaskGroup(of: Void.self) { group in
                 group.addTask {
                     for await value in stream.cancelOnGracefulShutdown() {
-                        continuation.yield(value)
+                        resultContinuation.yield(value)
                     }
-                    continuation.finish()
+                    resultContinuation.finish()
                 }
 
-                var iterator = results.makeAsyncIterator()
+                var iterator = resultStream.makeAsyncIterator()
 
                 await XCTAsyncAssertEqual(await iterator.next(), 1)
 
@@ -47,4 +45,41 @@ final class AsyncCancelOnGracefulShutdownSequenceTests: XCTestCase {
             }
         }
     }
+
+    func testCancelOnGracefulShutdown_finishesBaseFinishes() async throws {
+        await testGracefulShutdown { gracefulShutdownTrigger in
+            let (baseStream, baseContinuation) = AsyncStream<Int>.makeStream()
+            let (resultStream, resultContinuation) = AsyncStream<Int>.makeStream()
+
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    for await value in baseStream.cancelOnGracefulShutdown() {
+                        resultContinuation.yield(value)
+                    }
+                    resultContinuation.finish()
+                }
+
+                var iterator = resultStream.makeAsyncIterator()
+                baseContinuation.yield(1)
+
+                await XCTAsyncAssertEqual(await iterator.next(), 1)
+
+                baseContinuation.finish()
+
+                await XCTAsyncAssertEqual(await iterator.next(), nil)
+            }
+        }
+    }
 }
+
+extension AsyncStream {
+  fileprivate static func makeStream(
+      of elementType: Element.Type = Element.self,
+      bufferingPolicy limit: Continuation.BufferingPolicy = .unbounded
+  ) -> (stream: AsyncStream<Element>, continuation: AsyncStream<Element>.Continuation) {
+    var continuation: AsyncStream<Element>.Continuation!
+    let stream = AsyncStream<Element>(bufferingPolicy: limit) { continuation = $0 }
+    return (stream: stream, continuation: continuation!)
+  }
+}
+
