@@ -52,17 +52,13 @@ let package = Package(
                 ),
                 .target(name: "UnixSignals"),
                 .target(name: "ConcurrencyHelpers"),
-            ],
-            // Using strict concurrency checking here to make sure we are doing everything correctly
-            swiftSettings: [.unsafeFlags(["-Xfrontend", "-warn-concurrency"])]
+            ]
         ),
         .target(
             name: "ServiceLifecycleTestKit",
             dependencies: [
                 .target(name: "ServiceLifecycle"),
-            ],
-            // Using strict concurrency checking here to make sure we are doing everything correctly
-            swiftSettings: [.unsafeFlags(["-Xfrontend", "-warn-concurrency"])]
+            ]
         ),
         .target(
             name: "UnixSignals",
@@ -78,17 +74,13 @@ let package = Package(
             dependencies: [
                 .target(name: "ServiceLifecycle"),
                 .target(name: "ServiceLifecycleTestKit"),
-            ],
-            // Using strict concurrency checking here to make sure we are doing everything correctly
-            swiftSettings: [.unsafeFlags(["-Xfrontend", "-warn-concurrency"])]
+            ]
         ),
         .testTarget(
             name: "UnixSignalsTests",
             dependencies: [
                 .target(name: "UnixSignals"),
-            ],
-            // Using strict concurrency checking here to make sure we are doing everything correctly
-            swiftSettings: [.unsafeFlags(["-Xfrontend", "-warn-concurrency"])]
+            ]
         ),
     ]
 )
