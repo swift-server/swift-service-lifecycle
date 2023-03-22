@@ -27,6 +27,7 @@ should use the ``ServiceRunner`` to orchestrate all their services.
 ### Articles
 
 - <doc:How-to-adopt-ServiceLifecycle-in-libraries>
+- <doc:How-to-adopt-ServiceLifecycle-in-applications>
 
 ### Service protocol
 

@@ -6,7 +6,7 @@ them in an application easier. To achieve this ``ServiceLifecycle`` is providing
 ## Why do we need this?
 
 Before diving into how to adopt this protocol in your library, let's take a step back and
-talk about why we even need to have this unified API. A common need of services is to either
+talk about why we even need to have this unified API. A common need for services is to either
 schedule long running work like sending keep alive pings in the background or to handle new
 incoming work like handling new TCP connections. Before Concurrency was introduced services put
 their work into separate threads using things like `DispatchQueue`s or NIO `EventLoop`s.
@@ -97,25 +97,44 @@ which is supporting task cancellation.
 ### Graceful shutdown
 
 When running an application in a real environment it is often required to gracefully shutdown the application.
-For example the application might be running in Kubernetes and a new version of it got deployed. In this
+For example, the application might be running in Kubernetes and a new version of it got deployed. In this
 case, Kubernetes is going to send a `SIGTERM` signal to the application and expects it to terminate
 within a grace period. If the application isn't stopping in time then Kubernetes will send the `SIGKILL`
 signal and forcefully terminate the process.
-For this reason ``ServiceLifecycle`` introduce a new _shutdown gracefully_ concept that allows to
-terminate the work in a structured and graceful manner. This works similar to task cancellation but
-it is fully opt in and up to the business logic of the application to decide what to do.
+For this reason ``ServiceLifecycle`` introduces a new _shutdown gracefully_ concept that allows terminating
+the work in a structured and graceful manner. This works similarly to task cancellation but
+it is fully opt-in and up to the business logic of the application to decide what to do.
 
 ``ServiceLifecycle`` exposes one free function called ``withShutdownGracefulHandler(operation:onGracefulShutdown:)``
-that works similar to the `withTaskCancellationHandler` function from the Concurrency library.
+that works similarly to the `withTaskCancellationHandler` function from the Concurrency library.
 Library authors are expected to make sure that any work they spawn from the `run()` method 
-properly supports graceful shutdown. For example a server might be closing its listening socket
-to stop accepting new connection.
+properly supports graceful shutdown. For example, a server might be closing its listening socket
+to stop accepting new connections.
 Importantly here though is that the server is not force closing the currently open ones. Rather it 
 expects the business logic on these connections to handle graceful shutdown on their own.
 
+An example implementation of a `TCPEchoServer` on a high level that supports graceful shutdown
+might look like this.
+
+```swift
+public actor TCPEchoClient: Service {
+  public init() { }
+
+  public func run() async throws {
+    await withShutdownGracefulHandler {
+        for connection in self.listeningSocket.connections {
+          // Handle incoming connections
+        }
+    } onGracefulShutdown: {
+        self.listeningSocket.close()
+    }
+  }
+}
+````
+
 In the case of our `TCPEchoClient`, the only reasonable thing to do is cancel the iteration of our
 timer sequence when we receive the graceful shutdown sequence. ``ServiceLifecycle`` is providing
-a convenience on `AsyncSequence` to cancel on graceful shutdown. Let's take a look how this works.
+a convenience on `AsyncSequence` to cancel on graceful shutdown. Let's take a look at how this works.
 
 ```swift
 public actor TCPEchoClient: Service {
