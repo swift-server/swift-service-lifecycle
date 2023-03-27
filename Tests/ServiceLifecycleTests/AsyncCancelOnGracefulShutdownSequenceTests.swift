@@ -47,7 +47,7 @@ final class AsyncCancelOnGracefulShutdownSequenceTests: XCTestCase {
     }
 
     func testCancelOnGracefulShutdown_finishesBaseFinishes() async throws {
-        await testGracefulShutdown { gracefulShutdownTrigger in
+        await testGracefulShutdown { _ in
             let (baseStream, baseContinuation) = AsyncStream<Int>.makeStream()
             let (resultStream, resultContinuation) = AsyncStream<Int>.makeStream()
 
@@ -73,13 +73,12 @@ final class AsyncCancelOnGracefulShutdownSequenceTests: XCTestCase {
 }
 
 extension AsyncStream {
-  fileprivate static func makeStream(
-      of elementType: Element.Type = Element.self,
-      bufferingPolicy limit: Continuation.BufferingPolicy = .unbounded
-  ) -> (stream: AsyncStream<Element>, continuation: AsyncStream<Element>.Continuation) {
-    var continuation: AsyncStream<Element>.Continuation!
-    let stream = AsyncStream<Element>(bufferingPolicy: limit) { continuation = $0 }
-    return (stream: stream, continuation: continuation!)
-  }
+    fileprivate static func makeStream(
+        of elementType: Element.Type = Element.self,
+        bufferingPolicy limit: Continuation.BufferingPolicy = .unbounded
+    ) -> (stream: AsyncStream<Element>, continuation: AsyncStream<Element>.Continuation) {
+        var continuation: AsyncStream<Element>.Continuation!
+        let stream = AsyncStream<Element>(bufferingPolicy: limit) { continuation = $0 }
+        return (stream: stream, continuation: continuation!)
+    }
 }
-

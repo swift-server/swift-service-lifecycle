@@ -288,7 +288,7 @@ final class ServiceRunnerTests: XCTestCase {
             // The middle service should now receive the signal
             await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
 
-            // Waiting to see that all three are still running
+            // Waiting to see that the two remaining are still running
             service1.sendPing()
             service2.sendPing()
             await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
@@ -300,7 +300,7 @@ final class ServiceRunnerTests: XCTestCase {
             // The first service should now receive the signal
             await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
 
-            // Waiting to see that all three are still running
+            // Waiting to see that the one remaining are still running
             service1.sendPing()
             await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
 
@@ -350,7 +350,7 @@ final class ServiceRunnerTests: XCTestCase {
             // The middle service should now receive the signal
             await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
 
-            // Waiting to see that all three are still running
+            // Waiting to see that the two remaining are still running
             service1.sendPing()
             service2.sendPing()
             await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
@@ -408,7 +408,7 @@ final class ServiceRunnerTests: XCTestCase {
             // The middle service should now receive the signal
             await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
 
-            // Waiting to see that all three are still running
+            // Waiting to see that the two remaining are still running
             service1.sendPing()
             service2.sendPing()
             await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
