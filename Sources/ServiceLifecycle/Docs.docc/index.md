@@ -40,7 +40,7 @@ should use the ``ServiceRunner`` to orchestrate all their services.
 
 ### Graceful Shutdown
 
-- ``withShutdownGracefulHandler(operation:onGracefulShutdown:)``
+- ``withGracefulShutdownHandler(operation:onGracefulShutdown:)``
 
 ### Errors
 

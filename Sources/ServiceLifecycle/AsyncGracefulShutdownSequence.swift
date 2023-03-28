@@ -40,7 +40,7 @@ struct AsyncGracefulShutdownSequence: AsyncSequence, Sendable {
             let continuation = cont!
 
             return await withTaskGroup(of: Void.self) { _ in
-                await withShutdownGracefulHandler {
+                await withGracefulShutdownHandler {
                     await stream.first { _ in true }
                 } onGracefulShutdown: {
                     continuation.yield(())

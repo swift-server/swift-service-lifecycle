@@ -23,7 +23,7 @@ final class GracefulShutdownTests: XCTestCase {
         let continuation = cont!
 
         await testGracefulShutdown { gracefulShutdownTestTrigger in
-            await withShutdownGracefulHandler {
+            await withGracefulShutdownHandler {
                 await withTaskGroup(of: Void.self) { group in
                     group.addTask {
                         await stream.first { _ in true }
@@ -47,7 +47,7 @@ final class GracefulShutdownTests: XCTestCase {
         await testGracefulShutdown { gracefulShutdownTestTrigger in
             await gracefulShutdownTestTrigger.triggerGracefulShutdown()
 
-            _ = await withShutdownGracefulHandler {
+            _ = await withGracefulShutdownHandler {
                 continuation.yield("operation")
             } onGracefulShutdown: {
                 continuation.yield("onGracefulShutdown")
@@ -66,12 +66,12 @@ final class GracefulShutdownTests: XCTestCase {
         let continuation = cont!
 
         await testGracefulShutdown { gracefulShutdownTestTrigger in
-            await withShutdownGracefulHandler {
+            await withGracefulShutdownHandler {
                 continuation.yield("outerOperation")
 
                 await withTaskGroup(of: Void.self) { group in
                     group.addTask {
-                        await withShutdownGracefulHandler {
+                        await withGracefulShutdownHandler {
                             continuation.yield("innerOperation")
                             try? await Task.sleep(nanoseconds: 500_000_000)
                             return ()
@@ -82,7 +82,7 @@ final class GracefulShutdownTests: XCTestCase {
                     group.addTask {
                         await withTaskGroup(of: Void.self) { group in
                             group.addTask {
-                                await withShutdownGracefulHandler {
+                                await withGracefulShutdownHandler {
                                     continuation.yield("innerOperation")
                                     try? await Task.sleep(nanoseconds: 500_000_000)
                                     return ()
@@ -114,7 +114,7 @@ final class GracefulShutdownTests: XCTestCase {
     func testWithGracefulShutdownHandler_cleansUpHandlerAfterScopeExit() async {
         final actor Foo {
             func run() async {
-                await withShutdownGracefulHandler {} onGracefulShutdown: {
+                await withGracefulShutdownHandler {} onGracefulShutdown: {
                     self.foo()
                 }
             }
@@ -140,7 +140,7 @@ final class GracefulShutdownTests: XCTestCase {
                 let stream = AsyncStream<Void> { cont = $0 }
                 let continuation = cont!
 
-                await withShutdownGracefulHandler {
+                await withGracefulShutdownHandler {
                     await withTaskGroup(of: Void.self) { group in
                         group.addTask {
                             await stream.first { _ in true }
@@ -167,7 +167,7 @@ final class GracefulShutdownTests: XCTestCase {
                     let stream = AsyncStream<Void> { cont = $0 }
                     let continuation = cont!
 
-                    await withShutdownGracefulHandler {
+                    await withGracefulShutdownHandler {
                         await withTaskGroup(of: Void.self) { group in
                             group.addTask {
                                 await stream.first { _ in true }
@@ -195,7 +195,7 @@ final class GracefulShutdownTests: XCTestCase {
                     let stream = AsyncStream<Void> { cont = $0 }
                     let continuation = cont!
 
-                    await withShutdownGracefulHandler {
+                    await withGracefulShutdownHandler {
                         await withTaskGroup(of: Void.self) { group in
                             group.addTask {
                                 await stream.first { _ in true }

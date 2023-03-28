@@ -105,7 +105,7 @@ For this reason ``ServiceLifecycle`` introduces a new _shutdown gracefully_ conc
 the work in a structured and graceful manner. This works similarly to task cancellation but
 it is fully opt-in and up to the business logic of the application to decide what to do.
 
-``ServiceLifecycle`` exposes one free function called ``withShutdownGracefulHandler(operation:onGracefulShutdown:)``
+``ServiceLifecycle`` exposes one free function called ``withGracefulShutdownHandler(operation:onGracefulShutdown:)``
 that works similarly to the `withTaskCancellationHandler` function from the Concurrency library.
 Library authors are expected to make sure that any work they spawn from the `run()` method 
 properly supports graceful shutdown. For example, a server might be closing its listening socket
@@ -121,7 +121,7 @@ public actor TCPEchoClient: Service {
   public init() { }
 
   public func run() async throws {
-    await withShutdownGracefulHandler {
+    await withGracefulShutdownHandler {
         for connection in self.listeningSocket.connections {
           // Handle incoming connections
         }

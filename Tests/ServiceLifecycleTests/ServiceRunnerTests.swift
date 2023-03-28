@@ -52,7 +52,7 @@ private actor MockService: Service, CustomStringConvertible {
 
     func run() async throws {
         try await withTaskCancellationHandler {
-            try await withShutdownGracefulHandler {
+            try await withGracefulShutdownHandler {
                 try await withThrowingTaskGroup(of: Void.self) { group in
                     group.addTask {
                         self.eventsContinuation.yield(.run)
@@ -422,6 +422,68 @@ final class ServiceRunnerTests: XCTestCase {
 
             // Let's exit from the first service
             await service2.resumeRunContinuation(with: .success(()))
+        }
+    }
+
+    func testNestedServiceLifecycle() async throws {
+        struct NestedRunnerService: Service {
+            let runner: ServiceRunner
+
+            init(runner: ServiceRunner) {
+                self.runner = runner
+            }
+
+            func run() async throws {
+                try await self.runner.run()
+            }
+        }
+
+        let configuration = ServiceRunnerConfiguration(gracefulShutdownSignals: [.sigalrm])
+        let service1 = MockService(description: "Service1")
+        let service2 = MockService(description: "Service2")
+        let nestedRunnerService = NestedRunnerService(
+            runner: self.makeServiceRunner(
+                services: [service2],
+                configuration: .init(gracefulShutdownSignals: [])
+            )
+        )
+        let runner = self.makeServiceRunner(services: [service1, nestedRunnerService], configuration: configuration)
+
+        await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await runner.run()
+            }
+
+            var eventIterator1 = service1.events.makeAsyncIterator()
+            var eventIterator2 = service2.events.makeAsyncIterator()
+            service1.sendPing()
+            service2.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+
+            let pid = getpid()
+            kill(pid, UnixSignal.sigalrm.rawValue)
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+
+            service1.sendPing()
+            service2.sendPing()
+
+            // Waiting to see that the two remaining are still running
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+
+            // Let's exit from the second service
+            await service2.resumeRunContinuation(with: .success(()))
+
+            service1.sendPing()
+            // Waiting to see that the remaining is still running
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+
+            // Let's exit from the first service
+            await service1.resumeRunContinuation(with: .success(()))
         }
     }
 
