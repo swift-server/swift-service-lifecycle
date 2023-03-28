@@ -17,7 +17,7 @@
 ///
 /// It is passed to the `operation` closure of the ``testGracefulShutdown(operation:)`` method and allows
 /// to trigger the graceful shutdown for testing purposes.
-public struct GracefulShutdownTestTrigger {
+public struct GracefulShutdownTestTrigger: Sendable {
     private let gracefulShutdownManager: GracefulShutdownManager
 
     init(gracefulShutdownManager: GracefulShutdownManager) {

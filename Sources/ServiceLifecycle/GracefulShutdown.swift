@@ -27,9 +27,8 @@
 /// - Parameters:
 ///   - operation: The actual operation.
 ///   - handler: The handler which is invoked once graceful shutdown has been triggered.
-@_unsafeInheritExecutor
 public func withShutdownGracefulHandler<T>(
-    operation: () async throws -> T,
+    @_inheritActorContext operation: @Sendable () async throws -> T,
     onGracefulShutdown handler: @Sendable @escaping () -> Void
 ) async rethrows -> T {
     guard let gracefulShutdownManager = TaskLocals.gracefulShutdownManager else {
