@@ -1,14 +1,14 @@
 
-The AsyncHTTPClient Project
+The ServiceLifecycle Project
 ===========================
 
-Please visit the AsyncHTTPClient web site for more information:
+Please visit the ServiceLifecycle web site for more information:
 
-* https://github.com/swift-server/async-http-client
+* https://github.com/swift-server/swift-service-lifecycle
 
-Copyright 2017-2021 The AsyncHTTPClient Project
+Copyright 2019-2023 The ServiceLifecycle Project
 
-The AsyncHTTPClient Project licenses this file to you under the Apache License,
+The ServiceLifecycle Project licenses this file to you under the Apache License,
 version 2.0 (the "License"); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at:
 

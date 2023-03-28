@@ -78,6 +78,13 @@ public actor ServiceRunner: Sendable {
         }
     }
 
+    private enum ChildTaskResult {
+        case serviceFinished(service: any Service, index: Int)
+        case serviceThrew(service: any Service, index: Int, error: any Error)
+        case signalCaught(UnixSignal)
+        case signalSequenceFinished
+    }
+
     private func _run() async throws {
         self.logger.info(
             "Starting service lifecycle",
@@ -86,13 +93,6 @@ public actor ServiceRunner: Sendable {
                 self.configuration.logging.servicesKey: "\(self.services)",
             ]
         )
-
-        enum ChildTaskResult {
-            case serviceFinished(service: any Service, index: Int)
-            case serviceThrew(service: any Service, index: Int, error: any Error)
-            case signalCaught(UnixSignal)
-            case signalSequenceFinished
-        }
 
         // Using a result here since we want a task group that has non-throwing child tasks
         // but the body itself is throwing
@@ -125,6 +125,8 @@ public actor ServiceRunner: Sendable {
                 let gracefulShutdownManager = GracefulShutdownManager()
                 gracefulShutdownManagers.append(gracefulShutdownManager)
 
+                // This must be addTask and not addTaskUnlessCancelled
+                // because we must run all the services for the below logic to work.
                 group.addTask {
                     return await TaskLocals.$gracefulShutdownManager.withValue(gracefulShutdownManager) {
                         do {
@@ -142,7 +144,6 @@ public actor ServiceRunner: Sendable {
             // We are going to wait for any of the services to finish or
             // the signal sequence to throw an error.
             while !group.isEmpty {
-                // No child task is actually throwing here so the try! is safe
                 let result: ChildTaskResult? = await group.next()
 
                 switch result {
@@ -183,64 +184,13 @@ public actor ServiceRunner: Sendable {
                         ]
                     )
 
-                    // We have to shutdown the services in reverse. To do this
-                    // we are going to signal each child task the graceful shutdown and then wait for
-                    // its exit.
-                    for (gracefulShutdownIndex, gracefulShutdownManager) in gracefulShutdownManagers.lazy.enumerated().reversed() {
-                        self.logger.debug(
-                            "Triggering graceful shutdown for service",
-                            metadata: [
-                                self.configuration.logging.serviceKey: "\(self.services[gracefulShutdownIndex])",
-                            ]
+                    do {
+                        try await self.shutdownGracefully(
+                            group: &group,
+                            gracefulShutdownManagers: gracefulShutdownManagers
                         )
-
-                        await gracefulShutdownManager.shutdownGracefully()
-
-                        let result = await group.next()
-
-                        switch result {
-                        case .serviceFinished(let service, let index):
-                            if index == gracefulShutdownIndex {
-                                // The service that we signalled graceful shutdown did exit/
-                                // We can continue to the next one.
-                                self.logger.debug(
-                                    "Service finished",
-                                    metadata: [
-                                        self.configuration.logging.serviceKey: "\(service)",
-                                    ]
-                                )
-                                continue
-                            } else {
-                                // Another service exited unexpectedly
-                                self.logger.error(
-                                    "Service finished unexpectedly during graceful shutdown. Cancelling all other services now",
-                                    metadata: [
-                                        self.configuration.logging.serviceKey: "\(service)",
-                                    ]
-                                )
-
-                                group.cancelAll()
-                                return .failure(ServiceRunnerError.serviceFinishedUnexpectedly())
-                            }
-
-                        case .serviceThrew(let service, _, let error):
-                            self.logger.error(
-                                "Service threw error during graceful shutdown. Cancelling all other services now",
-                                metadata: [
-                                    self.configuration.logging.serviceKey: "\(service)",
-                                    self.configuration.logging.errorKey: "\(error)",
-                                ]
-                            )
-                            group.cancelAll()
-
-                            return .failure(error)
-
-                        case .signalCaught, .signalSequenceFinished:
-                            fatalError("Signal sequence already returned a signal.")
-
-                        case nil:
-                            fatalError("Invalid result from group.next().")
-                        }
+                    } catch {
+                        return .failure(error)
                     }
 
                 case .signalSequenceFinished:
@@ -261,5 +211,70 @@ public actor ServiceRunner: Sendable {
             "Service lifecycle ended"
         )
         try result.get()
+    }
+
+    private func shutdownGracefully(
+        group: inout TaskGroup<ChildTaskResult>,
+        gracefulShutdownManagers: [GracefulShutdownManager]
+    ) async throws {
+        // We have to shutdown the services in reverse. To do this
+        // we are going to signal each child task the graceful shutdown and then wait for
+        // its exit.
+        for (gracefulShutdownIndex, gracefulShutdownManager) in gracefulShutdownManagers.lazy.enumerated().reversed() {
+            self.logger.debug(
+                "Triggering graceful shutdown for service",
+                metadata: [
+                    self.configuration.logging.serviceKey: "\(self.services[gracefulShutdownIndex])",
+                ]
+            )
+
+            await gracefulShutdownManager.shutdownGracefully()
+
+            let result = await group.next()
+
+            switch result {
+            case .serviceFinished(let service, let index):
+                if index == gracefulShutdownIndex {
+                    // The service that we signalled graceful shutdown did exit/
+                    // We can continue to the next one.
+                    self.logger.debug(
+                        "Service finished",
+                        metadata: [
+                            self.configuration.logging.serviceKey: "\(service)",
+                        ]
+                    )
+                    continue
+                } else {
+                    // Another service exited unexpectedly
+                    self.logger.error(
+                        "Service finished unexpectedly during graceful shutdown. Cancelling all other services now",
+                        metadata: [
+                            self.configuration.logging.serviceKey: "\(service)",
+                        ]
+                    )
+
+                    group.cancelAll()
+                    throw ServiceRunnerError.serviceFinishedUnexpectedly()
+                }
+
+            case .serviceThrew(let service, _, let error):
+                self.logger.error(
+                    "Service threw error during graceful shutdown. Cancelling all other services now",
+                    metadata: [
+                        self.configuration.logging.serviceKey: "\(service)",
+                        self.configuration.logging.errorKey: "\(error)",
+                    ]
+                )
+                group.cancelAll()
+
+                throw error
+
+            case .signalCaught, .signalSequenceFinished:
+                fatalError("Signal sequence already returned a signal.")
+
+            case nil:
+                fatalError("Invalid result from group.next().")
+            }
+        }
     }
 }

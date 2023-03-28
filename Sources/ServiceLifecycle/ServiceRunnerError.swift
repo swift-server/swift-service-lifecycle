@@ -48,7 +48,7 @@ public struct ServiceRunnerError: Error, Hashable, Sendable {
     }
 
     /// Internal class that contains the actual error code.
-    private final class Backing: Hashable, Sendable, CustomStringConvertible {
+    private final class Backing: Hashable, Sendable {
         let errorCode: Code
         let file: String
         let line: Int
@@ -65,10 +65,6 @@ public struct ServiceRunnerError: Error, Hashable, Sendable {
 
         func hash(into hasher: inout Hasher) {
             hasher.combine(self.errorCode)
-        }
-
-        var description: String {
-            "errorCode: \(self.errorCode), file: \(self.file), line: \(self.line)"
         }
     }
 
@@ -122,6 +118,6 @@ public struct ServiceRunnerError: Error, Hashable, Sendable {
 
 extension ServiceRunnerError: CustomStringConvertible {
     public var description: String {
-        "ServiceRunnerError: \(self.backing)"
+        "ServiceRunnerError: errorCode: \(self.backing.errorCode), file: \(self.backing.file), line: \(self.backing.line)"
     }
 }
