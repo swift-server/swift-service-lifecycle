@@ -487,6 +487,63 @@ final class ServiceRunnerTests: XCTestCase {
         }
     }
 
+    func testShutdownGracefully() async throws {
+        let configuration = ServiceRunnerConfiguration(gracefulShutdownSignals: [])
+        let service1 = MockService(description: "Service1")
+        let service2 = MockService(description: "Service2")
+        let service3 = MockService(description: "Service3")
+        let runner = self.makeServiceRunner(services: [service1, service2, service3], configuration: configuration)
+
+        await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await runner.run()
+            }
+
+            var eventIterator1 = service1.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+
+            var eventIterator2 = service2.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+
+            var eventIterator3 = service3.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+
+            await runner.shutdownGracefully()
+
+            // The last service should receive the shutdown signal first
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+
+            // Waiting to see that all three are still running
+            service1.sendPing()
+            service2.sendPing()
+            service3.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+
+            // Let's exit from the last service
+            await service3.resumeRunContinuation(with: .success(()))
+
+            // The middle service should now receive the signal
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+
+            // Waiting to see that the two remaining are still running
+            service1.sendPing()
+            service2.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+
+            // Let's exit from the first service
+            await service1.resumeRunContinuation(with: .success(()))
+
+            // The middle service should now receive a cancellation
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .runCancelled)
+
+            // Let's exit from the first service
+            await service2.resumeRunContinuation(with: .success(()))
+        }
+    }
+
     // MARK: - Helpers
 
     private func makeServiceRunner(

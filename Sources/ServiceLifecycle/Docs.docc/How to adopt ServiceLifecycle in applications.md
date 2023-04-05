@@ -14,7 +14,7 @@ startup and shutdown. Furthermore, the application also needs to handle a single
 
 Swift introduced Structured Concurrency which already helps tremendously with running multiple 
 async services concurrently. This can be achieved with the use of task groups. However, Structured
-Concurrency doesn't enforce consistent interfaces between so services, so it becomes hard to orchestrate them.
+Concurrency doesn't enforce consistent interfaces between the services, so it becomes hard to orchestrate them.
 This is where ``ServiceLifecycle`` comes in. It provides the ``Service`` protocol which enforces 
 a common API. Additionally, it provides the ``ServiceRunner`` which is responsible for orchestrating
 all services in an application.
@@ -53,7 +53,7 @@ public struct BarService: Service {
 }
 ```
 
-The `BarService` is depending in our example on the `FofService`. A dependency between services
+The `BarService` is depending in our example on the `FooService`. A dependency between services
 is quite common and the ``ServiceRunner`` is inferring the dependencies from the order of the 
 services passed to the ``ServiceRunner/init(services:configuration:logger:)``. Services with a higher
 index can depend on services with a lower index. The following example shows how this can be applied

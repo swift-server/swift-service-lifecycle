@@ -22,7 +22,9 @@ public actor ServiceRunner: Sendable {
         /// The initial state of the runner.
         case initial
         /// The state once ``ServiceRunner/run()`` has been called.
-        case running
+        case running(
+            gracefulShutdownStreamContinuation: AsyncStream<Void>.Continuation
+        )
         /// The state once ``ServiceRunner/run()`` has finished.
         case finished
     }
@@ -59,8 +61,23 @@ public actor ServiceRunner: Sendable {
     public func run(file: String = #file, line: Int = #line) async throws {
         switch self.state {
         case .initial:
-            self.state = .running
-            try await self._run()
+            guard !self.services.isEmpty else {
+                self.state = .finished
+                return
+            }
+
+            let (gracefulShutdownStream, gracefulShutdownContinuation) = AsyncStream.makeStream(of: Void.self)
+
+            self.state = .running(
+                gracefulShutdownStreamContinuation: gracefulShutdownContinuation
+            )
+
+            var potentialError: Error?
+            do {
+                try await self._run(gracefulShutdownStream: gracefulShutdownStream)
+            } catch {
+                potentialError = error
+            }
 
             switch self.state {
             case .initial, .finished:
@@ -68,6 +85,10 @@ public actor ServiceRunner: Sendable {
 
             case .running:
                 self.state = .finished
+
+                if let potentialError {
+                    throw potentialError
+                }
             }
 
         case .running:
@@ -78,15 +99,43 @@ public actor ServiceRunner: Sendable {
         }
     }
 
+    /// Triggers the graceful shutdown of all services.
+    ///
+    /// This method returns immediately after triggering the graceful shutdown and doesn't wait until the service have shutdown.
+    public func shutdownGracefully() async {
+        switch self.state {
+        case .initial:
+            // We aren't even running so we can stop right away.
+            self.state = .finished
+            return
+
+        case .running(let gracefulShutdownStreamContinuation):
+            // We cannot transition to shuttingDown here since we are signalling over to the task
+            // that runs `run`. This task is responsible for transitioning to shuttingDown since
+            // there might be multiple signals racing to trigger it
+
+            // We are going to signal the run method that graceful shutdown
+            // should be triggered
+            gracefulShutdownStreamContinuation.yield()
+            gracefulShutdownStreamContinuation.finish()
+
+        case .finished:
+            // Already finished running so nothing to do here
+            return
+        }
+    }
+
     private enum ChildTaskResult {
         case serviceFinished(service: any Service, index: Int)
         case serviceThrew(service: any Service, index: Int, error: any Error)
         case signalCaught(UnixSignal)
         case signalSequenceFinished
+        case gracefulShutdownCaught
+        case gracefulShutdownFinished
     }
 
-    private func _run() async throws {
-        self.logger.info(
+    private func _run(gracefulShutdownStream: AsyncStream<Void>) async throws {
+        self.logger.debug(
             "Starting service lifecycle",
             metadata: [
                 self.configuration.logging.signalsKey: "\(self.configuration.gracefulShutdownSignals)",
@@ -100,12 +149,33 @@ public actor ServiceRunner: Sendable {
             // First we have to register our signals.
             let unixSignals = await UnixSignalsSequence(trapping: self.configuration.gracefulShutdownSignals)
 
+            // This is the task that listens to signals
             group.addTask {
                 for await signal in unixSignals {
                     return .signalCaught(signal)
                 }
 
                 return .signalSequenceFinished
+            }
+
+            // This is the task that listens to manual graceful shutdown
+            group.addTask {
+                for await _ in gracefulShutdownStream {
+                    return .gracefulShutdownCaught
+                }
+
+                return .gracefulShutdownFinished
+            }
+
+            // This is an optional task that listens to graceful shutdowns from the parent task
+            if let _ = TaskLocals.gracefulShutdownManager {
+                group.addTask {
+                    for await _ in AsyncGracefulShutdownSequence() {
+                        return .gracefulShutdownCaught
+                    }
+
+                    return .gracefulShutdownFinished
+                }
             }
 
             // We have to create a graceful shutdown manager per service
@@ -174,10 +244,8 @@ public actor ServiceRunner: Sendable {
                     return .failure(error)
 
                 case .signalCaught(let unixSignal):
-                    // We got a signal. Let's initiate graceful shutdown in reverse order than we started the
-                    // services. This allows the users to declare a hierarchy with the order they passed
-                    // the services.
-                    self.logger.info(
+                    // We got a signal. Let's initiate graceful shutdown.
+                    self.logger.debug(
                         "Signal caught. Shutting down services",
                         metadata: [
                             self.configuration.logging.signalKey: "\(unixSignal)",
@@ -193,7 +261,20 @@ public actor ServiceRunner: Sendable {
                         return .failure(error)
                     }
 
-                case .signalSequenceFinished:
+                case .gracefulShutdownCaught:
+                    // We got a manual or inherited graceful shutdown. Let's initiate graceful shutdown.
+                    self.logger.debug("Graceful shutdown caught. Cascading shutdown to services")
+
+                    do {
+                        try await self.shutdownGracefully(
+                            group: &group,
+                            gracefulShutdownManagers: gracefulShutdownManagers
+                        )
+                    } catch {
+                        return .failure(error)
+                    }
+
+                case .signalSequenceFinished, .gracefulShutdownFinished:
                     // This can happen when we are either cancelling everything or
                     // when the user did not specify any shutdown signals. We just have to tolerate
                     // this.
@@ -207,7 +288,7 @@ public actor ServiceRunner: Sendable {
             return .success(())
         }
 
-        self.logger.info(
+        self.logger.debug(
             "Service lifecycle ended"
         )
         try result.get()
@@ -217,6 +298,10 @@ public actor ServiceRunner: Sendable {
         group: inout TaskGroup<ChildTaskResult>,
         gracefulShutdownManagers: [GracefulShutdownManager]
     ) async throws {
+        guard case .running = self.state else {
+            fatalError("Unexpected state")
+        }
+
         // We have to shutdown the services in reverse. To do this
         // we are going to signal each child task the graceful shutdown and then wait for
         // its exit.
@@ -246,7 +331,7 @@ public actor ServiceRunner: Sendable {
                     continue
                 } else {
                     // Another service exited unexpectedly
-                    self.logger.error(
+                    self.logger.debug(
                         "Service finished unexpectedly during graceful shutdown. Cancelling all other services now",
                         metadata: [
                             self.configuration.logging.serviceKey: "\(service)",
@@ -258,7 +343,7 @@ public actor ServiceRunner: Sendable {
                 }
 
             case .serviceThrew(let service, _, let error):
-                self.logger.error(
+                self.logger.debug(
                     "Service threw error during graceful shutdown. Cancelling all other services now",
                     metadata: [
                         self.configuration.logging.serviceKey: "\(service)",
@@ -269,12 +354,30 @@ public actor ServiceRunner: Sendable {
 
                 throw error
 
-            case .signalCaught, .signalSequenceFinished:
-                fatalError("Signal sequence already returned a signal.")
+            case .signalCaught, .signalSequenceFinished, .gracefulShutdownCaught, .gracefulShutdownFinished:
+                // We just have to tolerate this since signals and parent graceful shutdowns downs can race.
+                continue
 
             case nil:
                 fatalError("Invalid result from group.next().")
             }
         }
+
+        // If we hit this then all services are shutdown. The only thing remaining
+        // are the tasks that listen to the various graceful shutdown signals. We
+        // just have to cancel those
+        group.cancelAll()
+    }
+}
+
+// This should be removed once we support Swift 5.9+
+extension AsyncStream {
+    fileprivate static func makeStream(
+        of elementType: Element.Type = Element.self,
+        bufferingPolicy limit: Continuation.BufferingPolicy = .unbounded
+    ) -> (stream: AsyncStream<Element>, continuation: AsyncStream<Element>.Continuation) {
+        var continuation: AsyncStream<Element>.Continuation!
+        let stream = AsyncStream<Element>(bufferingPolicy: limit) { continuation = $0 }
+        return (stream: stream, continuation: continuation!)
     }
 }
