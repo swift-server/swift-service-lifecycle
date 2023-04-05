@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import Foundation
-import Lifecycle
+@testable import Lifecycle
 import NIO
 import NIOConcurrencyHelpers
 
@@ -25,7 +25,7 @@ class GoodItem: LifecycleTask {
     let shutdownDelay: Double
 
     var state = State.idle
-    let stateLock = Lock()
+    let stateLock = Lifecycle.Lock()
 
     init(id: String = UUID().uuidString,
          startDelay: Double = Double.random(in: 0.01 ... 0.1),
@@ -67,7 +67,7 @@ class NIOItem {
     let shutdownDelay: Int64
 
     var state = State.idle
-    let stateLock = Lock()
+    let stateLock = Lifecycle.Lock()
 
     init(eventLoopGroup: EventLoopGroup,
          id: String = UUID().uuidString,
