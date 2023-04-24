@@ -29,7 +29,7 @@ final class GracefulShutdownTests: XCTestCase {
                         await stream.first { _ in true }
                     }
 
-                    await gracefulShutdownTestTrigger.triggerGracefulShutdown()
+                    gracefulShutdownTestTrigger.triggerGracefulShutdown()
 
                     await group.waitForAll()
                 }
@@ -45,7 +45,7 @@ final class GracefulShutdownTests: XCTestCase {
         let continuation = cont!
 
         await testGracefulShutdown { gracefulShutdownTestTrigger in
-            await gracefulShutdownTestTrigger.triggerGracefulShutdown()
+            gracefulShutdownTestTrigger.triggerGracefulShutdown()
 
             _ = await withGracefulShutdownHandler {
                 continuation.yield("operation")
@@ -99,7 +99,7 @@ final class GracefulShutdownTests: XCTestCase {
                     await XCTAsyncAssertEqual(await iterator.next(), "innerOperation")
                     await XCTAsyncAssertEqual(await iterator.next(), "innerOperation")
 
-                    await gracefulShutdownTestTrigger.triggerGracefulShutdown()
+                    gracefulShutdownTestTrigger.triggerGracefulShutdown()
 
                     await XCTAsyncAssertEqual(await iterator.next(), "outerOnGracefulShutdown")
                     await XCTAsyncAssertEqual(await iterator.next(), "innerOnGracefulShutdown")
@@ -153,7 +153,7 @@ final class GracefulShutdownTests: XCTestCase {
                 }
             }
 
-            await gracefulShutdownTestTrigger.triggerGracefulShutdown()
+            gracefulShutdownTestTrigger.triggerGracefulShutdown()
 
             await task.value
         }
@@ -180,7 +180,7 @@ final class GracefulShutdownTests: XCTestCase {
                     }
                 }
 
-                await gracefulShutdownTestTrigger.triggerGracefulShutdown()
+                gracefulShutdownTestTrigger.triggerGracefulShutdown()
 
                 await group.waitForAll()
             }
@@ -208,9 +208,27 @@ final class GracefulShutdownTests: XCTestCase {
                     }
                 }
 
-                await gracefulShutdownTestTrigger.triggerGracefulShutdown()
+                gracefulShutdownTestTrigger.triggerGracefulShutdown()
 
                 try! await group.waitForAll()
+            }
+        }
+    }
+
+    func testCancelOnGracefulShutdown() async throws {
+        try await testGracefulShutdown { gracefulShutdownTestTrigger in
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    try await cancelOnGracefulShutdown {
+                        try await Task.sleep(nanoseconds: 1_000_000_000_000)
+                    }
+                }
+
+                gracefulShutdownTestTrigger.triggerGracefulShutdown()
+
+                await XCTAsyncAssertThrowsError(try await group.next()) { error in
+                    XCTAssertTrue(error is CancellationError)
+                }
             }
         }
     }

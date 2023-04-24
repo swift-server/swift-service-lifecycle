@@ -18,16 +18,24 @@ import UnixSignals
 public struct ServiceRunnerConfiguration: Hashable, Sendable {
     /// The runner's logging configuration.
     public struct LoggingConfiguration: Hashable, Sendable {
-        /// The logging key used for logging the unix signal.
-        public var signalKey = "signal"
-        /// The logging key used for logging the unix signals.
-        public var signalsKey = "signals"
-        /// The logging key used for logging the service.
-        public var serviceKey = "service"
-        /// The logging key used for logging the services.
-        public var servicesKey = "services"
-        /// The logging key used for logging an error.
-        public var errorKey = "error"
+        public struct Keys: Hashable, Sendable {
+            /// The logging key used for logging the unix signal.
+            public var signalKey = "signal"
+            /// The logging key used for logging the unix signals.
+            public var signalsKey = "signals"
+            /// The logging key used for logging the service.
+            public var serviceKey = "service"
+            /// The logging key used for logging the services.
+            public var servicesKey = "services"
+            /// The logging key used for logging an error.
+            public var errorKey = "error"
+
+            /// Initializes a new ``ServiceRunnerConfiguration/LoggingConfiguration/Keys``.
+            public init() {}
+        }
+
+        /// The keys used for logging.
+        public var keys = Keys()
 
         /// Initializes a new ``ServiceRunnerConfiguration/LoggingConfiguration``.
         public init() {}

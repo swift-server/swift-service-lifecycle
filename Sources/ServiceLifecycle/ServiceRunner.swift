@@ -138,8 +138,8 @@ public actor ServiceRunner: Sendable {
         self.logger.debug(
             "Starting service lifecycle",
             metadata: [
-                self.configuration.logging.signalsKey: "\(self.configuration.gracefulShutdownSignals)",
-                self.configuration.logging.servicesKey: "\(self.services)",
+                self.configuration.logging.keys.signalsKey: "\(self.configuration.gracefulShutdownSignals)",
+                self.configuration.logging.keys.servicesKey: "\(self.services)",
             ]
         )
 
@@ -188,7 +188,7 @@ public actor ServiceRunner: Sendable {
                 self.logger.debug(
                     "Starting service",
                     metadata: [
-                        self.configuration.logging.serviceKey: "\(service)",
+                        self.configuration.logging.keys.serviceKey: "\(service)",
                     ]
                 )
 
@@ -223,7 +223,7 @@ public actor ServiceRunner: Sendable {
                     self.logger.error(
                         "Service finished unexpectedly. Cancelling all other services now",
                         metadata: [
-                            self.configuration.logging.serviceKey: "\(service)",
+                            self.configuration.logging.keys.serviceKey: "\(service)",
                         ]
                     )
 
@@ -235,8 +235,8 @@ public actor ServiceRunner: Sendable {
                     self.logger.error(
                         "Service threw error. Cancelling all other services now",
                         metadata: [
-                            self.configuration.logging.serviceKey: "\(service)",
-                            self.configuration.logging.errorKey: "\(error)",
+                            self.configuration.logging.keys.serviceKey: "\(service)",
+                            self.configuration.logging.keys.errorKey: "\(error)",
                         ]
                     )
                     group.cancelAll()
@@ -248,7 +248,7 @@ public actor ServiceRunner: Sendable {
                     self.logger.debug(
                         "Signal caught. Shutting down services",
                         metadata: [
-                            self.configuration.logging.signalKey: "\(unixSignal)",
+                            self.configuration.logging.keys.signalKey: "\(unixSignal)",
                         ]
                     )
 
@@ -309,11 +309,11 @@ public actor ServiceRunner: Sendable {
             self.logger.debug(
                 "Triggering graceful shutdown for service",
                 metadata: [
-                    self.configuration.logging.serviceKey: "\(self.services[gracefulShutdownIndex])",
+                    self.configuration.logging.keys.serviceKey: "\(self.services[gracefulShutdownIndex])",
                 ]
             )
 
-            await gracefulShutdownManager.shutdownGracefully()
+            gracefulShutdownManager.shutdownGracefully()
 
             let result = await group.next()
 
@@ -325,7 +325,7 @@ public actor ServiceRunner: Sendable {
                     self.logger.debug(
                         "Service finished",
                         metadata: [
-                            self.configuration.logging.serviceKey: "\(service)",
+                            self.configuration.logging.keys.serviceKey: "\(service)",
                         ]
                     )
                     continue
@@ -334,7 +334,7 @@ public actor ServiceRunner: Sendable {
                     self.logger.debug(
                         "Service finished unexpectedly during graceful shutdown. Cancelling all other services now",
                         metadata: [
-                            self.configuration.logging.serviceKey: "\(service)",
+                            self.configuration.logging.keys.serviceKey: "\(service)",
                         ]
                     )
 
@@ -346,8 +346,8 @@ public actor ServiceRunner: Sendable {
                 self.logger.debug(
                     "Service threw error during graceful shutdown. Cancelling all other services now",
                     metadata: [
-                        self.configuration.logging.serviceKey: "\(service)",
-                        self.configuration.logging.errorKey: "\(error)",
+                        self.configuration.logging.keys.serviceKey: "\(service)",
+                        self.configuration.logging.keys.errorKey: "\(error)",
                     ]
                 )
                 group.cancelAll()

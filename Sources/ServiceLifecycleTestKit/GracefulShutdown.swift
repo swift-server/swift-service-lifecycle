@@ -25,8 +25,8 @@ public struct GracefulShutdownTestTrigger: Sendable {
     }
 
     /// Triggers the graceful shutdown.
-    public func triggerGracefulShutdown() async {
-        await self.gracefulShutdownManager.shutdownGracefully()
+    public func triggerGracefulShutdown() {
+        self.gracefulShutdownManager.shutdownGracefully()
     }
 }
 
