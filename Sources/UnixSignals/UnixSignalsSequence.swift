@@ -106,7 +106,7 @@ extension UnixSignalsSequence {
             // Registering sources is async: await their registration so we don't miss early signals.
             await withTaskCancellationHandler {
                 for source in sources {
-                    await withCheckedContinuation { continuation in
+                    await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
                         let action = self.stateMachine.withLockedValue { $0.registeringSignal(continuation: continuation) }
                         switch action {
                         case .setRegistrationHandlerAndResumeDispatchSource:
