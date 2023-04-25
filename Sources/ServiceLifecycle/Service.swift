@@ -14,13 +14,13 @@
 
 /// This is the basic protocol that a service has to implement.
 public protocol Service: Sendable {
-    /// This method is called when the ``ServiceRunner`` is starting all the services.
+    /// This method is called when the ``ServiceGroup`` is starting all the services.
     ///
     /// Concrete implementation should execute their long running work in this method such as:
     /// - Handling incoming connections and requests
     /// - Background refreshes
     ///
-    /// - Important: Returning or throwing from this method is indicating a failure of the service and will cause the ``ServiceRunner``
+    /// - Important: Returning or throwing from this method is indicating a failure of the service and will cause the ``ServiceGroup``
     /// to cancel the child tasks of all other running services.
     func run() async throws
 }

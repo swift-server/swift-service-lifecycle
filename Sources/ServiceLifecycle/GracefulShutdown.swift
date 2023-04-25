@@ -25,7 +25,7 @@ import ConcurrencyHelpers
 /// A common use-case is to listen to graceful shutdown and use the `ServerQuiescingHelper` from `swift-nio-extras` to
 /// trigger the quiescing sequence. Furthermore, graceful shutdown will propagate to any child task that is currently executing
 ///
-/// - Important: This method will only set up a handler if run inside ``ServiceRunner`` otherwise no graceful shutdown handler
+/// - Important: This method will only set up a handler if run inside ``ServiceGroup`` otherwise no graceful shutdown handler
 /// will be set up.
 ///
 /// - Parameters:

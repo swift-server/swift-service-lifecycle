@@ -14,9 +14,9 @@
 
 import UnixSignals
 
-/// The configuration for the ``ServiceRunner``.
-public struct ServiceRunnerConfiguration: Hashable, Sendable {
-    /// The runner's logging configuration.
+/// The configuration for the ``ServiceGroup``.
+public struct ServiceGroupConfiguration: Hashable, Sendable {
+    /// The group's logging configuration.
     public struct LoggingConfiguration: Hashable, Sendable {
         public struct Keys: Hashable, Sendable {
             /// The logging key used for logging the unix signal.
@@ -30,24 +30,24 @@ public struct ServiceRunnerConfiguration: Hashable, Sendable {
             /// The logging key used for logging an error.
             public var errorKey = "error"
 
-            /// Initializes a new ``ServiceRunnerConfiguration/LoggingConfiguration/Keys``.
+            /// Initializes a new ``ServiceGroupConfiguration/LoggingConfiguration/Keys``.
             public init() {}
         }
 
         /// The keys used for logging.
         public var keys = Keys()
 
-        /// Initializes a new ``ServiceRunnerConfiguration/LoggingConfiguration``.
+        /// Initializes a new ``ServiceGroupConfiguration/LoggingConfiguration``.
         public init() {}
     }
 
     /// The signals that lead to graceful shutdown.
     public var gracefulShutdownSignals: [UnixSignal]
 
-    /// The runner's logging configuration.
+    /// The group's logging configuration.
     public var logging: LoggingConfiguration
 
-    /// Initializes a new ``ServiceRunnerConfiguration``.
+    /// Initializes a new ``ServiceGroupConfiguration``.
     ///
     /// - Parameter gracefulShutdownSignals: The signals that lead to graceful shutdown.
     public init(gracefulShutdownSignals: [UnixSignal]) {

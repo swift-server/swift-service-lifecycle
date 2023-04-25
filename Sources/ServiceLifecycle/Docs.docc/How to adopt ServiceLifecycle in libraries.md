@@ -78,13 +78,13 @@ public actor TCPEchoClient: Service {
 ### Returning from your `run()` method
 
 Since the `run()` method contains long running work, returning from it is seen as a failure and will
-lead to the ``ServiceRunner`` cancelling all other services by cancelling the task that is running
+lead to the ``ServiceGroup`` cancelling all other services by cancelling the task that is running
 their respective `run()` method.
 
 ### Cancellation
 
 Structured Concurrency propagates task cancellation down the task tree. Every task in the tree can
-check for cancellation or react to it with cancellation handlers. The ``ServiceRunner`` is using task
+check for cancellation or react to it with cancellation handlers. The ``ServiceGroup`` is using task
 cancellation to tear everything down in the case of an early return or thrown error from the `run()`
 method of any of the services. Hence it is important that each service properly implements task
 cancellation in their `run()` methods.

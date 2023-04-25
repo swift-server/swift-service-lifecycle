@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// Errors thrown by the ``ServiceRunner``.
-public struct ServiceRunnerError: Error, Hashable, Sendable {
+/// Errors thrown by the ``ServiceGroup``.
+public struct ServiceGroupError: Error, Hashable, Sendable {
     /// A struct representing the possible error codes.
     public struct Code: Hashable, Sendable, CustomStringConvertible {
         private enum _Code: Hashable, Sendable {
@@ -31,17 +31,17 @@ public struct ServiceRunnerError: Error, Hashable, Sendable {
         public var description: String {
             switch self.code {
             case .alreadyRunning:
-                return "The service runner is already running the services."
+                return "The service group is already running the services."
             case .alreadyFinished:
-                return "The service runner has already finished running the services."
+                return "The service group has already finished running the services."
             case .serviceFinishedUnexpectedly:
                 return "A service has finished unexpectedly."
             }
         }
 
-        /// Indicates that the service runner is already running.
+        /// Indicates that the service group is already running.
         public static let alreadyRunning = Code(code: .alreadyRunning)
-        /// Indicates that the service runner has already finished running.
+        /// Indicates that the service group has already finished running.
         public static let alreadyFinished = Code(code: .alreadyFinished)
         /// Indicates that a service finished unexpectedly.
         public static let serviceFinishedUnexpectedly = Code(code: .serviceFinishedUnexpectedly)
@@ -82,7 +82,7 @@ public struct ServiceRunnerError: Error, Hashable, Sendable {
         self.backing = backing
     }
 
-    /// Indicates that the service runner is already running.
+    /// Indicates that the service group is already running.
     public static func alreadyRunning(file: String = #fileID, line: Int = #line) -> Self {
         Self(
             .init(
@@ -93,7 +93,7 @@ public struct ServiceRunnerError: Error, Hashable, Sendable {
         )
     }
 
-    /// Indicates that the service runner has already finished running.
+    /// Indicates that the service group has already finished running.
     public static func alreadyFinished(file: String = #fileID, line: Int = #line) -> Self {
         Self(
             .init(
@@ -116,8 +116,8 @@ public struct ServiceRunnerError: Error, Hashable, Sendable {
     }
 }
 
-extension ServiceRunnerError: CustomStringConvertible {
+extension ServiceGroupError: CustomStringConvertible {
     public var description: String {
-        "ServiceRunnerError: errorCode: \(self.backing.errorCode), file: \(self.backing.file), line: \(self.backing.line)"
+        "ServiceGroupError: errorCode: \(self.backing.errorCode), file: \(self.backing.file), line: \(self.backing.line)"
     }
 }

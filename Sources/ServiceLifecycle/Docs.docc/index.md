@@ -8,7 +8,7 @@ Applications often have to orchestrate multiple internal services such as
 clients or servers to implement their business logic. Doing this can become
 tedious; especially when the APIs of the various services are not interoping nicely
 with each other. This library tries to solve this issue by providing a ``Service`` protocol
-that services should implement and an orchestrator, the ``ServiceRunner``, that handles
+that services should implement and an orchestrator, the ``ServiceGroup``, that handles
 running the various services.
 
 This library is fully based on Swift Structured Concurrency which allows it to
@@ -20,7 +20,7 @@ to their business logic if and how to do that.
 
 ``ServiceLifecycle`` should be used by both library and application authors to create a seamless experience.
 Library authors should conform their services to the ``Service`` protocol and application authors
-should use the ``ServiceRunner`` to orchestrate all their services.
+should use the ``ServiceGroup`` to orchestrate all their services.
 
 ## Topics
 
@@ -33,15 +33,16 @@ should use the ``ServiceRunner`` to orchestrate all their services.
 
 - ``Service``
 
-### Service Runner
+### Service Group
 
-- ``ServiceRunner``
-- ``ServiceRunnerConfiguration``
+- ``ServiceGroup``
+- ``ServiceGroupConfiguration``
 
 ### Graceful Shutdown
 
 - ``withGracefulShutdownHandler(operation:onGracefulShutdown:)``
+- ``cancelOnGracefulShutdown(_:)``
 
 ### Errors
 
-- ``ServiceRunnerError``
+- ``ServiceGroupError``

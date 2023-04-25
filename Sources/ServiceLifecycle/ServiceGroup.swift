@@ -15,39 +15,39 @@
 import Logging
 import UnixSignals
 
-/// A ``ServiceRunner`` is responsible for running a number of services, setting up signal handling and signalling graceful shutdown to the services.
-public actor ServiceRunner: Sendable {
-    /// The internal state of the ``ServiceRunner``.
+/// A ``ServiceGroup`` is responsible for running a number of services, setting up signal handling and signalling graceful shutdown to the services.
+public actor ServiceGroup: Sendable {
+    /// The internal state of the ``ServiceGroup``.
     private enum State {
-        /// The initial state of the runner.
+        /// The initial state of the group.
         case initial
-        /// The state once ``ServiceRunner/run()`` has been called.
+        /// The state once ``ServiceGroup/run()`` has been called.
         case running(
             gracefulShutdownStreamContinuation: AsyncStream<Void>.Continuation
         )
-        /// The state once ``ServiceRunner/run()`` has finished.
+        /// The state once ``ServiceGroup/run()`` has finished.
         case finished
     }
 
     /// The services to run.
     private let services: [any Service]
-    /// The runner's configuration.
-    private let configuration: ServiceRunnerConfiguration
+    /// The group's configuration.
+    private let configuration: ServiceGroupConfiguration
     /// The logger.
     private let logger: Logger
 
-    /// The current state of the runner.
+    /// The current state of the group.
     private var state: State = .initial
 
-    /// Initializes a new ``ServiceRunner``.
+    /// Initializes a new ``ServiceGroup``.
     ///
     /// - Parameters:
     ///   - services: The services to run.
-    ///   - configuration: The runner's configuration.
+    ///   - configuration: The group's configuration.
     ///   - logger: The logger.
     public init(
         services: [any Service],
-        configuration: ServiceRunnerConfiguration,
+        configuration: ServiceGroupConfiguration,
         logger: Logger
     ) {
         self.services = services
@@ -81,7 +81,7 @@ public actor ServiceRunner: Sendable {
 
             switch self.state {
             case .initial, .finished:
-                fatalError("ServiceRunner is in an invalid state \(self.state)")
+                fatalError("ServiceGroup is in an invalid state \(self.state)")
 
             case .running:
                 self.state = .finished
@@ -92,10 +92,10 @@ public actor ServiceRunner: Sendable {
             }
 
         case .running:
-            throw ServiceRunnerError.alreadyRunning(file: file, line: line)
+            throw ServiceGroupError.alreadyRunning(file: file, line: line)
 
         case .finished:
-            throw ServiceRunnerError.alreadyFinished(file: file, line: line)
+            throw ServiceGroupError.alreadyFinished(file: file, line: line)
         }
     }
 
@@ -228,7 +228,7 @@ public actor ServiceRunner: Sendable {
                     )
 
                     group.cancelAll()
-                    return .failure(ServiceRunnerError.serviceFinishedUnexpectedly())
+                    return .failure(ServiceGroupError.serviceFinishedUnexpectedly())
 
                 case .serviceThrew(let service, _, let error):
                     // One of the servers threw an error. We have to cancel everything else now.
@@ -339,7 +339,7 @@ public actor ServiceRunner: Sendable {
                     )
 
                     group.cancelAll()
-                    throw ServiceRunnerError.serviceFinishedUnexpectedly()
+                    throw ServiceGroupError.serviceFinishedUnexpectedly()
                 }
 
             case .serviceThrew(let service, _, let error):

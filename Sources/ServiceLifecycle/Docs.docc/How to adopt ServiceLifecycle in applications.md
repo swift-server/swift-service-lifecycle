@@ -1,7 +1,7 @@
 # How to adopt ServiceLifecycle in applications
 
 ``ServiceLifecycle`` aims to provide a unified API that services should adopt to make orchestrating
-them in an application easier. To achieve this ``ServiceLifecycle`` is providing the ``ServiceRunner`` actor.
+them in an application easier. To achieve this ``ServiceLifecycle`` is providing the ``ServiceGroup`` actor.
 
 ## Why do we need this?
 
@@ -16,25 +16,25 @@ Swift introduced Structured Concurrency which already helps tremendously with ru
 async services concurrently. This can be achieved with the use of task groups. However, Structured
 Concurrency doesn't enforce consistent interfaces between the services, so it becomes hard to orchestrate them.
 This is where ``ServiceLifecycle`` comes in. It provides the ``Service`` protocol which enforces 
-a common API. Additionally, it provides the ``ServiceRunner`` which is responsible for orchestrating
+a common API. Additionally, it provides the ``ServiceGroup`` which is responsible for orchestrating
 all services in an application.
 
-## Adopting the ServiceRunner in your application
+## Adopting the ServiceGroup in your application
 
-This article is focusing on how the ``ServiceRunner`` works and how you can adopt it in your application.
+This article is focusing on how the ``ServiceGroup`` works and how you can adopt it in your application.
 If you are interested in how to properly implement a service, go check out the article:  <doc:How-to-adopt-ServiceLifecycle-in-libraries>.
 
-### How is the ServiceRunner working?
+### How is the ServiceGroup working?
 
-The ``ServiceRunner`` is just a slightly complicated task group under the hood that runs each service
-in a separate child task. Furthermore, the ``ServiceRunner`` handles individual services exiting
+The ``ServiceGroup`` is just a slightly complicated task group under the hood that runs each service
+in a separate child task. Furthermore, the ``ServiceGroup`` handles individual services exiting
 or throwing unexpectedly. Lastly, it also introduces a concept called graceful shutdown which allows
 tearing down all services in reverse order safely. Graceful shutdown is often used in server
 scenarios i.e. when rolling out a new version and draining traffic from the old version.
 
-### How to use the ServiceRunner?
+### How to use the ServiceGroup?
 
-Let's take a look how the ``ServiceRunner`` can be used in an application. First, we define some
+Let's take a look how the ``ServiceGroup`` can be used in an application. First, we define some
 fictional services.
 
 ```swift
@@ -54,8 +54,8 @@ public struct BarService: Service {
 ```
 
 The `BarService` is depending in our example on the `FooService`. A dependency between services
-is quite common and the ``ServiceRunner`` is inferring the dependencies from the order of the 
-services passed to the ``ServiceRunner/init(services:configuration:logger:)``. Services with a higher
+is quite common and the ``ServiceGroup`` is inferring the dependencies from the order of the 
+services passed to the ``ServiceGroup/init(services:configuration:logger:)``. Services with a higher
 index can depend on services with a lower index. The following example shows how this can be applied
 to our `BarService`.
 
@@ -66,25 +66,25 @@ struct Application {
     let fooService = FooServer()
     let barService = BarService(fooService: fooService)
 
-    let serviceRunner = ServiceRunner(
+    let serviceGroup = ServiceGroup(
       // We are encoding the dependency hierarchy here by listing the fooService first
       services: [fooService, barService],
       configuration: .init(gracefulShutdownSignals: []),
       logger: logger
     )
 
-    try await serviceRunner.run()
+    try await serviceGroup.run()
   }
 }
 ```
 
 ### Graceful shutdown
 
-The ``ServiceRunner`` supports graceful shutdown by taking an array of `UnixSignal`s that trigger
+The ``ServiceGroup`` supports graceful shutdown by taking an array of `UnixSignal`s that trigger
 the shutdown. Commonly `SIGTERM` is used to indicate graceful shutdowns in container environments 
-such as Docker or Kubernetes. The ``ServiceRunner`` is then gracefully shutting down each service
+such as Docker or Kubernetes. The ``ServiceGroup`` is then gracefully shutting down each service
 one by one in the reverse order of the array passed to the init.
-Importantly, the ``ServiceRunner`` is going to wait for the ``Service/run()`` method to return
+Importantly, the ``ServiceGroup`` is going to wait for the ``Service/run()`` method to return
 before triggering the graceful shutdown on the next service.
 
 Since graceful shutdown is up to the individual services and application it requires explicit support.
@@ -125,13 +125,13 @@ struct Application {
       }
     })
 
-    let serviceRunner = ServiceRunner(
+    let serviceGroup = ServiceGroup(
       services: [streamingService],
       configuration: .init(gracefulShutdownSignals: [.sigterm]),
       logger: logger
     )
 
-    try await serviceRunner.run()
+    try await serviceGroup.run()
   }
 }
 ```
@@ -182,13 +182,13 @@ struct Application {
       }
     })
 
-    let serviceRunner = ServiceRunner(
+    let serviceGroup = ServiceGroup(
       services: [streamingService],
       configuration: .init(gracefulShutdownSignals: [.sigterm]),
       logger: logger
     )
 
-    try await serviceRunner.run()
+    try await serviceGroup.run()
   }
 }
 ```
