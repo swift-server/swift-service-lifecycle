@@ -232,4 +232,14 @@ final class GracefulShutdownTests: XCTestCase {
             }
         }
     }
+
+    func testIsShuttingDownGracefully() async throws {
+        await testGracefulShutdown { gracefulShutdownTestTrigger in
+            XCTAssertFalse(Task.isShuttingDownGracefully)
+
+            gracefulShutdownTestTrigger.triggerGracefulShutdown()
+
+            XCTAssertTrue(Task.isShuttingDownGracefully)
+        }
+    }
 }

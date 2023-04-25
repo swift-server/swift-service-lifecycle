@@ -25,27 +25,21 @@ import ConcurrencyHelpers
 /// A common use-case is to listen to graceful shutdown and use the `ServerQuiescingHelper` from `swift-nio-extras` to
 /// trigger the quiescing sequence. Furthermore, graceful shutdown will propagate to any child task that is currently executing
 ///
+/// - Important: This method will only set up a handler if run inside ``ServiceRunner`` otherwise no graceful shutdown handler
+/// will be set up.
+///
 /// - Parameters:
-///   - requiresRunningInsideServiceRunner: Indicates if this method requires to be run from within a ``ServiceRunner`` child task.
-///   This defaults to `true` and if run outside of a ``ServiceRunner`` child task will `fatalError`. If set to `false` then
-///   no graceful shutdown handler will be setup if not called inside a ``ServiceRunner`` child task. This is useful for code that
-///   can run both inside and outside of``ServiceRunner`` child tasks.
 ///   - operation: The actual operation.
 ///   - handler: The handler which is invoked once graceful shutdown has been triggered.
 // Unsafely inheriting the executor is safe to do here since we are not calling any other async method
 // except the operation. This makes sure no other executor hops would occur here.
 @_unsafeInheritExecutor
 public func withGracefulShutdownHandler<T>(
-    requiresRunningInsideServiceRunner: Bool = true,
     operation: () async throws -> T,
     onGracefulShutdown handler: @Sendable @escaping () -> Void
 ) async rethrows -> T {
     guard let gracefulShutdownManager = TaskLocals.gracefulShutdownManager else {
-        if !requiresRunningInsideServiceRunner {
-            return try await operation()
-        } else {
-            fatalError("Trying to setup a graceful shutdown handler inside a task that doesn't have access to the ShutdownGracefulManager. This happens either when unstructured Concurrency is used like Task.detached {} or when you tried to setup a shutdown graceful handler outside the ServiceRunner.run method. Not setting up the handler.")
-        }
+        return try await operation()
     }
 
     // We have to keep track of our handler here to remove it once the operation is finished.
@@ -59,6 +53,7 @@ public func withGracefulShutdownHandler<T>(
     return try await operation()
 }
 
+/// This is just a helper type for the result of our task group.
 enum ValueOrGracefulShutdown<T> {
     case value(T)
     case gracefulShutdown
@@ -105,6 +100,19 @@ public func cancelOnGracefulShutdown<T>(_ operation: @Sendable @escaping () asyn
     }
 }
 
+extension Task where Success == Never, Failure == Never {
+    /// A Boolean value that indicates whether the task is gracefully shutting down
+    ///
+    /// After the value of this property becomes `true`, it remains `true` indefinitely. There is no way to undo a graceful shutdown.
+    public static var isShuttingDownGracefully: Bool {
+        guard let gracefulShutdownManager = TaskLocals.gracefulShutdownManager else {
+            return false
+        }
+
+        return gracefulShutdownManager.isShuttingDown
+    }
+}
+
 @_spi(TestKit)
 public enum TaskLocals {
     @TaskLocal
@@ -131,6 +139,10 @@ public final class GracefulShutdownManager: @unchecked Sendable {
     }
 
     private let state = LockedValueBox(State())
+
+    var isShuttingDown: Bool {
+        self.state.withLockedValue { return $0.isShuttingDown }
+    }
 
     @_spi(TestKit)
     public init() {}

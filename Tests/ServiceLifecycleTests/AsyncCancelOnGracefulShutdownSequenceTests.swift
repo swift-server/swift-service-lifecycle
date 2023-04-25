@@ -39,7 +39,7 @@ final class AsyncCancelOnGracefulShutdownSequenceTests: XCTestCase {
 
                 await XCTAsyncAssertEqual(await iterator.next(), 1)
 
-                await gracefulShutdownTrigger.triggerGracefulShutdown()
+                gracefulShutdownTrigger.triggerGracefulShutdown()
 
                 await XCTAsyncAssertEqual(await iterator.next(), nil)
             }
