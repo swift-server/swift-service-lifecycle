@@ -40,7 +40,7 @@ Furthermore, the group will setup signal listeners for the configured signals an
 on each service.
 
 ```swift
-actor FooService {
+actor FooService : Service {
     func run() async throws {
         print("FooService starting")
         try await Task.sleep(for: .seconds(10))
