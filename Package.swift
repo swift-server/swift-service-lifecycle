@@ -4,31 +4,83 @@ import PackageDescription
 
 let package = Package(
     name: "swift-service-lifecycle",
+    platforms: [
+        .macOS(.v10_15),
+        .iOS(.v13),
+        .watchOS(.v6),
+        .tvOS(.v13),
+    ],
     products: [
-        .library(name: "Lifecycle", targets: ["Lifecycle"]),
-        .library(name: "LifecycleNIOCompat", targets: ["LifecycleNIOCompat"]),
+        .library(
+            name: "ServiceLifecycle",
+            targets: ["ServiceLifecycle"]
+        ),
+        .library(
+            name: "ServiceLifecycleTestKit",
+            targets: ["ServiceLifecycleTestKit"]
+        ),
+        .library(
+            name: "UnixSignals",
+            targets: ["UnixSignals"]
+        ),
     ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-atomics.git", from: "1.0.0"),
-        .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
-        .package(url: "https://github.com/apple/swift-metrics.git", "1.0.0" ..< "3.0.0"),
-        .package(url: "https://github.com/swift-server/swift-backtrace.git", from: "1.1.1"),
-        .package(url: "https://github.com/apple/swift-nio.git", from: "2.0.0"), // used in tests
-        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
+        .package(
+            url: "https://github.com/apple/swift-log.git",
+            from: "1.5.2"
+        ),
+        .package(
+            url: "https://github.com/apple/swift-docc-plugin",
+            from: "1.0.0"
+        ),
+        .package(
+            url: "https://github.com/apple/swift-async-algorithms",
+            from: "0.1.0"
+        ),
     ],
     targets: [
-        .target(name: "Lifecycle", dependencies: [
-            .product(name: "Atomics", package: "swift-atomics"),
-            .product(name: "Logging", package: "swift-log"),
-            .product(name: "Metrics", package: "swift-metrics"),
-            .product(name: "Backtrace", package: "swift-backtrace"),
-        ]),
-
-        .target(name: "LifecycleNIOCompat", dependencies: [
-            "Lifecycle",
-            .product(name: "NIO", package: "swift-nio"),
-        ]),
-
-        .testTarget(name: "LifecycleTests", dependencies: ["Lifecycle", "LifecycleNIOCompat"]),
+        .target(
+            name: "ServiceLifecycle",
+            dependencies: [
+                .product(
+                    name: "Logging",
+                    package: "swift-log"
+                ),
+                .product(
+                    name: "AsyncAlgorithms",
+                    package: "swift-async-algorithms"
+                ),
+                .target(name: "UnixSignals"),
+                .target(name: "ConcurrencyHelpers"),
+            ]
+        ),
+        .target(
+            name: "ServiceLifecycleTestKit",
+            dependencies: [
+                .target(name: "ServiceLifecycle"),
+            ]
+        ),
+        .target(
+            name: "UnixSignals",
+            dependencies: [
+                .target(name: "ConcurrencyHelpers"),
+            ]
+        ),
+        .target(
+            name: "ConcurrencyHelpers"
+        ),
+        .testTarget(
+            name: "ServiceLifecycleTests",
+            dependencies: [
+                .target(name: "ServiceLifecycle"),
+                .target(name: "ServiceLifecycleTestKit"),
+            ]
+        ),
+        .testTarget(
+            name: "UnixSignalsTests",
+            dependencies: [
+                .target(name: "UnixSignals"),
+            ]
+        ),
     ]
 )

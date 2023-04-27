@@ -19,7 +19,7 @@ here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 function replace_acceptable_years() {
     # this needs to replace all acceptable forms with 'YEARS'
-    sed -e 's/20[12][78901]-202[012]/YEARS/' -e 's/2019/YEARS/' -e 's/202[012]/YEARS/'
+    sed -e 's/20[12][78901]-202[0123]/YEARS/' -e 's/2019/YEARS/' -e 's/202[0123]/YEARS/'
 }
 
 printf "=> Checking for unacceptable language... "
@@ -37,18 +37,6 @@ if git grep --color=never -i "${unacceptable_terms[@]}" > /dev/null; then
     exit 1
 fi
 printf "\033[0;32mokay.\033[0m\n"
-
-printf "=> Checking linux tests... "
-FIRST_OUT="$(git status --porcelain)"
-ruby "$here/../scripts/generate_linux_tests.rb" > /dev/null
-SECOND_OUT="$(git status --porcelain)"
-if [[ "$FIRST_OUT" != "$SECOND_OUT" ]]; then
-  printf "\033[0;31mmissing changes!\033[0m\n"
-  git --no-pager diff
-  exit 1
-else
-  printf "\033[0;32mokay.\033[0m\n"
-fi
 
 printf "=> Checking format... "
 FIRST_OUT="$(git status --porcelain)"
