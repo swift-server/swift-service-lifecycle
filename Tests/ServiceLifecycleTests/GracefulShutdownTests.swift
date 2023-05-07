@@ -233,6 +233,17 @@ final class GracefulShutdownTests: XCTestCase {
         }
     }
 
+    func testResumesCancelOnGracefulShutdownWithResult() async throws {
+        await testGracefulShutdown { _ in
+            let result = await cancelOnGracefulShutdown {
+                await Task.yield()
+                return "hello"
+            }
+
+            XCTAssertEqual(result, "hello")
+        }
+    }
+
     func testIsShuttingDownGracefully() async throws {
         await testGracefulShutdown { gracefulShutdownTestTrigger in
             XCTAssertFalse(Task.isShuttingDownGracefully)
