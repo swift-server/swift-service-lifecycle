@@ -6,7 +6,7 @@ It also provides a `Signal`-based shutdown hook, to shut down on signals like `T
 Swift Service Lifecycle was designed with the idea that every application has some startup and shutdown workflow-like-logic which is often sensitive to failure and hard to get right.
 The library codes this common need in a safe and reusable way that is non-framework specific, and designed to be integrated with any server framework or directly in an application. Furthermore, it integrates natively with Structured Concurrency.
 
-This is the beginning of a community-driven open-source project actively seeking [contributions](CONTRIBUTING.md), be it code, documentation, or ideas. What Swift Service Lifecycle provides today is covered in the [API docs](https://swiftpackageindex.com/swift-server/swift-service-lifecycle/main/documentation/lifecycle), but it will continue to evolve with community input.
+This is the beginning of a community-driven open-source project actively seeking [contributions](CONTRIBUTING.md), be it code, documentation, or ideas. What Swift Service Lifecycle provides today is covered in the [API docs](https://swiftpackageindex.com/swift-server/swift-service-lifecycle/main/documentation/servicelifecycle), but it will continue to evolve with community input.
 
 ## Getting started
 
@@ -17,7 +17,7 @@ If you have a server-side Swift application or a cross-platform (e.g. Linux, mac
 To add a dependency on the package, declare it in your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "1.0.0-alpha.2"),
+.package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.0.0-alpha.1"),
 ```
 
 and to your application target, add `ServiceLifecycle` to your dependencies:
@@ -28,7 +28,7 @@ and to your application target, add `ServiceLifecycle` to your dependencies:
 
 ###  Using ServiceLifecycle
 
-Below is a short usage example however you can find detailed documentation on how to use ServiceLifecycle over [here](https://swiftpackageindex.com/swift-server/swift-service-lifecycle/main/documentation/lifecycle).
+Below is a short usage example however you can find detailed documentation on how to use ServiceLifecycle over [here](https://swiftpackageindex.com/swift-server/swift-service-lifecycle/main/documentation/servicelifecycle).
 
 ServiceLifecycle consists of two main building blocks. First, the `Service` protocol and secondly
 the `ServiceGroup`. As a library or application developer you should model your long-running work
