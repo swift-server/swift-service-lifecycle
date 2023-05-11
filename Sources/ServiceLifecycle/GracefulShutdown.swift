@@ -80,7 +80,7 @@ public func cancelOnGracefulShutdown<T>(_ operation: @Sendable @escaping () asyn
         }
 
         let result = try await group.next()
-        group.cancelAll() // currently needed, as the group does not always auto-cancel tasks on return
+        group.cancelAll()
 
         switch result {
         case .value(let t):
