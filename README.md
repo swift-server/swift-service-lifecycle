@@ -56,7 +56,8 @@ struct Application {
         
         let serviceGroup = ServiceGroup(
             services: [service1, service2],
-            configuration: .init(gracefulShutdownSignals: [.sigterm])
+            configuration: .init(gracefulShutdownSignals: [.sigterm]),
+            logger: logger
         )
         try await serviceGroup.run()
     }
