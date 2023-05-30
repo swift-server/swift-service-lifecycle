@@ -102,7 +102,7 @@ public actor ServiceGroup: Sendable {
     /// Triggers the graceful shutdown of all services.
     ///
     /// This method returns immediately after triggering the graceful shutdown and doesn't wait until the service have shutdown.
-    public func shutdownGracefully() async {
+    public func triggerGracefulShutdown() async {
         switch self.state {
         case .initial:
             // We aren't even running so we can stop right away.
