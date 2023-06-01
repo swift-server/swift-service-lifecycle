@@ -487,7 +487,7 @@ final class ServiceGroupTests: XCTestCase {
         }
     }
 
-    func testShutdownGracefully() async throws {
+    func testTriggerGracefulShutdown() async throws {
         let configuration = ServiceGroupConfiguration(gracefulShutdownSignals: [])
         let service1 = MockService(description: "Service1")
         let service2 = MockService(description: "Service2")
@@ -508,7 +508,7 @@ final class ServiceGroupTests: XCTestCase {
             var eventIterator3 = service3.events.makeAsyncIterator()
             await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
 
-            await serviceGroup.shutdownGracefully()
+            await serviceGroup.triggerGracefulShutdown()
 
             // The last service should receive the shutdown signal first
             await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
