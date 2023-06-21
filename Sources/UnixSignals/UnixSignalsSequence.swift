@@ -73,7 +73,7 @@ extension UnixSignalsSequence {
 
         init(signals: Set<UnixSignal>) async {
             let sources: [Source] = signals.map { sig in
-                #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+                #if canImport(Darwin)
                 // On Darwin platforms Dispatch's signal source uses kqueue and EVFILT_SIGNAL for
                 // delivering signals. This exists alongside but with lower precedence than signal and
                 // sigaction: ignore signal handling here to kqueue can deliver signals.
