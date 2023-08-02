@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "swift-service-lifecycle",
+    name: "swift-service-lifecycle_1.0",
     products: [
         .library(name: "Lifecycle", targets: ["Lifecycle"]),
         .library(name: "LifecycleNIOCompat", targets: ["LifecycleNIOCompat"]),
