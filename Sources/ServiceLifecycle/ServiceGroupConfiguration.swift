@@ -54,4 +54,9 @@ public struct ServiceGroupConfiguration: Hashable, Sendable {
         self.gracefulShutdownSignals = gracefulShutdownSignals
         self.logging = .init()
     }
+
+    /// Initializes a new ``ServiceGroupConfiguration``.
+    public init() {
+        self.init(gracefulShutdownSignals: [])
+    }
 }
