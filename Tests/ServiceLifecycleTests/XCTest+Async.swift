@@ -41,7 +41,7 @@ func XCTAsyncAssertThrowsError(
     }
 }
 
-func XCTAssertNoThrow(
+func XCTAsyncAssertNoThrow(
     _ expression: @autoclosure () async throws -> some Any,
     _ message: @autoclosure () -> String = "",
     file: StaticString = #filePath,
