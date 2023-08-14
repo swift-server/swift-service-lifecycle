@@ -114,6 +114,7 @@ final class UnixSignalTests: XCTestCase {
 
         assert(.sigalrm, rawValue: SIGALRM)
         assert(.sigint, rawValue: SIGINT)
+        assert(.sigquit, rawValue: SIGQUIT)
         assert(.sighup, rawValue: SIGHUP)
         assert(.sigusr1, rawValue: SIGUSR1)
         assert(.sigusr2, rawValue: SIGUSR2)
@@ -127,6 +128,7 @@ final class UnixSignalTests: XCTestCase {
 
         assert(.sigalrm, description: "SIGALRM")
         assert(.sigint, description: "SIGINT")
+        assert(.sigquit, description: "SIGQUIT")
         assert(.sighup, description: "SIGHUP")
         assert(.sigusr1, description: "SIGUSR1")
         assert(.sigusr2, description: "SIGUSR2")

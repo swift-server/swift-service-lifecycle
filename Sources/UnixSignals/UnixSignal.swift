@@ -30,6 +30,7 @@ public struct UnixSignal: Hashable, Sendable, CustomStringConvertible {
         case sigusr1
         case sigusr2
         case sigalrm
+        case sigquit
     }
 
     private let wrapped: Wrapped
@@ -49,6 +50,8 @@ public struct UnixSignal: Hashable, Sendable, CustomStringConvertible {
     public static let sighup = Self(.sighup)
     /// Issued if the user sends an interrupt signal.
     public static let sigint = Self(.sigint)
+    /// Issued if the user sends a quit signal.
+    public static let sigquit = Self(.sigquit)
     /// Software termination signal.
     public static let sigterm = Self(.sigterm)
     public static let sigusr1 = Self(.sigusr1)
@@ -66,6 +69,8 @@ extension UnixSignal.Wrapped: CustomStringConvertible {
             return "SIGHUP"
         case .sigint:
             return "SIGINT"
+        case .sigquit:
+            return "SIGQUIT"
         case .sigterm:
             return "SIGTERM"
         case .sigusr1:
@@ -85,6 +90,8 @@ extension UnixSignal.Wrapped {
             return SIGHUP
         case .sigint:
             return SIGINT
+        case .sigquit:
+            return SIGQUIT
         case .sigterm:
             return SIGTERM
         case .sigusr1:
