@@ -75,7 +75,7 @@ public struct ServiceGroupConfiguration: Sendable {
         /// The service.
         public var service: any Service
         /// The behavior when the service returns from its `run()` method.
-        public var successfulTerminationBehavior: TerminationBehavior
+        public var successTerminationBehavior: TerminationBehavior
         /// The behavior when the service throws from its `run()` method.
         public var failureTerminationBehavior: TerminationBehavior
 
@@ -83,15 +83,15 @@ public struct ServiceGroupConfiguration: Sendable {
         ///
         /// - Parameters:
         ///   - service: The service.
-        ///   - returnBehavior: The behavior when the service returns from its `run()` method.
-        ///   - throwBehavior: The behavior when the service throws from its `run()` method.
+        ///   - successTerminationBehavior: The behavior when the service returns from its `run()` method.
+        ///   - failureTerminationBehavior: The behavior when the service throws from its `run()` method.
         public init(
             service: any Service,
-            successfulTerminationBehavior: TerminationBehavior = .cancelGroup,
+            successTerminationBehavior: TerminationBehavior = .cancelGroup,
             failureTerminationBehavior: TerminationBehavior = .cancelGroup
         ) {
             self.service = service
-            self.successfulTerminationBehavior = successfulTerminationBehavior
+            self.successTerminationBehavior = successTerminationBehavior
             self.failureTerminationBehavior = failureTerminationBehavior
         }
     }
