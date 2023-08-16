@@ -23,17 +23,17 @@ public struct ServiceGroupConfiguration: Sendable {
     public struct LoggingConfiguration: Sendable {
         public struct Keys: Sendable {
             /// The logging key used for logging the unix signal.
-            public var signalKey = "signal"
+            public var signalKey = "sl-signal"
             /// The logging key used for logging the graceful shutdown unix signals.
-            public var gracefulShutdownSignalsKey = "gracefulShutdownSignals"
+            public var gracefulShutdownSignalsKey = "sl-gracefulShutdownSignals"
             /// The logging key used for logging the cancellation unix signals.
-            public var cancellationSignalsKey = "cancellationSignals"
+            public var cancellationSignalsKey = "sl-cancellationSignals"
             /// The logging key used for logging the service.
-            public var serviceKey = "service"
+            public var serviceKey = "sl-service"
             /// The logging key used for logging the services.
-            public var servicesKey = "services"
+            public var servicesKey = "sl-services"
             /// The logging key used for logging an error.
-            public var errorKey = "error"
+            public var errorKey = "sl-error"
 
             /// Initializes a new ``ServiceGroupConfiguration/LoggingConfiguration/Keys``.
             public init() {}
