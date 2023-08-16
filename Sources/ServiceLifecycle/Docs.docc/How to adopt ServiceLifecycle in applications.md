@@ -95,11 +95,11 @@ struct Application {
 
 Graceful shutdown is a concept from service lifecycle which aims to be an
 alternative to task cancellation that is not as forceful. Graceful shutdown
-rather let's the various services opt-in to supporting it. A common example of
+rather lets the various services opt-in to supporting it. A common example of
 when you might want to use graceful shutdown is in containerized enviroments
 such as Docker or Kubernetes. In those environments, `SIGTERM` is commonly used
-to indicate to the application that it should shutdown in before a `SIGKILL` is
-send.
+to indicate to the application that it should shut down before a `SIGKILL` is
+sent.
 
 The ``ServiceGroup`` can be setup to listen to `SIGTERM` and trigger a graceful
 shutdown on all its orchestrated services. It will then gracefully shut down

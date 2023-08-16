@@ -262,7 +262,7 @@ public actor ServiceGroup: Sendable {
                         continue
                     }
 
-                    switch service.returnBehavior.behavior {
+                    switch service.successfulTerminationBehavior.behavior {
                     case .cancelGroup:
                         self.logger.error(
                             "Service finished unexpectedly. Cancelling group.",
@@ -275,7 +275,7 @@ public actor ServiceGroup: Sendable {
 
                     case .gracefullyShutdownGroup:
                         self.logger.error(
-                            "Service finished unexpectedly. Shutting down group.",
+                            "Service finished unexpectedly. Gracefully shutting down group.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)",
                             ]
@@ -310,7 +310,7 @@ public actor ServiceGroup: Sendable {
                     }
 
                 case .serviceThrew(let service, let index, let error):
-                    switch service.throwBehavior.behavior {
+                    switch service.failureTerminationBehavior.behavior {
                     case .cancelGroup:
                         self.logger.error(
                             "Service threw error. Cancelling group.",
@@ -363,7 +363,7 @@ public actor ServiceGroup: Sendable {
                     }
 
                 case .signalCaught(let unixSignal):
-                    if self.gracefulShutdownSignals.contains(where: { $0 == unixSignal }) {
+                    if self.gracefulShutdownSignals.contains(unixSignal) {
                         // Let's initiate graceful shutdown.
                         self.logger.debug(
                             "Signal caught. Shutting down the group.",
@@ -487,7 +487,7 @@ public actor ServiceGroup: Sendable {
                 }
 
             case .serviceThrew(let service, _, let error):
-                switch service.throwBehavior.behavior {
+                switch service.failureTerminationBehavior.behavior {
                 case .cancelGroup:
                     self.logger.error(
                         "Service threw error during graceful shutdown. Cancelling group.",
@@ -512,7 +512,7 @@ public actor ServiceGroup: Sendable {
                 }
 
             case .signalCaught(let signal):
-                if self.cancellationSignals.contains(where: { $0 == signal }) {
+                if self.cancellationSignals.contains(signal) {
                     // We got signalled cancellation after graceful shutdown
                     self.logger.debug(
                         "Signal caught. Cancelling the group.",

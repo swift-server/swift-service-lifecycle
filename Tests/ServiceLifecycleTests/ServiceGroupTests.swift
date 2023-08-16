@@ -197,7 +197,7 @@ final class ServiceGroupTests: XCTestCase {
         let service1 = MockService(description: "Service1")
         let service2 = MockService(description: "Service2")
         let serviceGroup = self.makeServiceGroup(
-            services: [.init(service: service1, returnBehavior: .ignore), .init(service: service2, throwBehavior: .ignore)],
+            services: [.init(service: service1, successfulTerminationBehavior: .ignore), .init(service: service2, failureTerminationBehavior: .ignore)],
             gracefulShutdownSignals: [.sigalrm]
         )
 
@@ -229,7 +229,7 @@ final class ServiceGroupTests: XCTestCase {
         let serviceGroup = self.makeServiceGroup(
             services: [
                 .init(service: service1),
-                .init(service: service2, returnBehavior: .gracefullyShutdownGroup),
+                .init(service: service2, successfulTerminationBehavior: .gracefullyShutdownGroup),
                 .init(service: service3),
             ]
         )
@@ -253,7 +253,7 @@ final class ServiceGroupTests: XCTestCase {
             // The last service should receive the shutdown signal first
             await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
 
-            // Waiting to see that all two are still running
+            // Waiting to see that the remaining two are still running
             service1.sendPing()
             service3.sendPing()
             await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
@@ -285,8 +285,8 @@ final class ServiceGroupTests: XCTestCase {
         let serviceGroup = self.makeServiceGroup(
             services: [
                 .init(service: service1),
-                .init(service: service2, returnBehavior: .cancelGroup),
-                .init(service: service3, returnBehavior: .gracefullyShutdownGroup),
+                .init(service: service2, successfulTerminationBehavior: .cancelGroup),
+                .init(service: service3, successfulTerminationBehavior: .gracefullyShutdownGroup),
             ]
         )
 
@@ -306,7 +306,7 @@ final class ServiceGroupTests: XCTestCase {
 
             await service3.resumeRunContinuation(with: .success(()))
 
-            // The last service should receive the shutdown signal first
+            // The second service should receive the shutdown signal first
             await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
 
             // Waiting to see that all two are still running
@@ -403,7 +403,7 @@ final class ServiceGroupTests: XCTestCase {
     func testRun_whenServiceThrows_andIgnore() async throws {
         let mockService = MockService(description: "Service1")
         let serviceGroup = self.makeServiceGroup(
-            services: [.init(service: mockService, throwBehavior: .ignore)],
+            services: [.init(service: mockService, failureTerminationBehavior: .ignore)],
             gracefulShutdownSignals: [.sigalrm]
         )
 
@@ -428,7 +428,7 @@ final class ServiceGroupTests: XCTestCase {
         let serviceGroup = self.makeServiceGroup(
             services: [
                 .init(service: service1),
-                .init(service: service2, throwBehavior: .gracefullyShutdownGroup),
+                .init(service: service2, failureTerminationBehavior: .gracefullyShutdownGroup),
                 .init(service: service3),
             ]
         )
@@ -759,9 +759,9 @@ final class ServiceGroupTests: XCTestCase {
         let service3 = MockService(description: "Service3")
         let serviceGroup = self.makeServiceGroup(
             services: [
-                .init(service: service1, throwBehavior: .gracefullyShutdownGroup),
-                .init(service: service2, throwBehavior: .ignore),
-                .init(service: service3, returnBehavior: .ignore),
+                .init(service: service1, failureTerminationBehavior: .gracefullyShutdownGroup),
+                .init(service: service2, failureTerminationBehavior: .ignore),
+                .init(service: service3, successfulTerminationBehavior: .ignore),
             ],
             gracefulShutdownSignals: [.sigalrm]
         )

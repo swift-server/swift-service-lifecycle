@@ -147,7 +147,7 @@ public actor TCPEchoClient: Service {
     }
   }
 }
-````
+```
 
 In the case of our `TCPEchoClient`, the only reasonable thing to do is cancel
 the iteration of our timer sequence when we receive the graceful shutdown

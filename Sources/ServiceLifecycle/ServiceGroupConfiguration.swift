@@ -75,9 +75,9 @@ public struct ServiceGroupConfiguration: Sendable {
         /// The service.
         public var service: any Service
         /// The behavior when the service returns from its `run()` method.
-        public var returnBehavior: TerminationBehavior
+        public var successfulTerminationBehavior: TerminationBehavior
         /// The behavior when the service throws from its `run()` method.
-        public var throwBehavior: TerminationBehavior
+        public var failureTerminationBehavior: TerminationBehavior
 
         /// Initializes a new ``ServiceGroupConfiguration/ServiceConfiguration``.
         ///
@@ -87,12 +87,12 @@ public struct ServiceGroupConfiguration: Sendable {
         ///   - throwBehavior: The behavior when the service throws from its `run()` method.
         public init(
             service: any Service,
-            returnBehavior: TerminationBehavior = .cancelGroup,
-            throwBehavior: TerminationBehavior = .cancelGroup
+            successfulTerminationBehavior: TerminationBehavior = .cancelGroup,
+            failureTerminationBehavior: TerminationBehavior = .cancelGroup
         ) {
             self.service = service
-            self.returnBehavior = returnBehavior
-            self.throwBehavior = throwBehavior
+            self.successfulTerminationBehavior = successfulTerminationBehavior
+            self.failureTerminationBehavior = failureTerminationBehavior
         }
     }
 
@@ -121,7 +121,6 @@ public struct ServiceGroupConfiguration: Sendable {
         logger: Logger
     ) {
         self.services = services
-        self.logging = .init()
         self.logger = logger
     }
 
@@ -134,8 +133,8 @@ public struct ServiceGroupConfiguration: Sendable {
     ///   - logger: The group's logger.
     public init(
         services: [ServiceConfiguration],
-        gracefulShutdownSignals: [UnixSignal] = .init(),
-        cancellationSignals: [UnixSignal] = .init(),
+        gracefulShutdownSignals: [UnixSignal] = [],
+        cancellationSignals: [UnixSignal] = [],
         logger: Logger
     ) {
         self.services = services
@@ -166,8 +165,8 @@ public struct ServiceGroupConfiguration: Sendable {
     ///   - logger: The group's logger.
     public init(
         services: [Service],
-        gracefulShutdownSignals: [UnixSignal] = .init(),
-        cancellationSignals: [UnixSignal] = .init(),
+        gracefulShutdownSignals: [UnixSignal] = [],
+        cancellationSignals: [UnixSignal] = [],
         logger: Logger
     ) {
         self.services = Array(services.map { ServiceConfiguration(service: $0) })
