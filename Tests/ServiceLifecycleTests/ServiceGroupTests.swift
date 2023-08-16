@@ -17,6 +17,8 @@ import ServiceLifecycle
 import UnixSignals
 import XCTest
 
+private struct ExampleError: Error, Hashable {}
+
 private actor MockService: Service, CustomStringConvertible {
     enum Event {
         case run
@@ -87,7 +89,9 @@ private actor MockService: Service, CustomStringConvertible {
 final class ServiceGroupTests: XCTestCase {
     func testRun_whenAlreadyRunning() async throws {
         let mockService = MockService(description: "Service1")
-        let serviceGroup = self.makeServiceGroup(services: [mockService], configuration: .init(gracefulShutdownSignals: []))
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: mockService)]
+        )
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
@@ -107,7 +111,7 @@ final class ServiceGroupTests: XCTestCase {
     }
 
     func testRun_whenAlreadyFinished() async throws {
-        let group = self.makeServiceGroup(services: [], configuration: .init(gracefulShutdownSignals: []))
+        let group = self.makeServiceGroup()
 
         try await group.run()
 
@@ -117,14 +121,16 @@ final class ServiceGroupTests: XCTestCase {
     }
 
     func testRun_whenNoService_andNoSignal() async throws {
-        let group = self.makeServiceGroup(services: [], configuration: .init(gracefulShutdownSignals: []))
+        let group = self.makeServiceGroup()
 
         try await group.run()
     }
 
     func testRun_whenNoSignal() async throws {
         let mockService = MockService(description: "Service1")
-        let serviceGroup = self.makeServiceGroup(services: [mockService], configuration: .init(gracefulShutdownSignals: []))
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: mockService)]
+        )
 
         await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
@@ -142,9 +148,11 @@ final class ServiceGroupTests: XCTestCase {
     }
 
     func test_whenRun_ShutdownGracefully() async throws {
-        let configuration = ServiceGroupConfiguration(gracefulShutdownSignals: [.sigalrm])
         let mockService = MockService(description: "Service1")
-        let serviceGroup = self.makeServiceGroup(services: [mockService], configuration: configuration)
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: mockService)],
+            gracefulShutdownSignals: [.sigalrm]
+        )
 
         await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
@@ -163,9 +171,11 @@ final class ServiceGroupTests: XCTestCase {
     }
 
     func testRun_whenServiceExitsEarly() async throws {
-        let configuration = ServiceGroupConfiguration(gracefulShutdownSignals: [.sigalrm])
         let mockService = MockService(description: "Service1")
-        let serviceGroup = self.makeServiceGroup(services: [mockService], configuration: configuration)
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: mockService)],
+            gracefulShutdownSignals: [.sigalrm]
+        )
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
@@ -183,11 +193,154 @@ final class ServiceGroupTests: XCTestCase {
         }
     }
 
+    func testRun_whenServiceExitsEarly_andIgnore() async throws {
+        let service1 = MockService(description: "Service1")
+        let service2 = MockService(description: "Service2")
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: service1, successTerminationBehavior: .ignore), .init(service: service2, failureTerminationBehavior: .ignore)],
+            gracefulShutdownSignals: [.sigalrm]
+        )
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            var eventIterator1 = service1.events.makeAsyncIterator()
+            var eventIterator2 = service2.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+
+            await service1.resumeRunContinuation(with: .success(()))
+
+            service2.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+
+            await service2.resumeRunContinuation(with: .failure(ExampleError()))
+
+            try await XCTAsyncAssertNoThrow(await group.next())
+        }
+    }
+
+    func testRun_whenServiceExitsEarly_andShutdownGracefully() async throws {
+        let service1 = MockService(description: "Service1")
+        let service2 = MockService(description: "Service2")
+        let service3 = MockService(description: "Service3")
+        let serviceGroup = self.makeServiceGroup(
+            services: [
+                .init(service: service1),
+                .init(service: service2, successTerminationBehavior: .gracefullyShutdownGroup),
+                .init(service: service3),
+            ]
+        )
+
+        await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            var eventIterator1 = service1.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+
+            var eventIterator2 = service2.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+
+            var eventIterator3 = service3.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+
+            await service2.resumeRunContinuation(with: .success(()))
+
+            // The last service should receive the shutdown signal first
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+
+            // Waiting to see that the remaining two are still running
+            service1.sendPing()
+            service3.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+
+            // Let's exit from the last service
+            await service3.resumeRunContinuation(with: .success(()))
+
+            // Waiting to see that the remaining is still running
+            service1.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+
+            // The first service should now receive the signal
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
+
+            // Waiting to see that the one remaining are still running
+            service1.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+
+            // Let's exit from the first service
+            await service1.resumeRunContinuation(with: .success(()))
+        }
+    }
+
+    func testRun_whenServiceExitsEarly_andShutdownGracefully_andThenCancels() async throws {
+        let service1 = MockService(description: "Service1")
+        let service2 = MockService(description: "Service2")
+        let service3 = MockService(description: "Service3")
+        let serviceGroup = self.makeServiceGroup(
+            services: [
+                .init(service: service1),
+                .init(service: service2, successTerminationBehavior: .cancelGroup),
+                .init(service: service3, successTerminationBehavior: .gracefullyShutdownGroup),
+            ]
+        )
+
+        await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            var eventIterator1 = service1.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+
+            var eventIterator2 = service2.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+
+            var eventIterator3 = service3.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+
+            await service3.resumeRunContinuation(with: .success(()))
+
+            // The second service should receive the shutdown signal first
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+
+            // Waiting to see that all two are still running
+            service1.sendPing()
+            service2.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+
+            // Let's exit from the second service
+            await service2.resumeRunContinuation(with: .success(()))
+
+            // Waiting to see that the remaining is still running
+            service1.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+
+            // The first service should now receive the signal
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
+
+            // Waiting to see that the one remaining are still running
+            service1.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+
+            // Let's exit from the first service
+            await service1.resumeRunContinuation(with: .success(()))
+        }
+    }
+
     func testRun_whenServiceExitsEarly_andOtherRunningService() async throws {
-        let configuration = ServiceGroupConfiguration(gracefulShutdownSignals: [.sigalrm])
         let shortService = MockService(description: "Service1")
         let longService = MockService(description: "Service2")
-        let serviceGroup = self.makeServiceGroup(services: [shortService, longService], configuration: configuration)
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: shortService), .init(service: longService)],
+            gracefulShutdownSignals: [.sigalrm]
+        )
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
@@ -214,14 +367,14 @@ final class ServiceGroupTests: XCTestCase {
     }
 
     func testRun_whenServiceThrows() async throws {
-        let configuration = ServiceGroupConfiguration(gracefulShutdownSignals: [.sigalrm])
         let service1 = MockService(description: "Service1")
         let service2 = MockService(description: "Service2")
-        let serviceGroup = self.makeServiceGroup(services: [service1, service2], configuration: configuration)
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: service1), .init(service: service2)],
+            gracefulShutdownSignals: [.sigalrm]
+        )
 
         try await withThrowingTaskGroup(of: Void.self) { group in
-            struct ExampleError: Error, Hashable {}
-
             group.addTask {
                 try await serviceGroup.run()
             }
@@ -247,12 +400,183 @@ final class ServiceGroupTests: XCTestCase {
         }
     }
 
-    func testGracefulShutdownOrdering() async throws {
-        let configuration = ServiceGroupConfiguration(gracefulShutdownSignals: [.sigalrm])
+    func testRun_whenServiceThrows_andIgnore() async throws {
+        let mockService = MockService(description: "Service1")
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: mockService, failureTerminationBehavior: .ignore)],
+            gracefulShutdownSignals: [.sigalrm]
+        )
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            var eventIterator = mockService.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator.next(), .run)
+
+            await mockService.resumeRunContinuation(with: .failure(ExampleError()))
+
+            try await XCTAsyncAssertNoThrow(await group.next())
+        }
+    }
+
+    func testRun_whenServiceThrows_andShutdownGracefully() async throws {
         let service1 = MockService(description: "Service1")
         let service2 = MockService(description: "Service2")
         let service3 = MockService(description: "Service3")
-        let serviceGroup = self.makeServiceGroup(services: [service1, service2, service3], configuration: configuration)
+        let serviceGroup = self.makeServiceGroup(
+            services: [
+                .init(service: service1),
+                .init(service: service2, failureTerminationBehavior: .gracefullyShutdownGroup),
+                .init(service: service3),
+            ]
+        )
+
+        await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            var eventIterator1 = service1.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+
+            var eventIterator2 = service2.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+
+            var eventIterator3 = service3.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+
+            await service2.resumeRunContinuation(with: .failure(ExampleError()))
+
+            // The last service should receive the shutdown signal first
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+
+            // Waiting to see that all two are still running
+            service1.sendPing()
+            service3.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+
+            // Let's exit from the last service
+            await service3.resumeRunContinuation(with: .success(()))
+
+            // Waiting to see that the remaining is still running
+            service1.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+
+            // The first service should now receive the signal
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
+
+            // Waiting to see that the one remaining are still running
+            service1.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+
+            // Let's exit from the first service
+            await service1.resumeRunContinuation(with: .success(()))
+        }
+    }
+
+    func testCancellationSignal() async throws {
+        let service1 = MockService(description: "Service1")
+        let service2 = MockService(description: "Service2")
+        let service3 = MockService(description: "Service3")
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: service1), .init(service: service2), .init(service: service3)],
+            cancellationSignals: [.sigalrm]
+        )
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            var eventIterator1 = service1.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+
+            var eventIterator2 = service2.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+
+            var eventIterator3 = service3.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+
+            let pid = getpid()
+            kill(pid, UnixSignal.sigalrm.rawValue)
+
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .runCancelled)
+
+            // Let's exit from all services
+            await service1.resumeRunContinuation(with: .success(()))
+            await service2.resumeRunContinuation(with: .success(()))
+            await service3.resumeRunContinuation(with: .success(()))
+
+            await XCTAsyncAssertNoThrow(try await group.next())
+        }
+    }
+
+    func testCancellationSignal_afterGracefulShutdownSignal() async throws {
+        let service1 = MockService(description: "Service1")
+        let service2 = MockService(description: "Service2")
+        let service3 = MockService(description: "Service3")
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: service1), .init(service: service2), .init(service: service3)],
+            gracefulShutdownSignals: [.sighup],
+            cancellationSignals: [.sigalrm]
+        )
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            var eventIterator1 = service1.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+
+            var eventIterator2 = service2.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+
+            var eventIterator3 = service3.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+
+            let pid = getpid()
+            kill(pid, UnixSignal.sighup.rawValue)
+
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+
+            // Waiting to see that all services are still running.
+            service1.sendPing()
+            service2.sendPing()
+            service3.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+
+            // Now we signal cancellation
+            kill(pid, UnixSignal.sigalrm.rawValue)
+
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .runCancelled)
+
+            // Let's exit from all services
+            await service1.resumeRunContinuation(with: .success(()))
+            await service2.resumeRunContinuation(with: .success(()))
+            await service3.resumeRunContinuation(with: .success(()))
+
+            await XCTAsyncAssertNoThrow(try await group.next())
+        }
+    }
+
+    func testGracefulShutdownOrdering() async throws {
+        let service1 = MockService(description: "Service1")
+        let service2 = MockService(description: "Service2")
+        let service3 = MockService(description: "Service3")
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: service1), .init(service: service2), .init(service: service3)],
+            gracefulShutdownSignals: [.sigalrm]
+        )
 
         await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
@@ -310,11 +634,13 @@ final class ServiceGroupTests: XCTestCase {
     }
 
     func testGracefulShutdownOrdering_whenServiceThrows() async throws {
-        let configuration = ServiceGroupConfiguration(gracefulShutdownSignals: [.sigalrm])
         let service1 = MockService(description: "Service1")
         let service2 = MockService(description: "Service2")
         let service3 = MockService(description: "Service3")
-        let serviceGroup = self.makeServiceGroup(services: [service1, service2, service3], configuration: configuration)
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: service1), .init(service: service2), .init(service: service3)],
+            gracefulShutdownSignals: [.sigalrm]
+        )
 
         await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
@@ -368,11 +694,13 @@ final class ServiceGroupTests: XCTestCase {
     }
 
     func testGracefulShutdownOrdering_whenServiceExits() async throws {
-        let configuration = ServiceGroupConfiguration(gracefulShutdownSignals: [.sigalrm])
         let service1 = MockService(description: "Service1")
         let service2 = MockService(description: "Service2")
         let service3 = MockService(description: "Service3")
-        let serviceGroup = self.makeServiceGroup(services: [service1, service2, service3], configuration: configuration)
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: service1), .init(service: service2), .init(service: service3)],
+            gracefulShutdownSignals: [.sigalrm]
+        )
 
         await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
@@ -425,6 +753,73 @@ final class ServiceGroupTests: XCTestCase {
         }
     }
 
+    func testGracefulShutdownOrdering_whenServiceExits_andIgnoringThrows() async throws {
+        let service1 = MockService(description: "Service1")
+        let service2 = MockService(description: "Service2")
+        let service3 = MockService(description: "Service3")
+        let serviceGroup = self.makeServiceGroup(
+            services: [
+                .init(service: service1, failureTerminationBehavior: .gracefullyShutdownGroup),
+                .init(service: service2, failureTerminationBehavior: .ignore),
+                .init(service: service3, successTerminationBehavior: .ignore),
+            ],
+            gracefulShutdownSignals: [.sigalrm]
+        )
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            var eventIterator1 = service1.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+
+            var eventIterator2 = service2.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+
+            var eventIterator3 = service3.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+
+            let pid = getpid()
+            kill(pid, UnixSignal.sigalrm.rawValue)
+
+            // The last service should receive the shutdown signal first
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+
+            // Waiting to see that all three are still running
+            service1.sendPing()
+            service2.sendPing()
+            service3.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+
+            // Let's exit from the last service
+            await service3.resumeRunContinuation(with: .success(()))
+
+            // The middle service should now receive the signal
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+
+            // Waiting to see that the two remaining are still running
+            service1.sendPing()
+            service2.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+
+            // Let's throw from the second service
+            await service2.resumeRunContinuation(with: .failure(ExampleError()))
+
+            // The first service should still be running
+            service1.sendPing()
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+
+            // Let's throw from the first service
+            await service1.resumeRunContinuation(with: .failure(ExampleError()))
+
+            await XCTAsyncAssertNoThrow(try await group.next())
+        }
+    }
+
     func testNestedServiceLifecycle() async throws {
         struct NestedGroupService: Service {
             let group: ServiceGroup
@@ -438,16 +833,17 @@ final class ServiceGroupTests: XCTestCase {
             }
         }
 
-        let configuration = ServiceGroupConfiguration(gracefulShutdownSignals: [.sigalrm])
         let service1 = MockService(description: "Service1")
         let service2 = MockService(description: "Service2")
         let nestedGroupService = NestedGroupService(
             group: self.makeServiceGroup(
-                services: [service2],
-                configuration: .init(gracefulShutdownSignals: [])
+                services: [.init(service: service2)]
             )
         )
-        let serviceGroup = self.makeServiceGroup(services: [service1, nestedGroupService], configuration: configuration)
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: service1), .init(service: nestedGroupService)],
+            gracefulShutdownSignals: [.sigalrm]
+        )
 
         await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
@@ -488,11 +884,12 @@ final class ServiceGroupTests: XCTestCase {
     }
 
     func testTriggerGracefulShutdown() async throws {
-        let configuration = ServiceGroupConfiguration(gracefulShutdownSignals: [])
         let service1 = MockService(description: "Service1")
         let service2 = MockService(description: "Service2")
         let service3 = MockService(description: "Service3")
-        let serviceGroup = self.makeServiceGroup(services: [service1, service2, service3], configuration: configuration)
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: service1), .init(service: service2), .init(service: service3)]
+        )
 
         await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
@@ -547,16 +944,20 @@ final class ServiceGroupTests: XCTestCase {
     // MARK: - Helpers
 
     private func makeServiceGroup(
-        services: [any Service],
-        configuration: ServiceGroupConfiguration
+        services: [ServiceGroupConfiguration.ServiceConfiguration] = [],
+        gracefulShutdownSignals: [UnixSignal] = .init(),
+        cancellationSignals: [UnixSignal] = .init()
     ) -> ServiceGroup {
         var logger = Logger(label: "Tests")
         logger.logLevel = .debug
 
         return .init(
-            services: services,
-            configuration: configuration,
-            logger: logger
+            configuration: .init(
+                services: services,
+                gracefulShutdownSignals: gracefulShutdownSignals,
+                cancellationSignals: cancellationSignals,
+                logger: logger
+            )
         )
     }
 }

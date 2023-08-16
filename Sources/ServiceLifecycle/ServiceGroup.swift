@@ -20,7 +20,7 @@ public actor ServiceGroup: Sendable {
     /// The internal state of the ``ServiceGroup``.
     private enum State {
         /// The initial state of the group.
-        case initial
+        case initial(services: [ServiceGroupConfiguration.ServiceConfiguration])
         /// The state once ``ServiceGroup/run()`` has been called.
         case running(
             gracefulShutdownStreamContinuation: AsyncStream<Void>.Continuation
@@ -29,30 +29,48 @@ public actor ServiceGroup: Sendable {
         case finished
     }
 
-    /// The services to run.
-    private let services: [any Service]
-    /// The group's configuration.
-    private let configuration: ServiceGroupConfiguration
     /// The logger.
     private let logger: Logger
-
+    /// The logging configuration.
+    private let loggingConfiguration: ServiceGroupConfiguration.LoggingConfiguration
+    /// The signals that lead to graceful shutdown.
+    private let gracefulShutdownSignals: [UnixSignal]
+    /// The signals that lead to cancellation.
+    private let cancellationSignals: [UnixSignal]
     /// The current state of the group.
-    private var state: State = .initial
+    private var state: State
 
     /// Initializes a new ``ServiceGroup``.
     ///
     /// - Parameters:
-    ///   - services: The services to run.
-    ///   - configuration: The group's configuration.
-    ///   - logger: The logger.
+    ///   - configuration: The group's configuration
+    public init(
+        configuration: ServiceGroupConfiguration
+    ) {
+        precondition(
+            Set(configuration.gracefulShutdownSignals).isDisjoint(with: configuration.cancellationSignals),
+            "Overlapping graceful shutdown and cancellation signals"
+        )
+        precondition(configuration.logger.label != deprecatedLoggerLabel, "Please migrate to the new initializers")
+        self.state = .initial(services: configuration.services)
+        self.gracefulShutdownSignals = configuration.gracefulShutdownSignals
+        self.cancellationSignals = configuration.cancellationSignals
+        self.logger = configuration.logger
+        self.loggingConfiguration = configuration.logging
+    }
+
+    @available(*, deprecated)
     public init(
         services: [any Service],
         configuration: ServiceGroupConfiguration,
         logger: Logger
     ) {
-        self.services = services
-        self.configuration = configuration
+        precondition(configuration.services.isEmpty, "Please migrate to the new initializers")
+        self.state = .initial(services: Array(services.map { ServiceGroupConfiguration.ServiceConfiguration(service: $0) }))
+        self.gracefulShutdownSignals = configuration.gracefulShutdownSignals
+        self.cancellationSignals = configuration.cancellationSignals
         self.logger = logger
+        self.loggingConfiguration = configuration.logging
     }
 
     /// Runs all the services by spinning up a child task per service.
@@ -60,8 +78,8 @@ public actor ServiceGroup: Sendable {
     /// for graceful shutdown.
     public func run(file: String = #file, line: Int = #line) async throws {
         switch self.state {
-        case .initial:
-            guard !self.services.isEmpty else {
+        case .initial(var services):
+            guard !services.isEmpty else {
                 self.state = .finished
                 return
             }
@@ -74,7 +92,10 @@ public actor ServiceGroup: Sendable {
 
             var potentialError: Error?
             do {
-                try await self._run(gracefulShutdownStream: gracefulShutdownStream)
+                try await self._run(
+                    services: &services,
+                    gracefulShutdownStream: gracefulShutdownStream
+                )
             } catch {
                 potentialError = error
             }
@@ -126,20 +147,24 @@ public actor ServiceGroup: Sendable {
     }
 
     private enum ChildTaskResult {
-        case serviceFinished(service: any Service, index: Int)
-        case serviceThrew(service: any Service, index: Int, error: any Error)
+        case serviceFinished(service: ServiceGroupConfiguration.ServiceConfiguration, index: Int)
+        case serviceThrew(service: ServiceGroupConfiguration.ServiceConfiguration, index: Int, error: any Error)
         case signalCaught(UnixSignal)
         case signalSequenceFinished
         case gracefulShutdownCaught
         case gracefulShutdownFinished
     }
 
-    private func _run(gracefulShutdownStream: AsyncStream<Void>) async throws {
+    private func _run(
+        services: inout [ServiceGroupConfiguration.ServiceConfiguration],
+        gracefulShutdownStream: AsyncStream<Void>
+    ) async throws {
         self.logger.debug(
             "Starting service lifecycle",
             metadata: [
-                self.configuration.logging.keys.signalsKey: "\(self.configuration.gracefulShutdownSignals)",
-                self.configuration.logging.keys.servicesKey: "\(self.services)",
+                self.loggingConfiguration.keys.gracefulShutdownSignalsKey: "\(self.gracefulShutdownSignals)",
+                self.loggingConfiguration.keys.cancellationSignalsKey: "\(self.cancellationSignals)",
+                self.loggingConfiguration.keys.servicesKey: "\(services.map { $0.service })",
             ]
         )
 
@@ -147,11 +172,21 @@ public actor ServiceGroup: Sendable {
         // but the body itself is throwing
         let result = await withTaskGroup(of: ChildTaskResult.self, returning: Result<Void, Error>.self) { group in
             // First we have to register our signals.
-            let unixSignals = await UnixSignalsSequence(trapping: self.configuration.gracefulShutdownSignals)
+            let gracefulShutdownSignals = await UnixSignalsSequence(trapping: self.gracefulShutdownSignals)
+            let cancellationSignals = await UnixSignalsSequence(trapping: self.cancellationSignals)
 
-            // This is the task that listens to signals
+            // This is the task that listens to graceful shutdown signals
             group.addTask {
-                for await signal in unixSignals {
+                for await signal in gracefulShutdownSignals {
+                    return .signalCaught(signal)
+                }
+
+                return .signalSequenceFinished
+            }
+
+            // This is the task that listens to cancellation signals
+            group.addTask {
+                for await signal in cancellationSignals {
                     return .signalCaught(signal)
                 }
 
@@ -182,13 +217,13 @@ public actor ServiceGroup: Sendable {
             // since we want to signal them individually and wait for a single service
             // to finish before moving to the next one
             var gracefulShutdownManagers = [GracefulShutdownManager]()
-            gracefulShutdownManagers.reserveCapacity(self.services.count)
+            gracefulShutdownManagers.reserveCapacity(services.count)
 
-            for (index, service) in self.services.enumerated() {
+            for (index, serviceConfiguration) in services.enumerated() {
                 self.logger.debug(
                     "Starting service",
                     metadata: [
-                        self.configuration.logging.keys.serviceKey: "\(service)",
+                        self.loggingConfiguration.keys.serviceKey: "\(serviceConfiguration.service)",
                     ]
                 )
 
@@ -200,16 +235,20 @@ public actor ServiceGroup: Sendable {
                 group.addTask {
                     return await TaskLocals.$gracefulShutdownManager.withValue(gracefulShutdownManager) {
                         do {
-                            try await service.run()
-                            return .serviceFinished(service: service, index: index)
+                            try await serviceConfiguration.service.run()
+                            return .serviceFinished(service: serviceConfiguration, index: index)
                         } catch {
-                            return .serviceThrew(service: service, index: index, error: error)
+                            return .serviceThrew(service: serviceConfiguration, index: index, error: error)
                         }
                     }
                 }
             }
 
-            precondition(gracefulShutdownManagers.count == self.services.count, "We did not create a graceful shutdown manager per service")
+            // We are storing the services in an optional array now. When a slot in the array is
+            // empty it indicates that the service has been shutdown.
+            var services = services.map { Optional($0) }
+
+            precondition(gracefulShutdownManagers.count == services.count, "We did not create a graceful shutdown manager per service")
 
             // We are going to wait for any of the services to finish or
             // the signal sequence to throw an error.
@@ -217,48 +256,140 @@ public actor ServiceGroup: Sendable {
                 let result: ChildTaskResult? = await group.next()
 
                 switch result {
-                case .serviceFinished(let service, _):
-                    // If a long running service finishes early we treat this as an unexpected
-                    // early exit and have to cancel the rest of the services.
-                    self.logger.error(
-                        "Service finished unexpectedly. Cancelling all other services now",
-                        metadata: [
-                            self.configuration.logging.keys.serviceKey: "\(service)",
-                        ]
-                    )
+                case .serviceFinished(let service, let index):
+                    if group.isCancelled {
+                        // The group is cancelled and we expect all services to finish
+                        continue
+                    }
 
-                    group.cancelAll()
-                    return .failure(ServiceGroupError.serviceFinishedUnexpectedly())
+                    switch service.successTerminationBehavior.behavior {
+                    case .cancelGroup:
+                        self.logger.error(
+                            "Service finished unexpectedly. Cancelling group.",
+                            metadata: [
+                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                            ]
+                        )
+                        group.cancelAll()
+                        return .failure(ServiceGroupError.serviceFinishedUnexpectedly())
 
-                case .serviceThrew(let service, _, let error):
-                    // One of the servers threw an error. We have to cancel everything else now.
-                    self.logger.error(
-                        "Service threw error. Cancelling all other services now",
-                        metadata: [
-                            self.configuration.logging.keys.serviceKey: "\(service)",
-                            self.configuration.logging.keys.errorKey: "\(error)",
-                        ]
-                    )
-                    group.cancelAll()
+                    case .gracefullyShutdownGroup:
+                        self.logger.error(
+                            "Service finished unexpectedly. Gracefully shutting down group.",
+                            metadata: [
+                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                            ]
+                        )
+                        services[index] = nil
+                        do {
+                            try await self.shutdownGracefully(
+                                services: services,
+                                group: &group,
+                                gracefulShutdownManagers: gracefulShutdownManagers
+                            )
+                        } catch {
+                            return .failure(error)
+                        }
 
-                    return .failure(error)
+                    case .ignore:
+                        self.logger.debug(
+                            "Service finished.",
+                            metadata: [
+                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                            ]
+                        )
+                        services[index] = nil
+
+                        if services.allSatisfy({ $0 == nil }) {
+                            self.logger.debug(
+                                "All services finished."
+                            )
+                            group.cancelAll()
+                            return .success(())
+                        }
+                    }
+
+                case .serviceThrew(let service, let index, let error):
+                    switch service.failureTerminationBehavior.behavior {
+                    case .cancelGroup:
+                        self.logger.error(
+                            "Service threw error. Cancelling group.",
+                            metadata: [
+                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                self.loggingConfiguration.keys.errorKey: "\(error)",
+                            ]
+                        )
+                        group.cancelAll()
+                        return .failure(error)
+
+                    case .gracefullyShutdownGroup:
+                        self.logger.error(
+                            "Service threw error. Shutting down group.",
+                            metadata: [
+                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                self.loggingConfiguration.keys.errorKey: "\(error)",
+                            ]
+                        )
+                        services[index] = nil
+
+                        do {
+                            try await self.shutdownGracefully(
+                                services: services,
+                                group: &group,
+                                gracefulShutdownManagers: gracefulShutdownManagers
+                            )
+                        } catch {
+                            return .failure(error)
+                        }
+
+                    case .ignore:
+                        self.logger.debug(
+                            "Service threw error.",
+                            metadata: [
+                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                self.loggingConfiguration.keys.errorKey: "\(error)",
+                            ]
+                        )
+                        services[index] = nil
+
+                        if services.allSatisfy({ $0 == nil }) {
+                            self.logger.debug(
+                                "All services finished."
+                            )
+
+                            group.cancelAll()
+                            return .success(())
+                        }
+                    }
 
                 case .signalCaught(let unixSignal):
-                    // We got a signal. Let's initiate graceful shutdown.
-                    self.logger.debug(
-                        "Signal caught. Shutting down services",
-                        metadata: [
-                            self.configuration.logging.keys.signalKey: "\(unixSignal)",
-                        ]
-                    )
-
-                    do {
-                        try await self.shutdownGracefully(
-                            group: &group,
-                            gracefulShutdownManagers: gracefulShutdownManagers
+                    if self.gracefulShutdownSignals.contains(unixSignal) {
+                        // Let's initiate graceful shutdown.
+                        self.logger.debug(
+                            "Signal caught. Shutting down the group.",
+                            metadata: [
+                                self.loggingConfiguration.keys.signalKey: "\(unixSignal)",
+                            ]
                         )
-                    } catch {
-                        return .failure(error)
+                        do {
+                            try await self.shutdownGracefully(
+                                services: services,
+                                group: &group,
+                                gracefulShutdownManagers: gracefulShutdownManagers
+                            )
+                        } catch {
+                            return .failure(error)
+                        }
+                    } else {
+                        // Let's cancel the group.
+                        self.logger.debug(
+                            "Signal caught. Cancelling the group.",
+                            metadata: [
+                                self.loggingConfiguration.keys.signalKey: "\(unixSignal)",
+                            ]
+                        )
+
+                        group.cancelAll()
                     }
 
                 case .gracefulShutdownCaught:
@@ -267,6 +398,7 @@ public actor ServiceGroup: Sendable {
 
                     do {
                         try await self.shutdownGracefully(
+                            services: services,
                             group: &group,
                             gracefulShutdownManagers: gracefulShutdownManagers
                         )
@@ -295,6 +427,7 @@ public actor ServiceGroup: Sendable {
     }
 
     private func shutdownGracefully(
+        services: [ServiceGroupConfiguration.ServiceConfiguration?],
         group: inout TaskGroup<ChildTaskResult>,
         gracefulShutdownManagers: [GracefulShutdownManager]
     ) async throws {
@@ -306,10 +439,16 @@ public actor ServiceGroup: Sendable {
         // we are going to signal each child task the graceful shutdown and then wait for
         // its exit.
         for (gracefulShutdownIndex, gracefulShutdownManager) in gracefulShutdownManagers.lazy.enumerated().reversed() {
+            guard let service = services[gracefulShutdownIndex] else {
+                self.logger.debug(
+                    "Service already finished. Skipping shutdown"
+                )
+                continue
+            }
             self.logger.debug(
                 "Triggering graceful shutdown for service",
                 metadata: [
-                    self.configuration.logging.keys.serviceKey: "\(self.services[gracefulShutdownIndex])",
+                    self.loggingConfiguration.keys.serviceKey: "\(service.service)",
                 ]
             )
 
@@ -319,13 +458,18 @@ public actor ServiceGroup: Sendable {
 
             switch result {
             case .serviceFinished(let service, let index):
+                if group.isCancelled {
+                    // The group is cancelled and we expect all services to finish
+                    continue
+                }
+
                 if index == gracefulShutdownIndex {
                     // The service that we signalled graceful shutdown did exit/
                     // We can continue to the next one.
                     self.logger.debug(
                         "Service finished",
                         metadata: [
-                            self.configuration.logging.keys.serviceKey: "\(service)",
+                            self.loggingConfiguration.keys.serviceKey: "\(service.service)",
                         ]
                     )
                     continue
@@ -334,7 +478,7 @@ public actor ServiceGroup: Sendable {
                     self.logger.debug(
                         "Service finished unexpectedly during graceful shutdown. Cancelling all other services now",
                         metadata: [
-                            self.configuration.logging.keys.serviceKey: "\(service)",
+                            self.loggingConfiguration.keys.serviceKey: "\(service.service)",
                         ]
                     )
 
@@ -343,18 +487,44 @@ public actor ServiceGroup: Sendable {
                 }
 
             case .serviceThrew(let service, _, let error):
-                self.logger.debug(
-                    "Service threw error during graceful shutdown. Cancelling all other services now",
-                    metadata: [
-                        self.configuration.logging.keys.serviceKey: "\(service)",
-                        self.configuration.logging.keys.errorKey: "\(error)",
-                    ]
-                )
-                group.cancelAll()
+                switch service.failureTerminationBehavior.behavior {
+                case .cancelGroup:
+                    self.logger.error(
+                        "Service threw error during graceful shutdown. Cancelling group.",
+                        metadata: [
+                            self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                            self.loggingConfiguration.keys.errorKey: "\(error)",
+                        ]
+                    )
+                    group.cancelAll()
+                    throw error
 
-                throw error
+                case .gracefullyShutdownGroup, .ignore:
+                    self.logger.debug(
+                        "Service threw error during graceful shutdown.",
+                        metadata: [
+                            self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                            self.loggingConfiguration.keys.errorKey: "\(error)",
+                        ]
+                    )
 
-            case .signalCaught, .signalSequenceFinished, .gracefulShutdownCaught, .gracefulShutdownFinished:
+                    continue
+                }
+
+            case .signalCaught(let signal):
+                if self.cancellationSignals.contains(signal) {
+                    // We got signalled cancellation after graceful shutdown
+                    self.logger.debug(
+                        "Signal caught. Cancelling the group.",
+                        metadata: [
+                            self.loggingConfiguration.keys.signalKey: "\(signal)",
+                        ]
+                    )
+
+                    group.cancelAll()
+                }
+
+            case .signalSequenceFinished, .gracefulShutdownCaught, .gracefulShutdownFinished:
                 // We just have to tolerate this since signals and parent graceful shutdowns downs can race.
                 continue
 

@@ -56,7 +56,7 @@ public func withGracefulShutdownHandler<T>(
 }
 
 /// This is just a helper type for the result of our task group.
-enum ValueOrGracefulShutdown<T> {
+enum ValueOrGracefulShutdown<T: Sendable>: Sendable {
     case value(T)
     case gracefulShutdown
 }
@@ -64,7 +64,7 @@ enum ValueOrGracefulShutdown<T> {
 /// Cancels the closure when a graceful shutdown was triggered.
 ///
 /// - Parameter operation: The actual operation.
-public func cancelOnGracefulShutdown<T>(_ operation: @Sendable @escaping () async throws -> T) async rethrows -> T? {
+public func cancelOnGracefulShutdown<T: Sendable>(_ operation: @Sendable @escaping () async throws -> T) async rethrows -> T? {
     return try await withThrowingTaskGroup(of: ValueOrGracefulShutdown<T>.self) { group in
         group.addTask {
             let value = try await operation()

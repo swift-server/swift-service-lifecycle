@@ -12,17 +12,22 @@
 //
 //===----------------------------------------------------------------------===//
 
+import Logging
 import UnixSignals
 
+let deprecatedLoggerLabel = "service-lifecycle-deprecated-method-logger"
+
 /// The configuration for the ``ServiceGroup``.
-public struct ServiceGroupConfiguration: Hashable, Sendable {
+public struct ServiceGroupConfiguration: Sendable {
     /// The group's logging configuration.
-    public struct LoggingConfiguration: Hashable, Sendable {
-        public struct Keys: Hashable, Sendable {
+    public struct LoggingConfiguration: Sendable {
+        public struct Keys: Sendable {
             /// The logging key used for logging the unix signal.
             public var signalKey = "signal"
-            /// The logging key used for logging the unix signals.
-            public var signalsKey = "signals"
+            /// The logging key used for logging the graceful shutdown unix signals.
+            public var gracefulShutdownSignalsKey = "gracefulShutdownSignals"
+            /// The logging key used for logging the cancellation unix signals.
+            public var cancellationSignalsKey = "cancellationSignals"
             /// The logging key used for logging the service.
             public var serviceKey = "service"
             /// The logging key used for logging the services.
@@ -41,17 +46,139 @@ public struct ServiceGroupConfiguration: Hashable, Sendable {
         public init() {}
     }
 
+    public struct ServiceConfiguration: Sendable {
+        public struct TerminationBehavior: Sendable, CustomStringConvertible {
+            internal enum _TerminationBehavior {
+                case cancelGroup
+                case gracefullyShutdownGroup
+                case ignore
+            }
+
+            internal let behavior: _TerminationBehavior
+
+            public static let cancelGroup = Self(behavior: .cancelGroup)
+            public static let gracefullyShutdownGroup = Self(behavior: .gracefullyShutdownGroup)
+            public static let ignore = Self(behavior: .ignore)
+
+            public var description: String {
+                switch self.behavior {
+                case .cancelGroup:
+                    return "cancelGroup"
+                case .gracefullyShutdownGroup:
+                    return "gracefullyShutdownGroup"
+                case .ignore:
+                    return "ignore"
+                }
+            }
+        }
+
+        /// The service.
+        public var service: any Service
+        /// The behavior when the service returns from its `run()` method.
+        public var successTerminationBehavior: TerminationBehavior
+        /// The behavior when the service throws from its `run()` method.
+        public var failureTerminationBehavior: TerminationBehavior
+
+        /// Initializes a new ``ServiceGroupConfiguration/ServiceConfiguration``.
+        ///
+        /// - Parameters:
+        ///   - service: The service.
+        ///   - successTerminationBehavior: The behavior when the service returns from its `run()` method.
+        ///   - failureTerminationBehavior: The behavior when the service throws from its `run()` method.
+        public init(
+            service: any Service,
+            successTerminationBehavior: TerminationBehavior = .cancelGroup,
+            failureTerminationBehavior: TerminationBehavior = .cancelGroup
+        ) {
+            self.service = service
+            self.successTerminationBehavior = successTerminationBehavior
+            self.failureTerminationBehavior = failureTerminationBehavior
+        }
+    }
+
+    /// The groups's service configurations.
+    public var services: [ServiceConfiguration]
+
     /// The signals that lead to graceful shutdown.
-    public var gracefulShutdownSignals: [UnixSignal]
+    public var gracefulShutdownSignals = [UnixSignal]()
+
+    /// The signals that lead to cancellation.
+    public var cancellationSignals = [UnixSignal]()
+
+    /// The group's logger.
+    public var logger: Logger
 
     /// The group's logging configuration.
-    public var logging: LoggingConfiguration
+    public var logging = LoggingConfiguration()
 
     /// Initializes a new ``ServiceGroupConfiguration``.
     ///
-    /// - Parameter gracefulShutdownSignals: The signals that lead to graceful shutdown.
-    public init(gracefulShutdownSignals: [UnixSignal]) {
+    /// - Parameters:
+    ///   - services: The groups's service configurations.
+    ///   - logger: The group's logger.
+    public init(
+        services: [ServiceConfiguration],
+        logger: Logger
+    ) {
+        self.services = services
+        self.logger = logger
+    }
+
+    /// Initializes a new ``ServiceGroupConfiguration``.
+    ///
+    /// - Parameters:
+    ///   - services: The groups's service configurations.
+    ///   - gracefulShutdownSignals: The signals that lead to graceful shutdown.
+    ///   - cancellationSignals: The signals that lead to cancellation.
+    ///   - logger: The group's logger.
+    public init(
+        services: [ServiceConfiguration],
+        gracefulShutdownSignals: [UnixSignal] = [],
+        cancellationSignals: [UnixSignal] = [],
+        logger: Logger
+    ) {
+        self.services = services
+        self.logger = logger
         self.gracefulShutdownSignals = gracefulShutdownSignals
-        self.logging = .init()
+        self.cancellationSignals = cancellationSignals
+    }
+
+    /// Initializes a new ``ServiceGroupConfiguration``.
+    ///
+    /// - Parameters:
+    ///   - services: The groups's services.
+    ///   - logger: The group's logger.
+    public init(
+        services: [Service],
+        logger: Logger
+    ) {
+        self.services = Array(services.map { ServiceConfiguration(service: $0) })
+        self.logger = logger
+    }
+
+    /// Initializes a new ``ServiceGroupConfiguration``.
+    ///
+    /// - Parameters:
+    ///   - services: The groups's services.
+    ///   - gracefulShutdownSignals: The signals that lead to graceful shutdown.
+    ///   - cancellationSignals: The signals that lead to cancellation.
+    ///   - logger: The group's logger.
+    public init(
+        services: [Service],
+        gracefulShutdownSignals: [UnixSignal] = [],
+        cancellationSignals: [UnixSignal] = [],
+        logger: Logger
+    ) {
+        self.services = Array(services.map { ServiceConfiguration(service: $0) })
+        self.logger = logger
+        self.gracefulShutdownSignals = gracefulShutdownSignals
+        self.cancellationSignals = cancellationSignals
+    }
+
+    @available(*, deprecated)
+    public init(gracefulShutdownSignals: [UnixSignal]) {
+        self.services = []
+        self.gracefulShutdownSignals = gracefulShutdownSignals
+        self.logger = Logger(label: deprecatedLoggerLabel)
     }
 }

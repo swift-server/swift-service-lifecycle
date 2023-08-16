@@ -14,11 +14,12 @@
 
 #if canImport(Darwin)
 import Darwin
+import Dispatch
 #elseif canImport(Glibc)
+@preconcurrency import Dispatch
 import Glibc
 #endif
 import ConcurrencyHelpers
-import Dispatch
 
 /// An unterminated `AsyncSequence` of ``UnixSignal``s.
 ///
@@ -31,8 +32,8 @@ public struct UnixSignalsSequence: AsyncSequence, Sendable {
 
     public typealias Element = UnixSignal
 
-    fileprivate struct Source {
-        var dispatchSource: any DispatchSourceSignal
+    fileprivate struct Source: Sendable {
+        var dispatchSource: DispatchSource
         var signal: UnixSignal
     }
 
@@ -80,7 +81,8 @@ extension UnixSignalsSequence {
                 signal(sig.rawValue, SIG_IGN)
                 #endif
                 return .init(
-                    dispatchSource: DispatchSource.makeSignalSource(signal: sig.rawValue, queue: UnixSignalsSequence.queue),
+                    // This force-unwrap is safe since Dispatch always returns a `DispatchSource`
+                    dispatchSource: DispatchSource.makeSignalSource(signal: sig.rawValue, queue: UnixSignalsSequence.queue) as! DispatchSource,
                     signal: sig
                 )
             }
