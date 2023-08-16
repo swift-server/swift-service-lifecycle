@@ -262,7 +262,7 @@ public actor ServiceGroup: Sendable {
                         continue
                     }
 
-                    switch service.successfulTerminationBehavior.behavior {
+                    switch service.successTerminationBehavior.behavior {
                     case .cancelGroup:
                         self.logger.error(
                             "Service finished unexpectedly. Cancelling group.",

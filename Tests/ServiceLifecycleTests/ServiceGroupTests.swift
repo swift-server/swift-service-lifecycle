@@ -197,7 +197,7 @@ final class ServiceGroupTests: XCTestCase {
         let service1 = MockService(description: "Service1")
         let service2 = MockService(description: "Service2")
         let serviceGroup = self.makeServiceGroup(
-            services: [.init(service: service1, successfulTerminationBehavior: .ignore), .init(service: service2, failureTerminationBehavior: .ignore)],
+            services: [.init(service: service1, successTerminationBehavior: .ignore), .init(service: service2, failureTerminationBehavior: .ignore)],
             gracefulShutdownSignals: [.sigalrm]
         )
 
@@ -229,7 +229,7 @@ final class ServiceGroupTests: XCTestCase {
         let serviceGroup = self.makeServiceGroup(
             services: [
                 .init(service: service1),
-                .init(service: service2, successfulTerminationBehavior: .gracefullyShutdownGroup),
+                .init(service: service2, successTerminationBehavior: .gracefullyShutdownGroup),
                 .init(service: service3),
             ]
         )
@@ -285,8 +285,8 @@ final class ServiceGroupTests: XCTestCase {
         let serviceGroup = self.makeServiceGroup(
             services: [
                 .init(service: service1),
-                .init(service: service2, successfulTerminationBehavior: .cancelGroup),
-                .init(service: service3, successfulTerminationBehavior: .gracefullyShutdownGroup),
+                .init(service: service2, successTerminationBehavior: .cancelGroup),
+                .init(service: service3, successTerminationBehavior: .gracefullyShutdownGroup),
             ]
         )
 
@@ -761,7 +761,7 @@ final class ServiceGroupTests: XCTestCase {
             services: [
                 .init(service: service1, failureTerminationBehavior: .gracefullyShutdownGroup),
                 .init(service: service2, failureTerminationBehavior: .ignore),
-                .init(service: service3, successfulTerminationBehavior: .ignore),
+                .init(service: service3, successTerminationBehavior: .ignore),
             ],
             gracefulShutdownSignals: [.sigalrm]
         )
