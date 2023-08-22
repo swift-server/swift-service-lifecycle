@@ -275,7 +275,7 @@ public actor ServiceGroup: Sendable {
 
                     case .gracefullyShutdownGroup:
                         self.logger.error(
-                            "Service finished unexpectedly. Gracefully shutting down group.",
+                            "Service finished. Gracefully shutting down group.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)",
                             ]
