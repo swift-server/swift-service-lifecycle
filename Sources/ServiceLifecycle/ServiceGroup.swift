@@ -309,25 +309,25 @@ public actor ServiceGroup: Sendable {
                         }
                     }
 
-                case .serviceThrew(let service, let index, let error):
+                case .serviceThrew(let service, let index, let serviceError):
                     switch service.failureTerminationBehavior.behavior {
                     case .cancelGroup:
                         self.logger.debug(
                             "Service threw error. Cancelling group.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)",
-                                self.loggingConfiguration.keys.errorKey: "\(error)",
+                                self.loggingConfiguration.keys.errorKey: "\(serviceError)",
                             ]
                         )
                         group.cancelAll()
-                        return .failure(error)
+                        return .failure(serviceError)
 
                     case .gracefullyShutdownGroup:
                         self.logger.debug(
                             "Service threw error. Shutting down group.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)",
-                                self.loggingConfiguration.keys.errorKey: "\(error)",
+                                self.loggingConfiguration.keys.errorKey: "\(serviceError)",
                             ]
                         )
                         services[index] = nil
@@ -338,8 +338,9 @@ public actor ServiceGroup: Sendable {
                                 group: &group,
                                 gracefulShutdownManagers: gracefulShutdownManagers
                             )
+                            return .failure(serviceError)
                         } catch {
-                            return .failure(error)
+                            return .failure(serviceError)
                         }
 
                     case .ignore:
@@ -347,7 +348,7 @@ public actor ServiceGroup: Sendable {
                             "Service threw error.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)",
-                                self.loggingConfiguration.keys.errorKey: "\(error)",
+                                self.loggingConfiguration.keys.errorKey: "\(serviceError)",
                             ]
                         )
                         services[index] = nil
