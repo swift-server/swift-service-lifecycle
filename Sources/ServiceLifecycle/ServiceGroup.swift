@@ -264,7 +264,7 @@ public actor ServiceGroup: Sendable {
 
                     switch service.successTerminationBehavior.behavior {
                     case .cancelGroup:
-                        self.logger.error(
+                        self.logger.debug(
                             "Service finished unexpectedly. Cancelling group.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)",
@@ -274,7 +274,7 @@ public actor ServiceGroup: Sendable {
                         return .failure(ServiceGroupError.serviceFinishedUnexpectedly())
 
                     case .gracefullyShutdownGroup:
-                        self.logger.error(
+                        self.logger.debug(
                             "Service finished. Gracefully shutting down group.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)",
@@ -312,7 +312,7 @@ public actor ServiceGroup: Sendable {
                 case .serviceThrew(let service, let index, let error):
                     switch service.failureTerminationBehavior.behavior {
                     case .cancelGroup:
-                        self.logger.error(
+                        self.logger.debug(
                             "Service threw error. Cancelling group.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)",
@@ -323,7 +323,7 @@ public actor ServiceGroup: Sendable {
                         return .failure(error)
 
                     case .gracefullyShutdownGroup:
-                        self.logger.error(
+                        self.logger.debug(
                             "Service threw error. Shutting down group.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)",
@@ -489,7 +489,7 @@ public actor ServiceGroup: Sendable {
             case .serviceThrew(let service, _, let error):
                 switch service.failureTerminationBehavior.behavior {
                 case .cancelGroup:
-                    self.logger.error(
+                    self.logger.debug(
                         "Service threw error during graceful shutdown. Cancelling group.",
                         metadata: [
                             self.loggingConfiguration.keys.serviceKey: "\(service.service)",
