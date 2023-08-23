@@ -59,6 +59,29 @@ public actor ServiceGroup: Sendable {
         self.loggingConfiguration = configuration.logging
     }
 
+    /// Initializes a new ``ServiceGroup``.
+    ///
+    /// - Parameters:
+    ///   - services: The groups's service configurations.
+    ///   - gracefulShutdownSignals: The signals that lead to graceful shutdown.
+    ///   - cancellationSignals: The signals that lead to cancellation.
+    ///   - logger: The group's logger.
+    public init(
+        services: [any Service],
+        gracefulShutdownSignals: [UnixSignal] = [],
+        cancellationSignals: [UnixSignal] = [],
+        logger: Logger
+    ) {
+        let configuration = ServiceGroupConfiguration(
+            services: services.map { ServiceGroupConfiguration.ServiceConfiguration(service: $0) },
+            gracefulShutdownSignals: gracefulShutdownSignals,
+            cancellationSignals: cancellationSignals,
+            logger: logger
+        )
+
+        self.init(configuration: configuration)
+    }
+
     @available(*, deprecated)
     public init(
         services: [any Service],
