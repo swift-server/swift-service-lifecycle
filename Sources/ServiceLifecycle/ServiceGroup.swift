@@ -436,6 +436,9 @@ public actor ServiceGroup: Sendable {
             fatalError("Unexpected state")
         }
 
+        // We are storing the first error of a service that threw here.
+        var error: Error?
+
         // We have to shutdown the services in reverse. To do this
         // we are going to signal each child task the graceful shutdown and then wait for
         // its exit.
@@ -487,25 +490,38 @@ public actor ServiceGroup: Sendable {
                     throw ServiceGroupError.serviceFinishedUnexpectedly()
                 }
 
-            case .serviceThrew(let service, _, let error):
+            case .serviceThrew(let service, _, let serviceError):
                 switch service.failureTerminationBehavior.behavior {
                 case .cancelGroup:
                     self.logger.debug(
                         "Service threw error during graceful shutdown. Cancelling group.",
                         metadata: [
                             self.loggingConfiguration.keys.serviceKey: "\(service.service)",
-                            self.loggingConfiguration.keys.errorKey: "\(error)",
+                            self.loggingConfiguration.keys.errorKey: "\(serviceError)",
                         ]
                     )
                     group.cancelAll()
-                    throw error
+                    throw serviceError
 
-                case .gracefullyShutdownGroup, .ignore:
+                case .gracefullyShutdownGroup:
                     self.logger.debug(
                         "Service threw error during graceful shutdown.",
                         metadata: [
                             self.loggingConfiguration.keys.serviceKey: "\(service.service)",
-                            self.loggingConfiguration.keys.errorKey: "\(error)",
+                            self.loggingConfiguration.keys.errorKey: "\(serviceError)",
+                        ]
+                    )
+
+                    if error == nil {
+                        error = serviceError
+                    }
+
+                case .ignore:
+                    self.logger.debug(
+                        "Service threw error during graceful shutdown.",
+                        metadata: [
+                            self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                            self.loggingConfiguration.keys.errorKey: "\(serviceError)",
                         ]
                     )
 
@@ -538,6 +554,12 @@ public actor ServiceGroup: Sendable {
         // are the tasks that listen to the various graceful shutdown signals. We
         // just have to cancel those
         group.cancelAll()
+
+        // If we saw an error during graceful shutdown from a service that triggers graceful
+        // shutdown on error then we have to rethrow that error now
+        if let error = error {
+            throw error
+        }
     }
 }
 
