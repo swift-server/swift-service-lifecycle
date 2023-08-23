@@ -8,7 +8,7 @@ make orchestrating them in an application easier. To achieve this
 
 When building applications we often have a bunch of services that comprise the
 internals of the applications. These services include fundamental needs like
-logging or metrics. Moreover, they also include services that compromise the
+logging or metrics. Moreover, they also include services that comprise the
 application's business logic such as long-running actors. Lastly, they might
 also include HTTP, gRPC, or similar servers that the application is exposing.
 One important requirement of the application is to orchestrate the various
