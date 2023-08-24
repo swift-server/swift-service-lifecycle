@@ -129,8 +129,8 @@ struct StreamingService: Service {
 
   func run() async throws {
     await withDiscardingTaskGroup { group in
-      group.addTask {
-        for stream in makeStreams() {
+      for stream in makeStreams() {
+        group.addTask {
           await streamHandler(stream.requestStream, stream.responseWriter)
         }
       }
@@ -191,8 +191,8 @@ struct StreamingService: Service {
 
   func run() async throws {
     await withDiscardingTaskGroup { group in
-      group.addTask {
-        for stream in makeStreams().cancelOnGracefulShutdown() {
+      for stream in makeStreams().cancelOnGracefulShutdown() {
+        group.addTask {
           await streamHandler(stream.requestStream, stream.responseWriter)
         }
       }
