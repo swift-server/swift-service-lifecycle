@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import AsyncAlgorithms
+import _AsyncMergeSequence
 
 extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// Creates an asynchronous sequence that is cancelled once graceful shutdown has triggered.
