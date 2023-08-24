@@ -2,6 +2,7 @@
 
 --swiftversion 5.7
 --exclude .build
+--exclude Sources/_AsyncMergeSequence
 
 # format options
 

@@ -34,8 +34,8 @@ let package = Package(
             from: "1.0.0"
         ),
         .package(
-            url: "https://github.com/apple/swift-async-algorithms",
-            from: "0.1.0"
+            url: "https://github.com/apple/swift-collections.git",
+            from: "1.0.0"
         ),
     ],
     targets: [
@@ -46,10 +46,7 @@ let package = Package(
                     name: "Logging",
                     package: "swift-log"
                 ),
-                .product(
-                    name: "AsyncAlgorithms",
-                    package: "swift-async-algorithms"
-                ),
+                .target(name: "_AsyncMergeSequence"),
                 .target(name: "UnixSignals"),
                 .target(name: "ConcurrencyHelpers"),
             ]
@@ -68,6 +65,15 @@ let package = Package(
         ),
         .target(
             name: "ConcurrencyHelpers"
+        ),
+        .target(
+            name: "_AsyncMergeSequence",
+            dependencies: [
+                .product(
+                    name: "DequeModule",
+                    package: "swift-collections"
+                ),
+            ]
         ),
         .testTarget(
             name: "ServiceLifecycleTests",
