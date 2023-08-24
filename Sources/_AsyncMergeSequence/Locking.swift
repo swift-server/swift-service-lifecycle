@@ -24,11 +24,11 @@
 //===----------------------------------------------------------------------===//
 
 #if canImport(Darwin)
-@_implementationOnly import Darwin
+import Darwin
 #elseif canImport(Glibc)
-@_implementationOnly import Glibc
+import Glibc
 #elseif canImport(WinSDK)
-@_implementationOnly import WinSDK
+import WinSDK
 #endif
 
 internal struct Lock {
