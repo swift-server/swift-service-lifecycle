@@ -15,6 +15,8 @@
 /// An async sequence that emits an element once graceful shutdown has been triggered.
 ///
 /// This sequence is a broadcast async sequence and will only produce one value and then finish.
+///
+/// - Note: This sequence respects cancellation and thus is `throwing`.
 @usableFromInline
 struct AsyncGracefulShutdownSequence: AsyncSequence, Sendable {
     @usableFromInline
@@ -34,19 +36,9 @@ struct AsyncGracefulShutdownSequence: AsyncSequence, Sendable {
         init() {}
 
         @inlinable
-        func next() async -> Element? {
-            var cont: AsyncStream<Void>.Continuation!
-            let stream = AsyncStream<Void> { cont = $0 }
-            let continuation = cont!
-
-            return await withTaskGroup(of: Void.self) { _ in
-                await withGracefulShutdownHandler {
-                    await stream.first { _ in true }
-                } onGracefulShutdown: {
-                    continuation.yield(())
-                    continuation.finish()
-                }
-            }
+        func next() async throws -> Element? {
+            try await CancellationWaiter().wait()
+            return ()
         }
     }
 }

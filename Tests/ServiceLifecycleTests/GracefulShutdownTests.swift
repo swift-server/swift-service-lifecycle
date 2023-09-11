@@ -253,4 +253,54 @@ final class GracefulShutdownTests: XCTestCase {
             XCTAssertTrue(Task.isShuttingDownGracefully)
         }
     }
+
+    func testWaitForGracefulShutdown() async throws {
+        try await testGracefulShutdown { gracefulShutdownTestTrigger in
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    try await Task.sleep(for: .milliseconds(10))
+                    gracefulShutdownTestTrigger.triggerGracefulShutdown()
+                }
+
+                try await withGracefulShutdownHandler {
+                    try await gracefulShutdown()
+                } onGracefulShutdown: {
+                    // No-op
+                }
+
+                try await group.waitForAll()
+            }
+        }
+    }
+
+    func testWaitForGracefulShutdown_WhenAlreadyShutdown() async throws {
+        try await testGracefulShutdown { gracefulShutdownTestTrigger in
+            gracefulShutdownTestTrigger.triggerGracefulShutdown()
+
+            try await withGracefulShutdownHandler {
+                try await Task.sleep(for: .milliseconds(10))
+                try await gracefulShutdown()
+            } onGracefulShutdown: {
+                // No-op
+            }
+        }
+    }
+
+    func testWaitForGracefulShutdown_Cancellation() async throws {
+        do {
+            try await testGracefulShutdown { _ in
+                try await withThrowingTaskGroup(of: Void.self) { group in
+                    group.addTask {
+                        try await gracefulShutdown()
+                    }
+
+                    group.cancelAll()
+                    try await group.waitForAll()
+                }
+            }
+            XCTFail("Expected CancellationError to be thrown")
+        } catch {
+            XCTAssertTrue(error is CancellationError)
+        }
+    }
 }

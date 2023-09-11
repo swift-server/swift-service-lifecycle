@@ -55,6 +55,16 @@ public func withGracefulShutdownHandler<T>(
     return try await operation()
 }
 
+/// Waits until graceful shutdown is triggered.
+///
+/// This method suspends the caller until graceful shutdown is triggered. If the calling task is cancelled before
+/// graceful shutdown is triggered then this method will throw a `CancellationError`.
+///
+/// - Throws: `CancellationError` if the task is cancelled.
+public func gracefulShutdown() async throws {
+    try await AsyncGracefulShutdownSequence().first { _ in true }
+}
+
 /// This is just a helper type for the result of our task group.
 enum ValueOrGracefulShutdown<T: Sendable>: Sendable {
     case value(T)
@@ -72,7 +82,7 @@ public func cancelOnGracefulShutdown<T: Sendable>(_ operation: @Sendable @escapi
         }
 
         group.addTask {
-            for await _ in AsyncGracefulShutdownSequence() {
+            for try await _ in AsyncGracefulShutdownSequence() {
                 return .gracefulShutdown
             }
 
@@ -138,6 +148,8 @@ public final class GracefulShutdownManager: @unchecked Sendable {
         fileprivate var handlerCounter: UInt64 = 0
         /// A boolean indicating if we have been shutdown already.
         fileprivate var isShuttingDown = false
+        /// Continuations to resume after all of the handlers have been executed.
+        fileprivate var gracefulShutdownFinishedContinuations = [CheckedContinuation<Void, Never>]()
     }
 
     private let state = LockedValueBox(State())
@@ -191,6 +203,12 @@ public final class GracefulShutdownManager: @unchecked Sendable {
             }
 
             state.handlers.removeAll()
+
+            for continuation in state.gracefulShutdownFinishedContinuations {
+                continuation.resume()
+            }
+
+            state.gracefulShutdownFinishedContinuations.removeAll()
         }
     }
 }
