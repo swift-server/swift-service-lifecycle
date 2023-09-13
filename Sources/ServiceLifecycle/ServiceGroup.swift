@@ -193,7 +193,7 @@ public actor ServiceGroup: Sendable {
 
         // Using a result here since we want a task group that has non-throwing child tasks
         // but the body itself is throwing
-        let result = await withTaskGroup(of: ChildTaskResult.self, returning: Result<Void, Error>.self) { group in
+        let result = try await withThrowingTaskGroup(of: ChildTaskResult.self, returning: Result<Void, Error>.self) { group in
             // First we have to register our signals.
             let gracefulShutdownSignals = await UnixSignalsSequence(trapping: self.gracefulShutdownSignals)
             let cancellationSignals = await UnixSignalsSequence(trapping: self.cancellationSignals)
@@ -228,7 +228,7 @@ public actor ServiceGroup: Sendable {
             // This is an optional task that listens to graceful shutdowns from the parent task
             if let _ = TaskLocals.gracefulShutdownManager {
                 group.addTask {
-                    for await _ in AsyncGracefulShutdownSequence() {
+                    for try await _ in AsyncGracefulShutdownSequence() {
                         return .gracefulShutdownCaught
                     }
 
@@ -276,7 +276,7 @@ public actor ServiceGroup: Sendable {
             // We are going to wait for any of the services to finish or
             // the signal sequence to throw an error.
             while !group.isEmpty {
-                let result: ChildTaskResult? = await group.next()
+                let result: ChildTaskResult? = try await group.next()
 
                 switch result {
                 case .serviceFinished(let service, let index):
@@ -452,7 +452,7 @@ public actor ServiceGroup: Sendable {
 
     private func shutdownGracefully(
         services: [ServiceGroupConfiguration.ServiceConfiguration?],
-        group: inout TaskGroup<ChildTaskResult>,
+        group: inout ThrowingTaskGroup<ChildTaskResult, Error>,
         gracefulShutdownManagers: [GracefulShutdownManager]
     ) async throws {
         guard case .running = self.state else {
@@ -481,7 +481,7 @@ public actor ServiceGroup: Sendable {
 
             gracefulShutdownManager.shutdownGracefully()
 
-            let result = await group.next()
+            let result = try await group.next()
 
             switch result {
             case .serviceFinished(let service, let index):
