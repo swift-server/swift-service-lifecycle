@@ -133,6 +133,7 @@ final class UnixSignalTests: XCTestCase {
         assert(.sigusr1, description: "SIGUSR1")
         assert(.sigusr2, description: "SIGUSR2")
         assert(.sigterm, description: "SIGTERM")
+        assert(.sigwinch, description: "SIGWINCH")
     }
 
     func testCancelledTask() async throws {
