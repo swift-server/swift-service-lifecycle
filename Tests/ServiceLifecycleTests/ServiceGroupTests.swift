@@ -86,6 +86,7 @@ private actor MockService: Service, CustomStringConvertible {
     }
 }
 
+@available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
 final class ServiceGroupTests: XCTestCase {
     func testRun_whenAlreadyRunning() async throws {
         let mockService = MockService(description: "Service1")
@@ -587,7 +588,7 @@ final class ServiceGroupTests: XCTestCase {
         let service3 = MockService(description: "Service3")
         let serviceGroup = self.makeServiceGroup(
             services: [.init(service: service1), .init(service: service2), .init(service: service3)],
-            gracefulShutdownSignals: [.sighup],
+            gracefulShutdownSignals: [.sigwinch],
             cancellationSignals: [.sigalrm]
         )
 
@@ -606,7 +607,7 @@ final class ServiceGroupTests: XCTestCase {
             await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
 
             let pid = getpid()
-            kill(pid, UnixSignal.sighup.rawValue)
+            kill(pid, UnixSignal.sigwinch.rawValue)
 
             await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
 
@@ -1080,23 +1081,119 @@ final class ServiceGroupTests: XCTestCase {
         }
     }
 
+    func testGracefulShutdownEscalation() async throws {
+        let mockService = MockService(description: "Service1")
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: mockService)],
+            gracefulShutdownSignals: [.sigalrm],
+            maximumGracefulShutdownDuration: .seconds(0.1),
+            maximumCancellationDuration: .seconds(0.5)
+        )
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            var eventIterator = mockService.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator.next(), .run)
+
+            await serviceGroup.triggerGracefulShutdown()
+
+            await XCTAsyncAssertEqual(await eventIterator.next(), .shutdownGracefully)
+
+            await XCTAsyncAssertEqual(await eventIterator.next(), .runCancelled)
+
+            try await Task.sleep(for: .seconds(0.2))
+
+            await mockService.resumeRunContinuation(with: .success(()))
+
+            try await XCTAsyncAssertNoThrow(await group.next())
+        }
+    }
+
+    func testGracefulShutdownEscalation_whenNoCancellationEscalation() async throws {
+        let mockService = MockService(description: "Service1")
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: mockService)],
+            gracefulShutdownSignals: [.sigalrm],
+            maximumGracefulShutdownDuration: .seconds(0.1),
+            maximumCancellationDuration: nil
+        )
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            var eventIterator = mockService.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator.next(), .run)
+
+            await serviceGroup.triggerGracefulShutdown()
+
+            await XCTAsyncAssertEqual(await eventIterator.next(), .shutdownGracefully)
+
+            await XCTAsyncAssertEqual(await eventIterator.next(), .runCancelled)
+
+            try await Task.sleep(for: .seconds(0.2))
+
+            await mockService.resumeRunContinuation(with: .success(()))
+
+            try await XCTAsyncAssertNoThrow(await group.next())
+        }
+    }
+
+    func testCancellationEscalation() async throws {
+        let mockService = MockService(description: "Service1")
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: mockService)],
+            gracefulShutdownSignals: [.sigalrm],
+            maximumGracefulShutdownDuration: nil,
+            maximumCancellationDuration: .seconds(1)
+        )
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            var eventIterator = mockService.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator.next(), .run)
+
+            group.cancelAll()
+
+            await XCTAsyncAssertEqual(await eventIterator.next(), .runCancelled)
+
+            try await Task.sleep(for: .seconds(0.1))
+
+            await mockService.resumeRunContinuation(with: .success(()))
+
+            try await XCTAsyncAssertNoThrow(await group.next())
+        }
+    }
+
     // MARK: - Helpers
 
     private func makeServiceGroup(
         services: [ServiceGroupConfiguration.ServiceConfiguration] = [],
         gracefulShutdownSignals: [UnixSignal] = .init(),
-        cancellationSignals: [UnixSignal] = .init()
+        cancellationSignals: [UnixSignal] = .init(),
+        maximumGracefulShutdownDuration: Duration? = nil,
+        maximumCancellationDuration: Duration? = .seconds(5)
     ) -> ServiceGroup {
         var logger = Logger(label: "Tests")
         logger.logLevel = .debug
 
+        var configuration = ServiceGroupConfiguration(
+            services: services,
+            gracefulShutdownSignals: gracefulShutdownSignals,
+            cancellationSignals: cancellationSignals,
+            logger: logger
+        )
+        configuration.maximumGracefulShutdownDuration = maximumGracefulShutdownDuration
+        configuration.maximumCancellationDuration = maximumCancellationDuration
         return .init(
-            configuration: .init(
-                services: services,
-                gracefulShutdownSignals: gracefulShutdownSignals,
-                cancellationSignals: cancellationSignals,
-                logger: logger
-            )
+            configuration: configuration
         )
     }
 }

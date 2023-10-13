@@ -111,6 +111,61 @@ public struct ServiceGroupConfiguration: Sendable {
     /// The group's logging configuration.
     public var logging = LoggingConfiguration()
 
+    /// The maximum amount of time that graceful shutdown is allowed to take.
+    ///
+    /// After this time has elapsed graceful shutdown will be escalated to task cancellation.
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    public var maximumGracefulShutdownDuration: Duration? {
+        get {
+            if let maximumGracefulShutdownDuration = self._maximumGracefulShutdownDuration {
+                return .init(
+                    secondsComponent: maximumGracefulShutdownDuration.secondsComponent,
+                    attosecondsComponent: maximumGracefulShutdownDuration.attosecondsComponent
+                )
+            } else {
+                return nil
+            }
+        }
+        set {
+            if let newValue = newValue {
+                self._maximumGracefulShutdownDuration = (newValue.components.seconds, newValue.components.attoseconds)
+            } else {
+                self._maximumGracefulShutdownDuration = nil
+            }
+        }
+    }
+
+    internal var _maximumGracefulShutdownDuration: (secondsComponent: Int64, attosecondsComponent: Int64)?
+
+    /// The maximum amount of time that task cancellation is allowed to take.
+    ///
+    /// After this time has elapsed task cancellation will be escalated to a `fatalError`.
+    ///
+    /// - Important: This setting is useful to guarantee that your application will exit at some point and
+    /// should be used to identify APIs that are not properly implementing task cancellation.
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
+    public var maximumCancellationDuration: Duration? {
+        get {
+            if let maximumCancellationDuration = self._maximumCancellationDuration {
+                return .init(
+                    secondsComponent: maximumCancellationDuration.secondsComponent,
+                    attosecondsComponent: maximumCancellationDuration.attosecondsComponent
+                )
+            } else {
+                return nil
+            }
+        }
+        set {
+            if let newValue = newValue {
+                self._maximumCancellationDuration = (newValue.components.seconds, newValue.components.attoseconds)
+            } else {
+                self._maximumCancellationDuration = nil
+            }
+        }
+    }
+
+    internal var _maximumCancellationDuration: (secondsComponent: Int64, attosecondsComponent: Int64)?
+
     /// Initializes a new ``ServiceGroupConfiguration``.
     ///
     /// - Parameters:
