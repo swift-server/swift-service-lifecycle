@@ -1190,8 +1190,8 @@ final class ServiceGroupTests: XCTestCase {
             cancellationSignals: cancellationSignals,
             logger: logger
         )
-        configuration.escalation.maximumGracefulShutdownDuration = maximumGracefulShutdownDuration
-        configuration.escalation.maximumCancellationDuration = maximumCancellationDuration
+        configuration.maximumGracefulShutdownDuration = maximumGracefulShutdownDuration
+        configuration.maximumCancellationDuration = maximumCancellationDuration
         return .init(
             configuration: configuration
         )

@@ -33,8 +33,10 @@ public actor ServiceGroup: Sendable {
     private let logger: Logger
     /// The logging configuration.
     private let loggingConfiguration: ServiceGroupConfiguration.LoggingConfiguration
-    /// The escalation configuration.
-    private let escalationConfiguration: ServiceGroupConfiguration.EscalationBehaviour
+    /// The maximum amount of time that graceful shutdown is allowed to take.
+    private let maximumGracefulShutdownDuration: (secondsComponent: Int64, attosecondsComponent: Int64)?
+    /// The maximum amount of time that task cancellation is allowed to take.
+    private let maximumCancellationDuration: (secondsComponent: Int64, attosecondsComponent: Int64)?
     /// The signals that lead to graceful shutdown.
     private let gracefulShutdownSignals: [UnixSignal]
     /// The signals that lead to cancellation.
@@ -59,7 +61,8 @@ public actor ServiceGroup: Sendable {
         self.cancellationSignals = configuration.cancellationSignals
         self.logger = configuration.logger
         self.loggingConfiguration = configuration.logging
-        self.escalationConfiguration = configuration.escalation
+        self.maximumGracefulShutdownDuration = configuration._maximumCancellationDuration
+        self.maximumCancellationDuration = configuration._maximumCancellationDuration
     }
 
     /// Initializes a new ``ServiceGroup``.
@@ -97,7 +100,8 @@ public actor ServiceGroup: Sendable {
         self.cancellationSignals = configuration.cancellationSignals
         self.logger = logger
         self.loggingConfiguration = configuration.logging
-        self.escalationConfiguration = configuration.escalation
+        self.maximumGracefulShutdownDuration = configuration._maximumCancellationDuration
+        self.maximumCancellationDuration = configuration._maximumCancellationDuration
     }
 
     /// Runs all the services by spinning up a child task per service.
@@ -310,7 +314,7 @@ public actor ServiceGroup: Sendable {
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)",
                             ]
                         )
-                        cancellationTimeoutTask = self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group)
+                        self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
                         return .failure(ServiceGroupError.serviceFinishedUnexpectedly())
 
                     case .gracefullyShutdownGroup:
@@ -345,7 +349,7 @@ public actor ServiceGroup: Sendable {
                             self.logger.debug(
                                 "All services finished."
                             )
-                            cancellationTimeoutTask = self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group)
+                            self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
                             return .success(())
                         }
                     }
@@ -360,7 +364,7 @@ public actor ServiceGroup: Sendable {
                                 self.loggingConfiguration.keys.errorKey: "\(serviceError)",
                             ]
                         )
-                        cancellationTimeoutTask = self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group)
+                        self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
                         return .failure(serviceError)
 
                     case .gracefullyShutdownGroup:
@@ -400,7 +404,7 @@ public actor ServiceGroup: Sendable {
                                 "All services finished."
                             )
 
-                            cancellationTimeoutTask = self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group)
+                            self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
                             return .success(())
                         }
                     }
@@ -433,7 +437,7 @@ public actor ServiceGroup: Sendable {
                             ]
                         )
 
-                        cancellationTimeoutTask = self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group)
+                        self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
                     }
 
                 case .gracefulShutdownCaught:
@@ -455,7 +459,7 @@ public actor ServiceGroup: Sendable {
                     // We caught cancellation in our child task so we have to spawn
                     // our cancellation timeout task if needed
                     self.logger.debug("Caught cancellation.")
-                    cancellationTimeoutTask = self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group)
+                    self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
 
                 case .signalSequenceFinished, .gracefulShutdownFinished:
                     // This can happen when we are either cancelling everything or
@@ -491,9 +495,12 @@ public actor ServiceGroup: Sendable {
             fatalError("Unexpected state")
         }
 
-        if  #available(macOS 13.0, *), let maximumGracefulShutdownDuration = self.escalationConfiguration.maximumGracefulShutdownDuration {
+        if #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *), let maximumGracefulShutdownDuration = self.maximumGracefulShutdownDuration {
             group.addTask {
-                try await Task.sleep(for: maximumGracefulShutdownDuration)
+                try await Task.sleep(for: Duration(
+                    secondsComponent: maximumGracefulShutdownDuration.secondsComponent,
+                    attosecondsComponent: maximumGracefulShutdownDuration.attosecondsComponent
+                ))
                 return .gracefulShutdownTimedOut
             }
         }
@@ -549,7 +556,7 @@ public actor ServiceGroup: Sendable {
                         ]
                     )
 
-                    cancellationTimeoutTask = self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group)
+                    self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
                     throw ServiceGroupError.serviceFinishedUnexpectedly()
                 }
 
@@ -601,7 +608,7 @@ public actor ServiceGroup: Sendable {
                         ]
                     )
 
-                    cancellationTimeoutTask = self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group)
+                    self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
                 }
 
             case .gracefulShutdownTimedOut:
@@ -613,13 +620,13 @@ public actor ServiceGroup: Sendable {
                         self.loggingConfiguration.keys.serviceKey: "\(service.service)",
                     ]
                 )
-                cancellationTimeoutTask = self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group)
+                self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
 
             case .cancellationCaught:
                 // We caught cancellation in our child task so we have to spawn
                 // our cancellation timeout task if needed
                 self.logger.debug("Caught cancellation.")
-                cancellationTimeoutTask = self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group)
+                self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
 
             case .signalSequenceFinished, .gracefulShutdownCaught, .gracefulShutdownFinished:
                 // We just have to tolerate this since signals and parent graceful shutdowns downs can race.
@@ -645,19 +652,28 @@ public actor ServiceGroup: Sendable {
     }
 
     private func cancelGroupAndSpawnTimeoutIfNeeded(
-        group: inout ThrowingTaskGroup<ChildTaskResult, Error>
-    ) -> Task<Void, Never>? {
+        group: inout ThrowingTaskGroup<ChildTaskResult, Error>,
+        cancellationTimeoutTask: inout Task<Void, Never>?
+    ) {
+        guard cancellationTimeoutTask == nil else {
+            // We already have a cancellation timeout task running.
+            return
+        }
         group.cancelAll()
-        if #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *), let maximumCancellationDuration = self.escalationConfiguration.maximumCancellationDuration {
+
+        if #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *), let maximumCancellationDuration = self.maximumCancellationDuration {
             // We have to spawn an unstructured task here because the call to our `run`
             // method might have already been cancelled and we need to protect the sleep
             // from being cancelled.
-            return Task {
+            cancellationTimeoutTask = Task {
                 do {
                     self.logger.debug(
                         "Task cancellation timeout task started."
                     )
-                    try await Task.sleep(for: maximumCancellationDuration)
+                    try await Task.sleep(for: Duration(
+                        secondsComponent: maximumCancellationDuration.secondsComponent,
+                        attosecondsComponent: maximumCancellationDuration.attosecondsComponent
+                    ))
                     self.logger.debug(
                         "Cancellation took longer than allowed by the configuration."
                     )
@@ -667,7 +683,7 @@ public actor ServiceGroup: Sendable {
                 }
             }
         } else {
-            return nil
+            cancellationTimeoutTask = nil
         }
     }
 }
