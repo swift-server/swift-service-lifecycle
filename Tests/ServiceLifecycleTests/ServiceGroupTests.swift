@@ -588,7 +588,7 @@ final class ServiceGroupTests: XCTestCase {
         let service3 = MockService(description: "Service3")
         let serviceGroup = self.makeServiceGroup(
             services: [.init(service: service1), .init(service: service2), .init(service: service3)],
-            gracefulShutdownSignals: [.sighup],
+            gracefulShutdownSignals: [.sigwinch],
             cancellationSignals: [.sigalrm]
         )
 
@@ -607,7 +607,7 @@ final class ServiceGroupTests: XCTestCase {
             await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
 
             let pid = getpid()
-            kill(pid, UnixSignal.sighup.rawValue)
+            kill(pid, UnixSignal.sigwinch.rawValue)
 
             await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
 

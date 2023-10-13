@@ -61,7 +61,7 @@ public actor ServiceGroup: Sendable {
         self.cancellationSignals = configuration.cancellationSignals
         self.logger = configuration.logger
         self.loggingConfiguration = configuration.logging
-        self.maximumGracefulShutdownDuration = configuration._maximumCancellationDuration
+        self.maximumGracefulShutdownDuration = configuration._maximumGracefulShutdownDuration
         self.maximumCancellationDuration = configuration._maximumCancellationDuration
     }
 
@@ -100,7 +100,7 @@ public actor ServiceGroup: Sendable {
         self.cancellationSignals = configuration.cancellationSignals
         self.logger = logger
         self.loggingConfiguration = configuration.logging
-        self.maximumGracefulShutdownDuration = configuration._maximumCancellationDuration
+        self.maximumGracefulShutdownDuration = configuration._maximumGracefulShutdownDuration
         self.maximumCancellationDuration = configuration._maximumCancellationDuration
     }
 
@@ -497,14 +497,13 @@ public actor ServiceGroup: Sendable {
 
         if #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *), let maximumGracefulShutdownDuration = self.maximumGracefulShutdownDuration {
             group.addTask {
-                try await Task.sleep(for: Duration(
+                try? await Task.sleep(for: Duration(
                     secondsComponent: maximumGracefulShutdownDuration.secondsComponent,
                     attosecondsComponent: maximumGracefulShutdownDuration.attosecondsComponent
                 ))
                 return .gracefulShutdownTimedOut
             }
         }
-
 
         // We are storing the first error of a service that threw here.
         var error: Error?
@@ -657,6 +656,9 @@ public actor ServiceGroup: Sendable {
     ) {
         guard cancellationTimeoutTask == nil else {
             // We already have a cancellation timeout task running.
+            self.logger.debug(
+                "Task cancellation timeout task already running."
+            )
             return
         }
         group.cancelAll()
