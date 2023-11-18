@@ -17,13 +17,13 @@ If you have a server-side Swift application or a cross-platform (e.g. Linux, mac
 To add a dependency on the package, declare it in your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.0.0-alpha.1"),
+.package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.0.0"),
 ```
 
 and to your application target, add `ServiceLifecycle` to your dependencies:
 
 ```swift
-.target(name: "MyApplication", dependencies: [.product(name: "ServiceLifecycle", package: "swift-service-lifecycle")]),
+.product(name: "ServiceLifecycle", package: "swift-service-lifecycle")
 ```
 
 ###  Using ServiceLifecycle
