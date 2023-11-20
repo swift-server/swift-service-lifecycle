@@ -47,6 +47,7 @@ public struct ServiceGroupConfiguration: Sendable {
     }
 
     public struct ServiceConfiguration: Sendable {
+        /// The behavior to follow when the service finishes its ``Service/run()`` method via returning or throwing.
         public struct TerminationBehavior: Sendable, CustomStringConvertible {
             internal enum _TerminationBehavior {
                 case cancelGroup
@@ -72,19 +73,19 @@ public struct ServiceGroupConfiguration: Sendable {
             }
         }
 
-        /// The service.
+        /// The service to which the initialized configuration applies.
         public var service: any Service
-        /// The behavior when the service returns from its `run()` method.
+        /// The behavior when the service returns from its ``Service/run()`` method.
         public var successTerminationBehavior: TerminationBehavior
-        /// The behavior when the service throws from its `run()` method.
+        /// The behavior when the service throws from its ``Service/run()`` method.
         public var failureTerminationBehavior: TerminationBehavior
 
         /// Initializes a new ``ServiceGroupConfiguration/ServiceConfiguration``.
         ///
         /// - Parameters:
-        ///   - service: The service.
-        ///   - successTerminationBehavior: The behavior when the service returns from its `run()` method.
-        ///   - failureTerminationBehavior: The behavior when the service throws from its `run()` method.
+        ///   - service: The service to which the initialized configuration applies.
+        ///   - successTerminationBehavior: The behavior when the service returns from its ``Service/run()`` method.
+        ///   - failureTerminationBehavior: The behavior when the service throws from its ``Service/run()`` method.
         public init(
             service: any Service,
             successTerminationBehavior: TerminationBehavior = .cancelGroup,
