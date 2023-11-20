@@ -17,7 +17,7 @@ If you have a server-side Swift application or a cross-platform (e.g. Linux, mac
 To add a dependency on the package, declare it in your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.0.0"),
+.package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.3.0"),
 ```
 
 and to your application target, add `ServiceLifecycle` to your dependencies:
