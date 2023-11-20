@@ -90,7 +90,9 @@ public actor TCPEchoClient: Service {
 
 Since the `run()` method contains long running work, returning from it is seen
 as a failure and will lead to the ``ServiceGroup`` cancelling all other services
-by cancelling the task that is running their respective `run()` method.
+by cancelling the task that is running their respective `run()` method, unless
+specified otherwise via ``ServiceGroupConfiguration.ServiceConfiguration.TerminationBehavior``
+arguments of ``ServiceGroupConfiguration.ServiceConfiguration.init``.
 
 ### Cancellation
 
