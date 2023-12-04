@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _AsyncMergeSequence
 import ServiceLifecycle
 import ServiceLifecycleTestKit
 import XCTest
