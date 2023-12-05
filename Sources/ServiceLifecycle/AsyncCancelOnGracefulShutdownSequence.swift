@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import _AsyncMergeSequence
+import AsyncAlgorithms
 
 extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// Creates an asynchronous sequence that is cancelled once graceful shutdown has triggered.
@@ -44,7 +44,7 @@ public struct AsyncCancelOnGracefulShutdownSequence<Base: AsyncSequence & Sendab
 
     @inlinable
     public init(base: Base) {
-        self._merge = .init(
+        self._merge = merge(
             base.mapNil().map { .base($0) },
             AsyncGracefulShutdownSequence().mapNil().map { _ in .gracefulShutdown }
         )
