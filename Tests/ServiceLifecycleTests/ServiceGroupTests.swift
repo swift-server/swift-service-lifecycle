@@ -1112,6 +1112,32 @@ final class ServiceGroupTests: XCTestCase {
         }
     }
 
+    func testGracefulShutdownWithMaximumDuration() async throws {
+        let mockService = MockService(description: "Service1")
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: mockService)],
+            gracefulShutdownSignals: [.sigalrm],
+            maximumGracefulShutdownDuration: .seconds(0.1)
+        )
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            var eventIterator = mockService.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator.next(), .run)
+
+            await serviceGroup.triggerGracefulShutdown()
+
+            await XCTAsyncAssertEqual(await eventIterator.next(), .shutdownGracefully)
+
+            await mockService.resumeRunContinuation(with: .success(()))
+
+            try await XCTAsyncAssertNoThrow(await group.next())
+        }
+    }
+
     func testGracefulShutdownEscalation_whenNoCancellationEscalation() async throws {
         let mockService = MockService(description: "Service1")
         let serviceGroup = self.makeServiceGroup(

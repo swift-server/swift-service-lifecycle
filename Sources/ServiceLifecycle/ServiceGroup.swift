@@ -332,6 +332,7 @@ public actor ServiceGroup: Sendable {
                                 group: &group,
                                 gracefulShutdownManagers: gracefulShutdownManagers
                             )
+                            return .success(())
                         } catch {
                             return .failure(error)
                         }
@@ -425,6 +426,7 @@ public actor ServiceGroup: Sendable {
                                 group: &group,
                                 gracefulShutdownManagers: gracefulShutdownManagers
                             )
+                            return .success(())
                         } catch {
                             return .failure(error)
                         }
@@ -451,6 +453,7 @@ public actor ServiceGroup: Sendable {
                             group: &group,
                             gracefulShutdownManagers: gracefulShutdownManagers
                         )
+                        return .success(())
                     } catch {
                         return .failure(error)
                     }
