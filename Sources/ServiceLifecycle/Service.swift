@@ -20,7 +20,9 @@ public protocol Service: Sendable {
     /// - Handling incoming connections and requests
     /// - Background refreshes
     ///
-    /// - Important: Returning or throwing from this method is indicating a failure of the service and will cause the ``ServiceGroup``
-    /// to cancel the child tasks of all other running services.
+    /// - Important: Returning or throwing from this method indicates the service should stop and will cause the
+    /// ``ServiceGroup`` to follow behaviors for the child tasks of all other running services specified in
+    /// ``ServiceGroupConfiguration/ServiceConfiguration/successTerminationBehavior`` and
+    /// ``ServiceGroupConfiguration/ServiceConfiguration/failureTerminationBehavior``.
     func run() async throws
 }

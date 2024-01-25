@@ -236,8 +236,8 @@ By default the ``ServiceGroup`` is cancelling the whole group if the one service
 returns or throws. However, in some scenarios this is totally expected e.g. when
 the ``ServiceGroup`` is used in a CLI tool to orchestrate some services while a
 command is handled. To customize the behavior you set the
-``ServiceGroupConfiguration/ServiceConfiguration/returnBehaviour`` and
-``ServiceGroupConfiguration/ServiceConfiguration/throwBehaviour``. Both of them
+``ServiceGroupConfiguration/ServiceConfiguration/successTerminationBehavior`` and
+``ServiceGroupConfiguration/ServiceConfiguration/failureTerminationBehavior``. Both of them
 offer three different options. The default behavior for both is
 ``ServiceGroupConfiguration/ServiceConfiguration/TerminationBehavior/cancelGroup``.
 You can also choose to either ignore if a service returns/throws by setting it
@@ -261,7 +261,11 @@ struct Application {
       configuration: .init(
         services: [
           .init(service: telemetryService),
-          .init(service: httpServer, returnBehavior: .shutdownGracefully, throwBehavior: .shutdownGracefully)
+          .init(
+            service: httpServer, 
+            successTerminationBehavior: .shutdownGracefully,
+            failureTerminationBehavior: .shutdownGracefully
+          )
         ],
         logger: logger
       ),

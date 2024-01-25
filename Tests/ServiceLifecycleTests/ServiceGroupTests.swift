@@ -320,11 +320,9 @@ final class ServiceGroupTests: XCTestCase {
             await service2.resumeRunContinuation(with: .success(()))
 
             // Waiting to see that the remaining is still running
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
             service1.sendPing()
             await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-
-            // The first service should now receive the signal
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
 
             // Waiting to see that the one remaining are still running
             service1.sendPing()
@@ -523,11 +521,9 @@ final class ServiceGroupTests: XCTestCase {
             await service3.resumeRunContinuation(with: .success(()))
 
             // Waiting to see that the remaining is still running
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
             service1.sendPing()
             await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-
-            // The first service should now receive the signal
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
 
             // Waiting to see that the one remaining are still running
             service1.sendPing()
@@ -1105,6 +1101,32 @@ final class ServiceGroupTests: XCTestCase {
             await XCTAsyncAssertEqual(await eventIterator.next(), .runCancelled)
 
             try await Task.sleep(for: .seconds(0.2))
+
+            await mockService.resumeRunContinuation(with: .success(()))
+
+            try await XCTAsyncAssertNoThrow(await group.next())
+        }
+    }
+
+    func testGracefulShutdownWithMaximumDuration() async throws {
+        let mockService = MockService(description: "Service1")
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: mockService)],
+            gracefulShutdownSignals: [.sigalrm],
+            maximumGracefulShutdownDuration: .seconds(0.1)
+        )
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            var eventIterator = mockService.events.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator.next(), .run)
+
+            await serviceGroup.triggerGracefulShutdown()
+
+            await XCTAsyncAssertEqual(await eventIterator.next(), .shutdownGracefully)
 
             await mockService.resumeRunContinuation(with: .success(()))
 
