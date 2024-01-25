@@ -514,7 +514,7 @@ public actor ServiceGroup: Sendable {
         // We have to shutdown the services in reverse. To do this
         // we are going to signal each child task the graceful shutdown and then wait for
         // its exit.
-        for (gracefulShutdownIndex, gracefulShutdownManager) in gracefulShutdownManagers.lazy.enumerated().reversed() {
+        gracefulShutdownLoop: for (gracefulShutdownIndex, gracefulShutdownManager) in gracefulShutdownManagers.lazy.enumerated().reversed() {
             guard let service = services[gracefulShutdownIndex] else {
                 self.logger.debug(
                     "Service already finished. Skipping shutdown"
@@ -530,112 +530,114 @@ public actor ServiceGroup: Sendable {
 
             gracefulShutdownManager.shutdownGracefully()
 
-            let result = try await group.next()
-
-            switch result {
-            case .serviceFinished(let service, let index):
-                if group.isCancelled {
-                    // The group is cancelled and we expect all services to finish
-                    continue
-                }
-
-                if index == gracefulShutdownIndex {
-                    // The service that we signalled graceful shutdown did exit/
-                    // We can continue to the next one.
-                    self.logger.debug(
-                        "Service finished",
-                        metadata: [
-                            self.loggingConfiguration.keys.serviceKey: "\(service.service)",
-                        ]
-                    )
-                    continue
-                } else {
-                    // Another service exited unexpectedly
-                    self.logger.debug(
-                        "Service finished unexpectedly during graceful shutdown. Cancelling all other services now",
-                        metadata: [
-                            self.loggingConfiguration.keys.serviceKey: "\(service.service)",
-                        ]
-                    )
-
-                    self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
-                    throw ServiceGroupError.serviceFinishedUnexpectedly()
-                }
-
-            case .serviceThrew(let service, _, let serviceError):
-                switch service.failureTerminationBehavior.behavior {
-                case .cancelGroup:
-                    self.logger.debug(
-                        "Service threw error during graceful shutdown. Cancelling group.",
-                        metadata: [
-                            self.loggingConfiguration.keys.serviceKey: "\(service.service)",
-                            self.loggingConfiguration.keys.errorKey: "\(serviceError)",
-                        ]
-                    )
-                    group.cancelAll()
-                    throw serviceError
-
-                case .gracefullyShutdownGroup:
-                    self.logger.debug(
-                        "Service threw error during graceful shutdown.",
-                        metadata: [
-                            self.loggingConfiguration.keys.serviceKey: "\(service.service)",
-                            self.loggingConfiguration.keys.errorKey: "\(serviceError)",
-                        ]
-                    )
-
-                    if error == nil {
-                        error = serviceError
+            while let result = try await group.next() {
+                switch result {
+                case .serviceFinished(let service, let index):
+                    if group.isCancelled {
+                        // The group is cancelled and we expect all services to finish
+                        continue gracefulShutdownLoop
                     }
 
-                case .ignore:
+                    if index == gracefulShutdownIndex {
+                        // The service that we signalled graceful shutdown did exit/
+                        // We can continue to the next one.
+                        self.logger.debug(
+                            "Service finished",
+                            metadata: [
+                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                            ]
+                        )
+                        continue gracefulShutdownLoop
+                    } else {
+                        // Another service exited unexpectedly
+                        self.logger.debug(
+                            "Service finished unexpectedly during graceful shutdown. Cancelling all other services now",
+                            metadata: [
+                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                            ]
+                        )
+
+                        self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
+                        throw ServiceGroupError.serviceFinishedUnexpectedly()
+                    }
+
+                case .serviceThrew(let service, _, let serviceError):
+                    switch service.failureTerminationBehavior.behavior {
+                    case .cancelGroup:
+                        self.logger.debug(
+                            "Service threw error during graceful shutdown. Cancelling group.",
+                            metadata: [
+                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                self.loggingConfiguration.keys.errorKey: "\(serviceError)",
+                            ]
+                        )
+                        group.cancelAll()
+                        throw serviceError
+
+                    case .gracefullyShutdownGroup:
+                        self.logger.debug(
+                            "Service threw error during graceful shutdown.",
+                            metadata: [
+                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                self.loggingConfiguration.keys.errorKey: "\(serviceError)",
+                            ]
+                        )
+
+                        if error == nil {
+                            error = serviceError
+                        }
+
+                        // We can continue shutting down the next service now
+                        continue gracefulShutdownLoop
+
+                    case .ignore:
+                        self.logger.debug(
+                            "Service threw error during graceful shutdown.",
+                            metadata: [
+                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                self.loggingConfiguration.keys.errorKey: "\(serviceError)",
+                            ]
+                        )
+
+                        // We can continue shutting down the next service now
+                        continue gracefulShutdownLoop
+                    }
+
+                case .signalCaught(let signal):
+                    if self.cancellationSignals.contains(signal) {
+                        // We got signalled cancellation after graceful shutdown
+                        self.logger.debug(
+                            "Signal caught. Cancelling the group.",
+                            metadata: [
+                                self.loggingConfiguration.keys.signalKey: "\(signal)",
+                            ]
+                        )
+
+                        self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
+                    }
+
+                case .gracefulShutdownTimedOut:
+                    // Gracefully shutting down took longer than the user configured
+                    // so we have to escalate it now.
                     self.logger.debug(
-                        "Service threw error during graceful shutdown.",
+                        "Graceful shutdown took longer than allowed by the configuration. Cancelling the group now.",
                         metadata: [
                             self.loggingConfiguration.keys.serviceKey: "\(service.service)",
-                            self.loggingConfiguration.keys.errorKey: "\(serviceError)",
                         ]
                     )
-
-                    continue
-                }
-
-            case .signalCaught(let signal):
-                if self.cancellationSignals.contains(signal) {
-                    // We got signalled cancellation after graceful shutdown
-                    self.logger.debug(
-                        "Signal caught. Cancelling the group.",
-                        metadata: [
-                            self.loggingConfiguration.keys.signalKey: "\(signal)",
-                        ]
-                    )
-
                     self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
+
+                case .cancellationCaught:
+                    // We caught cancellation in our child task so we have to spawn
+                    // our cancellation timeout task if needed
+                    self.logger.debug("Caught cancellation.")
+                    self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
+
+                case .signalSequenceFinished, .gracefulShutdownCaught, .gracefulShutdownFinished:
+                    // We just have to tolerate this since signals and parent graceful shutdowns downs can race.
+                    // We are going to continue the
+                    break
                 }
-
-            case .gracefulShutdownTimedOut:
-                // Gracefully shutting down took longer than the user configured
-                // so we have to escalate it now.
-                self.logger.debug(
-                    "Graceful shutdown took longer than allowed by the configuration. Cancelling the group now.",
-                    metadata: [
-                        self.loggingConfiguration.keys.serviceKey: "\(service.service)",
-                    ]
-                )
-                self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
-
-            case .cancellationCaught:
-                // We caught cancellation in our child task so we have to spawn
-                // our cancellation timeout task if needed
-                self.logger.debug("Caught cancellation.")
-                self.cancelGroupAndSpawnTimeoutIfNeeded(group: &group, cancellationTimeoutTask: &cancellationTimeoutTask)
-
-            case .signalSequenceFinished, .gracefulShutdownCaught, .gracefulShutdownFinished:
-                // We just have to tolerate this since signals and parent graceful shutdowns downs can race.
-                continue
-
-            case nil:
-                fatalError("Invalid result from group.next().")
             }
         }
 

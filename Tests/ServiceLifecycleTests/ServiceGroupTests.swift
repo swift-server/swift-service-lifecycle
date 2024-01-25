@@ -320,11 +320,9 @@ final class ServiceGroupTests: XCTestCase {
             await service2.resumeRunContinuation(with: .success(()))
 
             // Waiting to see that the remaining is still running
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
             service1.sendPing()
             await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-
-            // The first service should now receive the signal
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
 
             // Waiting to see that the one remaining are still running
             service1.sendPing()
@@ -523,11 +521,9 @@ final class ServiceGroupTests: XCTestCase {
             await service3.resumeRunContinuation(with: .success(()))
 
             // Waiting to see that the remaining is still running
+            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
             service1.sendPing()
             await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-
-            // The first service should now receive the signal
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
 
             // Waiting to see that the one remaining are still running
             service1.sendPing()
