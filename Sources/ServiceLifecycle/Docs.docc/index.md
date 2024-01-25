@@ -22,6 +22,46 @@ to their business logic if and how to do that.
 Library authors should conform their services to the ``Service`` protocol and application authors
 should use the ``ServiceGroup`` to orchestrate all their services.
 
+## Getting started
+
+If you have a server-side Swift application or a cross-platform (e.g. Linux, macOS) application, and you would like to manage its startup and shutdown lifecycle, Swift Service Lifecycle is a great idea. Below you will find all you need to know to get started.
+
+### Adding the dependency
+
+To add a dependency on the package, declare it in your `Package.swift`:
+
+```swift
+.package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.3.0"),
+```
+
+and to your application target, add `ServiceLifecycle` to your dependencies:
+
+```swift
+.product(name: "ServiceLifecycle", package: "swift-service-lifecycle")
+```
+
+Example `Package.swift` file with `ServiceLifecycle` as a dependency:
+
+```swift
+// swift-tools-version:5.9
+import PackageDescription
+
+let package = Package(
+    name: "my-application",
+    dependencies: [
+        .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.3.0"),
+    ],
+    targets: [
+        .target(name: "MyApplication", dependencies: [
+            .product(name: "ServiceLifecycle", package: "swift-service-lifecycle")
+        ]),
+        .testTarget(name: "MyApplicationTests", dependencies: [
+            .target(name: "MyApplication"),
+        ]),
+    ]
+)
+```
+
 ## Topics
 
 ### Articles

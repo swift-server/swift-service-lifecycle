@@ -23,7 +23,29 @@ To add a dependency on the package, declare it in your `Package.swift`:
 and to your application target, add `ServiceLifecycle` to your dependencies:
 
 ```swift
-.target(name: "MyApplication", dependencies: [.product(name: "ServiceLifecycle", package: "swift-service-lifecycle")]),
+.product(name: "ServiceLifecycle", package: "swift-service-lifecycle")
+```
+
+Example `Package.swift` file with `ServiceLifecycle` as a dependency:
+
+```swift
+// swift-tools-version:5.9
+import PackageDescription
+
+let package = Package(
+    name: "my-application",
+    dependencies: [
+        .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.3.0"),
+    ],
+    targets: [
+        .target(name: "MyApplication", dependencies: [
+            .product(name: "ServiceLifecycle", package: "swift-service-lifecycle")
+        ]),
+        .testTarget(name: "MyApplicationTests", dependencies: [
+            .target(name: "MyApplication"),
+        ]),
+    ]
+)
 ```
 
 ###  Using ServiceLifecycle
