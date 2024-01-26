@@ -577,14 +577,6 @@ public actor ServiceGroup: Sendable {
                         throw serviceError
 
                     case .gracefullyShutdownGroup:
-                        self.logger.debug(
-                            "Service threw error during graceful shutdown.",
-                            metadata: [
-                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
-                                self.loggingConfiguration.keys.errorKey: "\(serviceError)",
-                            ]
-                        )
-
                         if error == nil {
                             error = serviceError
                         }
@@ -592,24 +584,51 @@ public actor ServiceGroup: Sendable {
                         if index == gracefulShutdownIndex {
                             // The service that we were shutting down right now threw. Since it's failure
                             // behaviour is to shutdown the group we can continue
+                            self.logger.debug(
+                                "The service that we were shutting down threw. Continuing with the next one.",
+                                metadata: [
+                                    self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                    self.loggingConfiguration.keys.errorKey: "\(serviceError)",
+                                ]
+                            )
                             continue gracefulShutdownLoop
                         } else {
                             // Another service threw while we were waiting for a shutdown
                             // We have to continue the iterating the task group's result
+                            self.logger.debug(
+                                "Another service than the service that we were shutting down threw. Continuing with the next one.",
+                                metadata: [
+                                    self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                    self.loggingConfiguration.keys.errorKey: "\(serviceError)",
+                                ]
+                            )
                             break
                         }
 
                     case .ignore:
-                        self.logger.debug(
-                            "Service threw error during graceful shutdown.",
-                            metadata: [
-                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
-                                self.loggingConfiguration.keys.errorKey: "\(serviceError)",
-                            ]
-                        )
-
-                        // We can continue shutting down the next service now
-                        continue gracefulShutdownLoop
+                        if index == gracefulShutdownIndex {
+                            // The service that we were shutting down right now threw. Since it's failure
+                            // behaviour is to shutdown the group we can continue
+                            self.logger.debug(
+                                "The service that we were shutting down threw. Continuing with the next one.",
+                                metadata: [
+                                    self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                    self.loggingConfiguration.keys.errorKey: "\(serviceError)",
+                                ]
+                            )
+                            continue gracefulShutdownLoop
+                        } else {
+                            // Another service threw while we were waiting for a shutdown
+                            // We have to continue the iterating the task group's result
+                            self.logger.debug(
+                                "Another service than the service that we were shutting down threw. Continuing with the next one.",
+                                metadata: [
+                                    self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                    self.loggingConfiguration.keys.errorKey: "\(serviceError)",
+                                ]
+                            )
+                            break
+                        }
                     }
 
                 case .signalCaught(let signal):

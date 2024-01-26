@@ -1457,6 +1457,9 @@ final class ServiceGroupTests: XCTestCase {
             // is gracefully shutting down)
             await service1.resumeRunContinuation(with: .failure(ExampleError()))
 
+            // We are sleeping here for a tiny bit to make sure the error is handled from the service 1
+            try await Task.sleep(for: .seconds(0.05))
+
             // Waiting to see that the one remaining are still running
             service2.sendPing()
             await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
