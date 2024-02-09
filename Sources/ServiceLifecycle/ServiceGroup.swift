@@ -16,7 +16,7 @@ import Logging
 import UnixSignals
 
 /// A ``ServiceGroup`` is responsible for running a number of services, setting up signal handling and signalling graceful shutdown to the services.
-public actor ServiceGroup: Sendable {
+public actor ServiceGroup: Sendable, Service {
     /// The internal state of the ``ServiceGroup``.
     private enum State {
         /// The initial state of the group.
@@ -102,6 +102,16 @@ public actor ServiceGroup: Sendable {
         self.loggingConfiguration = configuration.logging
         self.maximumGracefulShutdownDuration = configuration._maximumGracefulShutdownDuration
         self.maximumCancellationDuration = configuration._maximumCancellationDuration
+    }
+
+    /// Runs all the services by spinning up a child task per service.
+    /// Furthermore, this method sets up the correct signal handlers
+    /// for graceful shutdown.
+    // We normally don't use underscored attributes but we really want to use the method with
+    // file and line whenever possible.
+    @_disfavoredOverload
+    public func run() async throws {
+        try await self.run(file: #file, line: #line)
     }
 
     /// Runs all the services by spinning up a child task per service.
