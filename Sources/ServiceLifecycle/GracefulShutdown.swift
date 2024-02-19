@@ -55,6 +55,39 @@ public func withGracefulShutdownHandler<T>(
     return try await operation()
 }
 
+/// Execute an operation with a graceful shutdown or task cancellation handler that’s immediately invoked if the current task is
+/// shutting down gracefully or has been cancelled.
+///
+/// This doesn’t check for graceful shutdown, and always executes the passed operation.
+/// The operation executes on the calling execution context and does not suspend by itself, unless the code contained within the closure does.
+/// If graceful shutdown or task cancellation occurs while the operation is running, the cancellation/graceful shutdown handler will execute
+/// concurrently with the operation.
+///
+/// When `withTaskCancellationOrGracefulShutdownHandler` is used in a Task that has already been gracefully shutdown or cancelled, the
+/// `onCancelOrGracefulShutdown` handler will be executed immediately before operation gets to execute. This allows the `onCancelOrGracefulShutdown`
+/// handler to set some external “shutdown” flag that the operation may be atomically checking for in order to avoid performing any actual work
+/// once the operation gets to run.
+///
+/// - Important: This method will only set up a graceful shutdown handler if run inside ``ServiceGroup`` otherwise no graceful shutdown handler
+/// will be set up.
+///
+/// - Parameters:
+///   - operation: The actual operation.
+///   - handler: The handler which is invoked once graceful shutdown or task cancellation has been triggered.
+// Unsafely inheriting the executor is safe to do here since we are not calling any other async method
+// except the operation. This makes sure no other executor hops would occur here.
+@_unsafeInheritExecutor
+public func withTaskCancellationOrGracefulShutdownHandler<T>(
+    operation: () async throws -> T,
+    onCancelOrGracefulShutdown handler: @Sendable @escaping () -> Void
+) async rethrows -> T {
+    return try await withTaskCancellationHandler {
+        try await withGracefulShutdownHandler(operation: operation, onGracefulShutdown: handler)
+    } onCancel: {
+        handler()
+    }
+}
+
 /// Waits until graceful shutdown is triggered.
 ///
 /// This method suspends the caller until graceful shutdown is triggered. If the calling task is cancelled before

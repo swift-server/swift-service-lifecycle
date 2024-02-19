@@ -303,4 +303,54 @@ final class GracefulShutdownTests: XCTestCase {
             XCTAssertTrue(error is CancellationError)
         }
     }
+
+    func testWithTaskCancellationOrGracefulShutdownHandler_GracefulShutdown() async throws {
+        var cont: AsyncStream<Void>.Continuation!
+        let stream = AsyncStream<Void> { cont = $0 }
+        let continuation = cont!
+
+        await testGracefulShutdown { gracefulShutdownTestTrigger in
+            await withTaskCancellationOrGracefulShutdownHandler {
+                await withTaskGroup(of: Void.self) { group in
+                    group.addTask {
+                        await stream.first { _ in true }
+                    }
+
+                    gracefulShutdownTestTrigger.triggerGracefulShutdown()
+
+                    await group.waitForAll()
+                }
+            } onCancelOrGracefulShutdown: {
+                continuation.finish()
+            }
+        }
+    }
+
+    func testWithTaskCancellationOrGracefulShutdownHandler_TaskCancellation() async throws {
+        var cont: AsyncStream<Void>.Continuation!
+        let stream = AsyncStream<Void> { cont = $0 }
+        let continuation = cont!
+
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                var cancelCont: AsyncStream<CheckedContinuation<Void, Never>>.Continuation!
+                let cancelStream = AsyncStream<CheckedContinuation<Void, Never>> { cancelCont = $0 }
+                let cancelContinuation = cancelCont!
+                await withTaskCancellationOrGracefulShutdownHandler {
+                    await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+                        cancelContinuation.yield(cont)
+                        continuation.finish()
+                    }
+                } onCancelOrGracefulShutdown: {
+                    Task {
+                        let cont = await cancelStream.first(where: { _ in true })!
+                        cont.resume()
+                    }
+                }
+            }
+            // wait for task to startup
+            _ = await stream.first { _ in true }
+            group.cancelAll()
+        }
+    }
 }
