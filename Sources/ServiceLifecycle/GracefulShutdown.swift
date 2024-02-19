@@ -107,42 +107,44 @@ enum ValueOrGracefulShutdown<T: Sendable>: Sendable {
 /// Cancels the closure when a graceful shutdown was triggered.
 ///
 /// - Parameter operation: The actual operation.
-public func cancelOnGracefulShutdown<T: Sendable>(_ operation: @Sendable @escaping () async throws -> T) async rethrows -> T? {
-    return try await withThrowingTaskGroup(of: ValueOrGracefulShutdown<T>.self) { group in
-        group.addTask {
-            let value = try await operation()
-            return .value(value)
-        }
-
-        group.addTask {
-            for try await _ in AsyncGracefulShutdownSequence() {
-                return .gracefulShutdown
-            }
-
-            throw CancellationError()
-        }
-
-        let result = try await group.next()
-        group.cancelAll()
-
-        switch result {
-        case .value(let t):
-            return t
-        case .gracefulShutdown:
-            switch try await group.next() {
-            case .value(let t):
-                return t
-            case .gracefulShutdown:
-                fatalError("Unexpectedly got gracefulShutdown from group.next()")
-
-            case nil:
-                fatalError("Unexpectedly got nil from group.next()")
-            }
-
-        case nil:
-            fatalError("Unexpectedly got nil from group.next()")
-        }
-    }
+public func cancelOnGracefulShutdown<T:Sendable>(_ operation: @Sendable () async throws -> T) async rethrows -> T? {
+	return try await withoutActuallyEscaping(operation, do: { operationEscaping in
+		return try await withThrowingTaskGroup(of: ValueOrGracefulShutdown<T>.self) { group in
+			group.addTask {
+				let value = try await operationEscaping()
+				return .value(value)
+			}
+	
+			group.addTask {
+				for try await _ in AsyncGracefulShutdownSequence() {
+					return .gracefulShutdown
+				}
+	
+				throw CancellationError()
+			}
+	
+			let result = try await group.next()
+			group.cancelAll()
+	
+			switch result {
+			case .value(let t):
+				return t
+			case .gracefulShutdown:
+				switch try await group.next() {
+				case .value(let t):
+					return t
+				case .gracefulShutdown:
+					fatalError("Unexpectedly got gracefulShutdown from group.next()")
+	
+				case nil:
+					fatalError("Unexpectedly got nil from group.next()")
+				}
+	
+			case nil:
+				fatalError("Unexpectedly got nil from group.next()")
+			}
+		}
+	})
 }
 
 extension Task where Success == Never, Failure == Never {
