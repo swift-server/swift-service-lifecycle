@@ -353,4 +353,88 @@ final class GracefulShutdownTests: XCTestCase {
             group.cancelAll()
         }
     }
+
+    func testCancelOnGracefulShutdownSurvivesCancellation() async throws {
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                await withGracefulShutdownHandler {
+                    await cancelOnGracefulShutdown {
+                        await OnlyCancellationWaiter().cancellation
+
+                        try! await uncancellable {
+                            try! await Task.sleep(for: .milliseconds(500))
+                        }
+                    }
+                } onGracefulShutdown: {
+                    XCTFail("Unexpect graceful shutdown")
+                }
+            }
+
+            group.cancelAll()
+        }
+    }
+
+    func testCancelOnGracefulShutdownSurvivesErrorThrown() async throws {
+        struct MyError: Error, Equatable {}
+
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                do {
+                    try await withGracefulShutdownHandler {
+                        try await cancelOnGracefulShutdown {
+                            await OnlyCancellationWaiter().cancellation
+
+                            try! await uncancellable {
+                                try! await Task.sleep(for: .milliseconds(500))
+                            }
+
+                            throw MyError()
+                        }
+                    } onGracefulShutdown: {
+                        XCTFail("Unexpect graceful shutdown")
+                    }
+                    XCTFail("Expected to have thrown")
+                } catch {
+                    XCTAssertEqual(error as? MyError, MyError())
+                }
+            }
+
+            group.cancelAll()
+        }
+    }
+}
+
+func uncancellable(_ closure: @escaping @Sendable () async throws -> ()) async throws {
+    let task = Task {
+        try await closure()
+    }
+
+    try await task.value
+}
+
+private actor OnlyCancellationWaiter {
+    private var taskContinuation: CheckedContinuation<Void, Never>?
+
+    @usableFromInline
+    init() {}
+
+    @usableFromInline
+    var cancellation: Void {
+        get async {
+            await withTaskCancellationHandler {
+                await withCheckedContinuation { continuation in
+                    self.taskContinuation = continuation
+                }
+            } onCancel: {
+                Task {
+                    await self.finish()
+                }
+            }
+        }
+    }
+
+    private func finish() {
+        self.taskContinuation?.resume()
+        self.taskContinuation = nil
+    }
 }
