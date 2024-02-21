@@ -95,13 +95,21 @@ public func withTaskCancellationOrGracefulShutdownHandler<T>(
 ///
 /// - Throws: `CancellationError` if the task is cancelled.
 public func gracefulShutdown() async throws {
-    try await AsyncGracefulShutdownSequence().first { _ in true }
+    switch await AsyncGracefulShutdownSequence().first(where: { _ in true }) {
+    case .cancelled:
+        throw CancellationError()
+    case .gracefulShutdown:
+        return
+    case .none:
+        fatalError()
+    }
 }
 
 /// This is just a helper type for the result of our task group.
 enum ValueOrGracefulShutdown<T: Sendable>: Sendable {
     case value(T)
     case gracefulShutdown
+    case cancelled
 }
 
 /// Cancels the closure when a graceful shutdown was triggered.
@@ -115,11 +123,15 @@ public func cancelOnGracefulShutdown<T: Sendable>(_ operation: @Sendable @escapi
         }
 
         group.addTask {
-            for try await _ in AsyncGracefulShutdownSequence() {
-                return .gracefulShutdown
+            for await reason in AsyncGracefulShutdownSequence() {
+                switch reason {
+                case .cancelled:
+                    return .cancelled
+                case .gracefulShutdown:
+                    return .gracefulShutdown
+                }
             }
-
-            throw CancellationError()
+            fatalError("Unexpectedly didn't exit the task before")
         }
 
         let result = try await group.next()
@@ -128,13 +140,13 @@ public func cancelOnGracefulShutdown<T: Sendable>(_ operation: @Sendable @escapi
         switch result {
         case .value(let t):
             return t
-        case .gracefulShutdown:
+
+        case .gracefulShutdown, .cancelled:
             switch try await group.next() {
             case .value(let t):
                 return t
-            case .gracefulShutdown:
+            case .gracefulShutdown, .cancelled:
                 fatalError("Unexpectedly got gracefulShutdown from group.next()")
-
             case nil:
                 fatalError("Unexpectedly got nil from group.next()")
             }
