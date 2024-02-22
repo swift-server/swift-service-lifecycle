@@ -404,7 +404,7 @@ final class GracefulShutdownTests: XCTestCase {
     }
 }
 
-func uncancellable(_ closure: @escaping @Sendable () async throws -> ()) async throws {
+func uncancellable(_ closure: @escaping @Sendable () async throws -> Void) async throws {
     let task = Task {
         try await closure()
     }
