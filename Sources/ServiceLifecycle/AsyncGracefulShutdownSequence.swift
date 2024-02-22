@@ -20,7 +20,7 @@
 @usableFromInline
 struct AsyncGracefulShutdownSequence: AsyncSequence, Sendable {
     @usableFromInline
-    typealias Element = Void
+    typealias Element = CancellationWaiter.Reason
 
     @inlinable
     init() {}
@@ -36,9 +36,8 @@ struct AsyncGracefulShutdownSequence: AsyncSequence, Sendable {
         init() {}
 
         @inlinable
-        func next() async throws -> Element? {
-            try await CancellationWaiter().wait()
-            return ()
+        func next() async -> Element? {
+            await CancellationWaiter().wait()
         }
     }
 }

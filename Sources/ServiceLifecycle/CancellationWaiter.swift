@@ -15,36 +15,38 @@
 /// An actor that provides a function to wait on cancellation/graceful shutdown.
 @usableFromInline
 actor CancellationWaiter {
-    private var taskContinuation: CheckedContinuation<Void, Error>?
+    @usableFromInline
+    enum Reason: Sendable {
+        case cancelled
+        case gracefulShutdown
+    }
+
+    private var taskContinuation: CheckedContinuation<Reason, Never>?
 
     @usableFromInline
     init() {}
 
     @usableFromInline
-    func wait() async throws {
-        try await withTaskCancellationHandler {
-            try await withGracefulShutdownHandler {
-                try await withCheckedThrowingContinuation { continuation in
+    func wait() async -> Reason {
+        await withTaskCancellationHandler {
+            await withGracefulShutdownHandler {
+                await withCheckedContinuation { (continuation: CheckedContinuation<Reason, Never>) in
                     self.taskContinuation = continuation
                 }
             } onGracefulShutdown: {
                 Task {
-                    await self.finish()
+                    await self.finish(reason: .gracefulShutdown)
                 }
             }
         } onCancel: {
             Task {
-                await self.finish(throwing: CancellationError())
+                await self.finish(reason: .cancelled)
             }
         }
     }
 
-    private func finish(throwing error: Error? = nil) {
-        if let error {
-            self.taskContinuation?.resume(throwing: error)
-        } else {
-            self.taskContinuation?.resume()
-        }
+    private func finish(reason: Reason) {
+        self.taskContinuation?.resume(returning: reason)
         self.taskContinuation = nil
     }
 }
