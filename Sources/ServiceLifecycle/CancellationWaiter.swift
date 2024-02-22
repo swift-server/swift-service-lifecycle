@@ -16,7 +16,7 @@
 @usableFromInline
 actor CancellationWaiter {
     @usableFromInline
-    enum Reason {
+    enum Reason: Sendable {
         case cancelled
         case gracefulShutdown
     }
