@@ -123,15 +123,12 @@ public func cancelOnGracefulShutdown<T: Sendable>(_ operation: @Sendable @escapi
         }
 
         group.addTask {
-            for await reason in AsyncGracefulShutdownSequence() {
-                switch reason {
-                case .cancelled:
-                    return .cancelled
-                case .gracefulShutdown:
-                    return .gracefulShutdown
-                }
+            switch await CancellationWaiter().wait() {
+            case .cancelled:
+                return .cancelled
+            case .gracefulShutdown:
+                return .gracefulShutdown
             }
-            fatalError("Unexpectedly didn't exit the task before")
         }
 
         let result = try await group.next()
