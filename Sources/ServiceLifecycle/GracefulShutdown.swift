@@ -154,6 +154,9 @@ public func cancelWhenGracefulShutdown<T: Sendable>(_ operation: @Sendable @esca
     }
 }
 
+/// Cancels the closure when a graceful shutdown was triggered.
+///
+/// - Parameter operation: The actual operation.
 @available(*, deprecated, renamed: "cancelWhenGracefulShutdown")
 public func cancelOnGracefulShutdown<T: Sendable>(_ operation: @Sendable @escaping () async throws -> T) async rethrows -> T? {
     return try await cancelWhenGracefulShutdown(operation)
