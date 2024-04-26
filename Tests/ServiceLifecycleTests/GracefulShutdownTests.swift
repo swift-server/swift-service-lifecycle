@@ -215,11 +215,11 @@ final class GracefulShutdownTests: XCTestCase {
         }
     }
 
-    func testCancelOnGracefulShutdown() async throws {
+    func testCancelWhenGracefulShutdown() async throws {
         try await testGracefulShutdown { gracefulShutdownTestTrigger in
             try await withThrowingTaskGroup(of: Void.self) { group in
                 group.addTask {
-                    try await cancelOnGracefulShutdown {
+                    try await cancelWhenGracefulShutdown {
                         try await Task.sleep(nanoseconds: 1_000_000_000_000)
                     }
                 }
@@ -233,9 +233,9 @@ final class GracefulShutdownTests: XCTestCase {
         }
     }
 
-    func testResumesCancelOnGracefulShutdownWithResult() async throws {
+    func testResumesCancelWhenGracefulShutdownWithResult() async throws {
         await testGracefulShutdown { _ in
-            let result = await cancelOnGracefulShutdown {
+            let result = await cancelWhenGracefulShutdown {
                 await Task.yield()
                 return "hello"
             }
@@ -354,11 +354,11 @@ final class GracefulShutdownTests: XCTestCase {
         }
     }
 
-    func testCancelOnGracefulShutdownSurvivesCancellation() async throws {
+    func testCancelWhenGracefulShutdownSurvivesCancellation() async throws {
         await withTaskGroup(of: Void.self) { group in
             group.addTask {
                 await withGracefulShutdownHandler {
-                    await cancelOnGracefulShutdown {
+                    await cancelWhenGracefulShutdown {
                         await OnlyCancellationWaiter().cancellation
 
                         try! await uncancellable {
@@ -374,14 +374,14 @@ final class GracefulShutdownTests: XCTestCase {
         }
     }
 
-    func testCancelOnGracefulShutdownSurvivesErrorThrown() async throws {
+    func testCancelWhenGracefulShutdownSurvivesErrorThrown() async throws {
         struct MyError: Error, Equatable {}
 
         await withTaskGroup(of: Void.self) { group in
             group.addTask {
                 do {
                     try await withGracefulShutdownHandler {
-                        try await cancelOnGracefulShutdown {
+                        try await cancelWhenGracefulShutdown {
                             await OnlyCancellationWaiter().cancellation
 
                             try! await uncancellable {
