@@ -115,7 +115,7 @@ enum ValueOrGracefulShutdown<T: Sendable>: Sendable {
 /// Cancels the closure when a graceful shutdown was triggered.
 ///
 /// - Parameter operation: The actual operation.
-public func cancelOnGracefulShutdown<T: Sendable>(_ operation: @Sendable @escaping () async throws -> T) async rethrows -> T? {
+public func cancelWhenGracefulShutdown<T: Sendable>(_ operation: @Sendable @escaping () async throws -> T) async rethrows -> T {
     return try await withThrowingTaskGroup(of: ValueOrGracefulShutdown<T>.self) { group in
         group.addTask {
             let value = try await operation()
@@ -152,6 +152,14 @@ public func cancelOnGracefulShutdown<T: Sendable>(_ operation: @Sendable @escapi
             fatalError("Unexpectedly got nil from group.next()")
         }
     }
+}
+
+/// Cancels the closure when a graceful shutdown was triggered.
+///
+/// - Parameter operation: The actual operation.
+@available(*, deprecated, renamed: "cancelWhenGracefulShutdown")
+public func cancelOnGracefulShutdown<T: Sendable>(_ operation: @Sendable @escaping () async throws -> T) async rethrows -> T? {
+    return try await cancelWhenGracefulShutdown(operation)
 }
 
 extension Task where Success == Never, Failure == Never {
