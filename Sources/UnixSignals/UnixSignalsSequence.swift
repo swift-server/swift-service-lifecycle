@@ -18,6 +18,9 @@ import Dispatch
 #elseif canImport(Glibc)
 @preconcurrency import Dispatch
 import Glibc
+#elseif canImport(Musl)
+@preconcurrency import Dispatch
+import Musl
 #endif
 import ConcurrencyHelpers
 

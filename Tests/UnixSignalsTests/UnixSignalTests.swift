@@ -18,6 +18,8 @@ import XCTest
 import Darwin
 #elseif canImport(Glibc)
 import Glibc
+#elseif canImport(Musl)
+import Musl
 #endif
 
 final class UnixSignalTests: XCTestCase {
