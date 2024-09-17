@@ -24,7 +24,8 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
 }
 
 /// An asynchronous sequence that is cancelled once graceful shutdown has triggered.
-public struct AsyncCancelOnGracefulShutdownSequence<Base: AsyncSequence & Sendable>: AsyncSequence, Sendable where Base.Element: Sendable {
+public struct AsyncCancelOnGracefulShutdownSequence<Base: AsyncSequence & Sendable>: AsyncSequence, Sendable
+where Base.Element: Sendable {
     @usableFromInline
     enum _ElementOrGracefulShutdown: Sendable {
         case base(AsyncMapNilSequence<Base>.Element)

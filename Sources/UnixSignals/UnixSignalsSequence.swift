@@ -85,7 +85,10 @@ extension UnixSignalsSequence {
                 #endif
                 return .init(
                     // This force-unwrap is safe since Dispatch always returns a `DispatchSource`
-                    dispatchSource: DispatchSource.makeSignalSource(signal: sig.rawValue, queue: UnixSignalsSequence.queue) as! DispatchSource,
+                    dispatchSource: DispatchSource.makeSignalSource(
+                        signal: sig.rawValue,
+                        queue: UnixSignalsSequence.queue
+                    ) as! DispatchSource,
                     signal: sig
                 )
             }
@@ -112,7 +115,9 @@ extension UnixSignalsSequence {
             await withTaskCancellationHandler {
                 for source in sources {
                     await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                        let action = self.stateMachine.withLockedValue { $0.registeringSignal(continuation: continuation) }
+                        let action = self.stateMachine.withLockedValue {
+                            $0.registeringSignal(continuation: continuation)
+                        }
                         switch action {
                         case .setRegistrationHandlerAndResumeDispatchSource:
                             source.dispatchSource.setRegistrationHandler {

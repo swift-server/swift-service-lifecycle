@@ -118,14 +118,13 @@ public struct ServiceGroupConfiguration: Sendable {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     public var maximumGracefulShutdownDuration: Duration? {
         get {
-            if let maximumGracefulShutdownDuration = self._maximumGracefulShutdownDuration {
-                return .init(
-                    secondsComponent: maximumGracefulShutdownDuration.secondsComponent,
-                    attosecondsComponent: maximumGracefulShutdownDuration.attosecondsComponent
-                )
-            } else {
+            guard let maximumGracefulShutdownDuration = self._maximumGracefulShutdownDuration else {
                 return nil
             }
+            return .init(
+                secondsComponent: maximumGracefulShutdownDuration.secondsComponent,
+                attosecondsComponent: maximumGracefulShutdownDuration.attosecondsComponent
+            )
         }
         set {
             if let newValue = newValue {
@@ -147,14 +146,13 @@ public struct ServiceGroupConfiguration: Sendable {
     @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     public var maximumCancellationDuration: Duration? {
         get {
-            if let maximumCancellationDuration = self._maximumCancellationDuration {
-                return .init(
-                    secondsComponent: maximumCancellationDuration.secondsComponent,
-                    attosecondsComponent: maximumCancellationDuration.attosecondsComponent
-                )
-            } else {
+            guard let maximumCancellationDuration = self._maximumCancellationDuration else {
                 return nil
             }
+            return .init(
+                secondsComponent: maximumCancellationDuration.secondsComponent,
+                attosecondsComponent: maximumCancellationDuration.attosecondsComponent
+            )
         }
         set {
             if let newValue = newValue {
