@@ -51,4 +51,4 @@ public struct LockedValueBox<Value> {
     }
 }
 
-extension LockedValueBox: Sendable where Value: Sendable {}
+extension LockedValueBox: @unchecked Sendable where Value: Sendable {}

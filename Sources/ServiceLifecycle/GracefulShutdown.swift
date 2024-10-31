@@ -14,6 +14,7 @@
 
 import ConcurrencyHelpers
 
+#if compiler(>=6.0)
 /// Execute an operation with a graceful shutdown handler that’s immediately invoked if the current task is shutting down gracefully.
 ///
 /// This doesn’t check for graceful shutdown, and always executes the passed operation.
@@ -31,10 +32,57 @@ import ConcurrencyHelpers
 /// will be set up.
 ///
 /// - Parameters:
+///   - isolation: The isolation of the method. Defaults to the isolation of the caller.
 ///   - operation: The actual operation.
 ///   - handler: The handler which is invoked once graceful shutdown has been triggered.
 // Unsafely inheriting the executor is safe to do here since we are not calling any other async method
 // except the operation. This makes sure no other executor hops would occur here.
+public func withGracefulShutdownHandler<T>(
+    isolation: isolated (any Actor)? = #isolation,
+    operation: () async throws -> T,
+    onGracefulShutdown handler: @Sendable @escaping () -> Void
+) async rethrows -> T {
+    guard let gracefulShutdownManager = TaskLocals.gracefulShutdownManager else {
+        return try await operation()
+    }
+
+    // We have to keep track of our handler here to remove it once the operation is finished.
+    let handlerID = gracefulShutdownManager.registerHandler(handler)
+    defer {
+        if let handlerID = handlerID {
+            gracefulShutdownManager.removeHandler(handlerID)
+        }
+    }
+
+    return try await operation()
+}
+
+@available(*, deprecated, message: "Use the method with the isolation parameter instead.")
+@_disfavoredOverload
+public func withGracefulShutdownHandler<T>(
+    operation: () async throws -> T,
+    onGracefulShutdown handler: @Sendable @escaping () -> Void
+) async rethrows -> T {
+    guard let gracefulShutdownManager = TaskLocals.gracefulShutdownManager else {
+        return try await operation()
+    }
+
+    // We have to keep track of our handler here to remove it once the operation is finished.
+    let handlerID = gracefulShutdownManager.registerHandler(handler)
+    defer {
+        if let handlerID = handlerID {
+            gracefulShutdownManager.removeHandler(handlerID)
+        }
+    }
+
+    return try await operation()
+}
+
+#else
+// We need to retain this method with `@_unsafeInheritExecutor` otherwise we will break older
+// Swift versions since the semantics changed.
+@available(*, deprecated, message: "Use the method with the isolation parameter instead.")
+@_disfavoredOverload
 @_unsafeInheritExecutor
 public func withGracefulShutdownHandler<T>(
     operation: () async throws -> T,
@@ -55,6 +103,9 @@ public func withGracefulShutdownHandler<T>(
     return try await operation()
 }
 
+#endif
+
+#if compiler(>=6.0)
 /// Execute an operation with a graceful shutdown or task cancellation handler that’s immediately invoked if the current task is
 /// shutting down gracefully or has been cancelled.
 ///
@@ -72,10 +123,37 @@ public func withGracefulShutdownHandler<T>(
 /// will be set up.
 ///
 /// - Parameters:
+///   - isolation: The isolation of the method. Defaults to the isolation of the caller.
 ///   - operation: The actual operation.
 ///   - handler: The handler which is invoked once graceful shutdown or task cancellation has been triggered.
 // Unsafely inheriting the executor is safe to do here since we are not calling any other async method
 // except the operation. This makes sure no other executor hops would occur here.
+public func withTaskCancellationOrGracefulShutdownHandler<T>(
+    isolation: isolated (any Actor)? = #isolation,
+    operation: () async throws -> T,
+    onCancelOrGracefulShutdown handler: @Sendable @escaping () -> Void
+) async rethrows -> T {
+    return try await withTaskCancellationHandler {
+        try await withGracefulShutdownHandler(isolation: isolation, operation: operation, onGracefulShutdown: handler)
+    } onCancel: {
+        handler()
+    }
+}
+@available(*, deprecated, message: "Use the method with the isolation parameter instead.")
+@_disfavoredOverload
+public func withTaskCancellationOrGracefulShutdownHandler<T>(
+    operation: () async throws -> T,
+    onCancelOrGracefulShutdown handler: @Sendable @escaping () -> Void
+) async rethrows -> T {
+    return try await withTaskCancellationHandler {
+        try await withGracefulShutdownHandler(operation: operation, onGracefulShutdown: handler)
+    } onCancel: {
+        handler()
+    }
+}
+#else
+@available(*, deprecated, message: "Use the method with the isolation parameter instead.")
+@_disfavoredOverload
 @_unsafeInheritExecutor
 public func withTaskCancellationOrGracefulShutdownHandler<T>(
     operation: () async throws -> T,
@@ -87,6 +165,7 @@ public func withTaskCancellationOrGracefulShutdownHandler<T>(
         handler()
     }
 }
+#endif
 
 /// Waits until graceful shutdown is triggered.
 ///
@@ -115,7 +194,9 @@ enum ValueOrGracefulShutdown<T: Sendable>: Sendable {
 /// Cancels the closure when a graceful shutdown was triggered.
 ///
 /// - Parameter operation: The actual operation.
-public func cancelWhenGracefulShutdown<T: Sendable>(_ operation: @Sendable @escaping () async throws -> T) async rethrows -> T {
+public func cancelWhenGracefulShutdown<T: Sendable>(
+    _ operation: @Sendable @escaping () async throws -> T
+) async rethrows -> T {
     return try await withThrowingTaskGroup(of: ValueOrGracefulShutdown<T>.self) { group in
         group.addTask {
             let value = try await operation()
@@ -163,7 +244,9 @@ public func cancelWhenGracefulShutdown<T: Sendable>(_ operation: @Sendable @esca
 // renamed pattern has been shown to cause compiler crashes in 5.x compilers.
 @available(*, deprecated, message: "renamed to cancelWhenGracefulShutdown")
 #endif
-public func cancelOnGracefulShutdown<T: Sendable>(_ operation: @Sendable @escaping () async throws -> T) async rethrows -> T? {
+public func cancelOnGracefulShutdown<T: Sendable>(
+    _ operation: @Sendable @escaping () async throws -> T
+) async rethrows -> T? {
     return try await cancelWhenGracefulShutdown(operation)
 }
 
@@ -218,11 +301,7 @@ public final class GracefulShutdownManager: @unchecked Sendable {
 
     func registerHandler(_ handler: @Sendable @escaping () -> Void) -> UInt64? {
         return self.state.withLockedValue { state in
-            if state.isShuttingDown {
-                // We are already shutting down so we just run the handler now.
-                handler()
-                return nil
-            } else {
+            guard state.isShuttingDown else {
                 defer {
                     state.handlerCounter += 1
                 }
@@ -231,6 +310,9 @@ public final class GracefulShutdownManager: @unchecked Sendable {
 
                 return handlerID
             }
+            // We are already shutting down so we just run the handler now.
+            handler()
+            return nil
         }
     }
 

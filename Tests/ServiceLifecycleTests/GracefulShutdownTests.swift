@@ -114,7 +114,8 @@ final class GracefulShutdownTests: XCTestCase {
     func testWithGracefulShutdownHandler_cleansUpHandlerAfterScopeExit() async {
         final actor Foo {
             func run() async {
-                await withGracefulShutdownHandler {} onGracefulShutdown: {
+                await withGracefulShutdownHandler {
+                } onGracefulShutdown: {
                     self.foo()
                 }
             }

@@ -29,10 +29,6 @@ let package = Package(
             from: "1.5.2"
         ),
         .package(
-            url: "https://github.com/apple/swift-docc-plugin",
-            from: "1.0.0"
-        ),
-        .package(
             url: "https://github.com/apple/swift-async-algorithms.git",
             from: "1.0.0"
         ),
@@ -56,13 +52,13 @@ let package = Package(
         .target(
             name: "ServiceLifecycleTestKit",
             dependencies: [
-                .target(name: "ServiceLifecycle"),
+                .target(name: "ServiceLifecycle")
             ]
         ),
         .target(
             name: "UnixSignals",
             dependencies: [
-                .target(name: "ConcurrencyHelpers"),
+                .target(name: "ConcurrencyHelpers")
             ]
         ),
         .target(
@@ -78,8 +74,12 @@ let package = Package(
         .testTarget(
             name: "UnixSignalsTests",
             dependencies: [
-                .target(name: "UnixSignals"),
+                .target(name: "UnixSignals")
             ]
         ),
     ]
 )
+
+for target in package.targets {
+    target.swiftSettings?.append(.enableUpcomingFeature("StrictConcurrency"))
+}

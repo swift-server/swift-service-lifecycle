@@ -184,8 +184,6 @@ final class LockStorage<Value>: ManagedBuffer<Value, LockPrimitive> {
     }
 }
 
-extension LockStorage: @unchecked Sendable {}
-
 /// A threading lock based on `libpthread` instead of `libdispatch`.
 ///
 /// - note: ``Lock`` has reference semantics.
@@ -252,7 +250,7 @@ extension Lock {
     }
 }
 
-extension Lock: Sendable {}
+extension Lock: @unchecked Sendable {}
 
 extension UnsafeMutablePointer {
     @inlinable

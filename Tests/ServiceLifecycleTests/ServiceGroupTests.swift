@@ -164,7 +164,7 @@ final class ServiceGroupTests: XCTestCase {
             await XCTAsyncAssertEqual(await eventIterator.next(), .run)
 
             let pid = getpid()
-            kill(pid, UnixSignal.sigalrm.rawValue)
+            kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
             await XCTAsyncAssertEqual(await eventIterator.next(), .shutdownGracefully)
 
             await mockService.resumeRunContinuation(with: .success(()))
@@ -198,7 +198,10 @@ final class ServiceGroupTests: XCTestCase {
         let service1 = MockService(description: "Service1")
         let service2 = MockService(description: "Service2")
         let serviceGroup = self.makeServiceGroup(
-            services: [.init(service: service1, successTerminationBehavior: .ignore), .init(service: service2, failureTerminationBehavior: .ignore)],
+            services: [
+                .init(service: service1, successTerminationBehavior: .ignore),
+                .init(service: service2, failureTerminationBehavior: .ignore),
+            ],
             gracefulShutdownSignals: [.sigalrm]
         )
 
@@ -557,7 +560,7 @@ final class ServiceGroupTests: XCTestCase {
             await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
 
             let pid = getpid()
-            kill(pid, UnixSignal.sigalrm.rawValue)
+            kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
 
             await XCTAsyncAssertEqual(await eventIterator1.next(), .runCancelled)
             await XCTAsyncAssertEqual(await eventIterator2.next(), .runCancelled)
@@ -597,7 +600,7 @@ final class ServiceGroupTests: XCTestCase {
             await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
 
             let pid = getpid()
-            kill(pid, UnixSignal.sigwinch.rawValue)
+            kill(pid, UnixSignal.sigwinch.rawValue)  // ignore-unacceptable-language
 
             await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
 
@@ -610,7 +613,7 @@ final class ServiceGroupTests: XCTestCase {
             await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
 
             // Now we signal cancellation
-            kill(pid, UnixSignal.sigalrm.rawValue)
+            kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
 
             await XCTAsyncAssertEqual(await eventIterator1.next(), .runCancelled)
             await XCTAsyncAssertEqual(await eventIterator2.next(), .runCancelled)
@@ -649,7 +652,7 @@ final class ServiceGroupTests: XCTestCase {
             await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
 
             let pid = getpid()
-            kill(pid, UnixSignal.sigalrm.rawValue)
+            kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
 
             // The last service should receive the shutdown signal first
             await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
@@ -713,7 +716,7 @@ final class ServiceGroupTests: XCTestCase {
             await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
 
             let pid = getpid()
-            kill(pid, UnixSignal.sigalrm.rawValue)
+            kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
 
             // The last service should receive the shutdown signal first
             await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
@@ -781,7 +784,7 @@ final class ServiceGroupTests: XCTestCase {
             await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
 
             let pid = getpid()
-            kill(pid, UnixSignal.sigalrm.rawValue)
+            kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
 
             // The last service should receive the shutdown signal first
             await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
@@ -845,7 +848,7 @@ final class ServiceGroupTests: XCTestCase {
             await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
 
             let pid = getpid()
-            kill(pid, UnixSignal.sigalrm.rawValue)
+            kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
 
             // The last service should receive the shutdown signal first
             await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
@@ -909,7 +912,7 @@ final class ServiceGroupTests: XCTestCase {
             await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
 
             let pid = getpid()
-            kill(pid, UnixSignal.sigalrm.rawValue)
+            kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
 
             // The last service should receive the shutdown signal first
             await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
@@ -992,7 +995,7 @@ final class ServiceGroupTests: XCTestCase {
             await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
 
             let pid = getpid()
-            kill(pid, UnixSignal.sigalrm.rawValue)
+            kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
             await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
 
             service1.sendPing()
@@ -1194,9 +1197,11 @@ final class ServiceGroupTests: XCTestCase {
         let service2 = MockService(description: "Service2")
         let service3 = MockService(description: "Service3")
         let serviceGroup = self.makeServiceGroup(
-            services: [.init(service: service1, failureTerminationBehavior: .gracefullyShutdownGroup),
-                       .init(service: service2, failureTerminationBehavior: .gracefullyShutdownGroup),
-                       .init(service: service3, failureTerminationBehavior: .gracefullyShutdownGroup)]
+            services: [
+                .init(service: service1, failureTerminationBehavior: .gracefullyShutdownGroup),
+                .init(service: service2, failureTerminationBehavior: .gracefullyShutdownGroup),
+                .init(service: service3, failureTerminationBehavior: .gracefullyShutdownGroup),
+            ]
         )
 
         do {
@@ -1266,9 +1271,11 @@ final class ServiceGroupTests: XCTestCase {
         let service2 = MockService(description: "Service2")
         let service3 = MockService(description: "Service3")
         let serviceGroup = self.makeServiceGroup(
-            services: [.init(service: service1, failureTerminationBehavior: .ignore),
-                       .init(service: service2, failureTerminationBehavior: .ignore),
-                       .init(service: service3, failureTerminationBehavior: .ignore)]
+            services: [
+                .init(service: service1, failureTerminationBehavior: .ignore),
+                .init(service: service2, failureTerminationBehavior: .ignore),
+                .init(service: service3, failureTerminationBehavior: .ignore),
+            ]
         )
 
         try await withThrowingTaskGroup(of: Void.self) { group in
@@ -1332,9 +1339,11 @@ final class ServiceGroupTests: XCTestCase {
         let service2 = MockService(description: "Service2")
         let service3 = MockService(description: "Service3")
         let serviceGroup = self.makeServiceGroup(
-            services: [.init(service: service1, failureTerminationBehavior: .gracefullyShutdownGroup),
-                       .init(service: service2, failureTerminationBehavior: .gracefullyShutdownGroup),
-                       .init(service: service3, failureTerminationBehavior: .gracefullyShutdownGroup)]
+            services: [
+                .init(service: service1, failureTerminationBehavior: .gracefullyShutdownGroup),
+                .init(service: service2, failureTerminationBehavior: .gracefullyShutdownGroup),
+                .init(service: service3, failureTerminationBehavior: .gracefullyShutdownGroup),
+            ]
         )
 
         do {
@@ -1403,9 +1412,11 @@ final class ServiceGroupTests: XCTestCase {
         let service2 = MockService(description: "Service2")
         let service3 = MockService(description: "Service3")
         let serviceGroup = self.makeServiceGroup(
-            services: [.init(service: service1, failureTerminationBehavior: .ignore),
-                       .init(service: service2, failureTerminationBehavior: .ignore),
-                       .init(service: service3, failureTerminationBehavior: .ignore)]
+            services: [
+                .init(service: service1, failureTerminationBehavior: .ignore),
+                .init(service: service2, failureTerminationBehavior: .ignore),
+                .init(service: service3, failureTerminationBehavior: .ignore),
+            ]
         )
 
         try await withThrowingTaskGroup(of: Void.self) { group in
