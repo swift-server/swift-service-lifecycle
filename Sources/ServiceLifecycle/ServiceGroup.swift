@@ -76,19 +76,23 @@ public actor ServiceGroup: Sendable, Service {
         services: [any Service],
         gracefulShutdownSignals: [UnixSignal] = [],
         cancellationSignals: [UnixSignal] = [],
-        logger: Logger
+        logger: Logger? = nil
     ) {
+        if logger == nil {
+            LoggingSystem.bootstrap { SwiftLogNoOpLogHandler($0) }
+        }
+        
         let configuration = ServiceGroupConfiguration(
             services: services.map { ServiceGroupConfiguration.ServiceConfiguration(service: $0) },
             gracefulShutdownSignals: gracefulShutdownSignals,
             cancellationSignals: cancellationSignals,
-            logger: logger
+            logger: logger ?? .init(label: "")
         )
 
         self.init(configuration: configuration)
     }
 
-    @available(*, deprecated)
+    @available(*, deprecated, renamed: "init(services:gracefulShutdownSignals:cancellationSignals:logger:)")
     public init(
         services: [any Service],
         configuration: ServiceGroupConfiguration,

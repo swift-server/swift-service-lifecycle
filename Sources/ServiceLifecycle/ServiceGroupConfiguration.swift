@@ -172,10 +172,14 @@ public struct ServiceGroupConfiguration: Sendable {
     ///   - logger: The group's logger.
     public init(
         services: [ServiceConfiguration],
-        logger: Logger
+        logger: Logger? = nil
     ) {
+        if logger == nil {
+            LoggingSystem.bootstrap { SwiftLogNoOpLogHandler($0) }
+        }
+        
         self.services = services
-        self.logger = logger
+        self.logger = logger ?? .init(label: "")
     }
 
     /// Initializes a new ``ServiceGroupConfiguration``.
@@ -189,10 +193,14 @@ public struct ServiceGroupConfiguration: Sendable {
         services: [ServiceConfiguration],
         gracefulShutdownSignals: [UnixSignal] = [],
         cancellationSignals: [UnixSignal] = [],
-        logger: Logger
+        logger: Logger? = nil
     ) {
+        if logger == nil {
+            LoggingSystem.bootstrap { SwiftLogNoOpLogHandler($0) }
+        }
+        
         self.services = services
-        self.logger = logger
+        self.logger = logger ?? .init(label: "")
         self.gracefulShutdownSignals = gracefulShutdownSignals
         self.cancellationSignals = cancellationSignals
     }
@@ -204,10 +212,14 @@ public struct ServiceGroupConfiguration: Sendable {
     ///   - logger: The group's logger.
     public init(
         services: [Service],
-        logger: Logger
+        logger: Logger? = nil
     ) {
+        if logger == nil {
+            LoggingSystem.bootstrap { SwiftLogNoOpLogHandler($0) }
+        }
+        
         self.services = Array(services.map { ServiceConfiguration(service: $0) })
-        self.logger = logger
+        self.logger = logger ?? .init(label: "")
     }
 
     /// Initializes a new ``ServiceGroupConfiguration``.
@@ -221,10 +233,14 @@ public struct ServiceGroupConfiguration: Sendable {
         services: [Service],
         gracefulShutdownSignals: [UnixSignal] = [],
         cancellationSignals: [UnixSignal] = [],
-        logger: Logger
+        logger: Logger? = nil
     ) {
+        if logger == nil {
+            LoggingSystem.bootstrap { SwiftLogNoOpLogHandler($0) }
+        }
+        
         self.services = Array(services.map { ServiceConfiguration(service: $0) })
-        self.logger = logger
+        self.logger = logger ?? .init(label: "")
         self.gracefulShutdownSignals = gracefulShutdownSignals
         self.cancellationSignals = cancellationSignals
     }

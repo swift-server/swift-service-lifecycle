@@ -77,13 +77,7 @@ struct Application {
 
     let serviceGroup = ServiceGroup(
       // We are encoding the dependency hierarchy here by listing the fooService first
-      configuration: .init(
-        services: [
-          .init(service: fooService),
-          .init(service: barService)
-        ],
-        logger: logger
-      ),
+      services: [fooService, barService]
     )
 
     try await serviceGroup.run()
@@ -148,11 +142,8 @@ struct Application {
     })
 
     let serviceGroup = ServiceGroup(
-      configuration: .init(
-        services: [.init(service: streamingService)],
-        gracefulShutdownSignals: [.sigterm],
-        logger: logger
-      )
+      services: [streamingService],
+      gracefulShutdownSignals: [.sigterm]
     )
 
     try await serviceGroup.run()
@@ -210,11 +201,8 @@ struct Application {
     })
 
     let serviceGroup = ServiceGroup(
-      configuration: .init(
-        services: [.init(service: streamingService)],
-        gracefulShutdownSignals: [.sigterm],
-        logger: logger
-      )
+      services: [streamingService],
+      gracefulShutdownSignals: [.sigterm]
     )
 
     try await serviceGroup.run()
@@ -266,8 +254,7 @@ struct Application {
             successTerminationBehavior: .shutdownGracefully,
             failureTerminationBehavior: .shutdownGracefully
           )
-        ],
-        logger: logger
+        ]
       ),
     )
 
