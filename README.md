@@ -75,11 +75,11 @@ actor FooService: Service {
 
 @main
 struct Application {
+    static let logger = Logger(label: "Application")
+    
     static func main() async throws {
         let service1 = FooService()
         let service2 = FooService()
-        
-        let logger = Logger(label: "Application")
         
         let serviceGroup = ServiceGroup(
             services: [service1, service2],
