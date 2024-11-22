@@ -63,6 +63,7 @@ on each service.
 
 ```swift
 import ServiceLifecycle
+import Logging
 
 actor FooService: Service {
     func run() async throws {
@@ -78,9 +79,12 @@ struct Application {
         let service1 = FooService()
         let service2 = FooService()
         
+        let logger = Logger(label: "Application")
+        
         let serviceGroup = ServiceGroup(
             services: [service1, service2],
-            gracefulShutdownSignals: [.sigterm]
+            gracefulShutdownSignals: [.sigterm],
+            logger: logger
         )
         
         try await serviceGroup.run()
