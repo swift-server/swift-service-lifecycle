@@ -107,7 +107,7 @@ public struct ServiceGroupConfiguration: Sendable {
     public var cancellationSignals = [UnixSignal]()
 
     /// The group's logger.
-    public var logger: Logger?
+    public var logger: Logger
 
     /// The group's logging configuration.
     public var logging = LoggingConfiguration()
@@ -172,7 +172,7 @@ public struct ServiceGroupConfiguration: Sendable {
     ///   - logger: The group's logger.
     public init(
         services: [ServiceConfiguration],
-        logger: Logger? = nil
+        logger: Logger
     ) {
         self.services = services
         self.logger = logger
@@ -189,7 +189,7 @@ public struct ServiceGroupConfiguration: Sendable {
         services: [ServiceConfiguration],
         gracefulShutdownSignals: [UnixSignal] = [],
         cancellationSignals: [UnixSignal] = [],
-        logger: Logger? = nil
+        logger: Logger
     ) {
         self.services = services
         self.logger = logger
@@ -204,7 +204,7 @@ public struct ServiceGroupConfiguration: Sendable {
     ///   - logger: The group's logger.
     public init(
         services: [Service],
-        logger: Logger? = nil
+        logger: Logger
     ) {
         self.services = Array(services.map { ServiceConfiguration(service: $0) })
         self.logger = logger
@@ -221,7 +221,7 @@ public struct ServiceGroupConfiguration: Sendable {
         services: [Service],
         gracefulShutdownSignals: [UnixSignal] = [],
         cancellationSignals: [UnixSignal] = [],
-        logger: Logger? = nil
+        logger: Logger
     ) {
         self.services = Array(services.map { ServiceConfiguration(service: $0) })
         self.logger = logger

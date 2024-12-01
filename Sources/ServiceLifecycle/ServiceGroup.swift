@@ -30,7 +30,7 @@ public actor ServiceGroup: Sendable, Service {
     }
 
     /// The logger.
-    private let logger: Logger?
+    private let logger: Logger
     /// The logging configuration.
     private let loggingConfiguration: ServiceGroupConfiguration.LoggingConfiguration
     /// The maximum amount of time that graceful shutdown is allowed to take.
@@ -55,7 +55,7 @@ public actor ServiceGroup: Sendable, Service {
             Set(configuration.gracefulShutdownSignals).isDisjoint(with: configuration.cancellationSignals),
             "Overlapping graceful shutdown and cancellation signals"
         )
-        precondition(configuration.logger?.label != deprecatedLoggerLabel, "Please migrate to the new initializers")
+        precondition(configuration.logger.label != deprecatedLoggerLabel, "Please migrate to the new initializers")
         self.state = .initial(services: configuration.services)
         self.gracefulShutdownSignals = configuration.gracefulShutdownSignals
         self.cancellationSignals = configuration.cancellationSignals
@@ -76,7 +76,7 @@ public actor ServiceGroup: Sendable, Service {
         services: [any Service],
         gracefulShutdownSignals: [UnixSignal] = [],
         cancellationSignals: [UnixSignal] = [],
-        logger: Logger? = nil
+        logger: Logger
     ) {
         let configuration = ServiceGroupConfiguration(
             services: services.map { ServiceGroupConfiguration.ServiceConfiguration(service: $0) },
@@ -204,7 +204,7 @@ public actor ServiceGroup: Sendable, Service {
         services: inout [ServiceGroupConfiguration.ServiceConfiguration],
         gracefulShutdownStream: AsyncStream<Void>
     ) async throws {
-        self.logger?.debug(
+        self.logger.debug(
             "Starting service lifecycle",
             metadata: [
                 self.loggingConfiguration.keys.gracefulShutdownSignalsKey: "\(self.gracefulShutdownSignals)",
@@ -270,7 +270,7 @@ public actor ServiceGroup: Sendable, Service {
             gracefulShutdownManagers.reserveCapacity(services.count)
 
             for (index, serviceConfiguration) in services.enumerated() {
-                self.logger?.debug(
+                self.logger.debug(
                     "Starting service",
                     metadata: [
                         self.loggingConfiguration.keys.serviceKey: "\(serviceConfiguration.service)"
@@ -324,7 +324,7 @@ public actor ServiceGroup: Sendable, Service {
 
                     switch service.successTerminationBehavior.behavior {
                     case .cancelGroup:
-                        self.logger?.debug(
+                        self.logger.debug(
                             "Service finished unexpectedly. Cancelling group.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)"
@@ -337,7 +337,7 @@ public actor ServiceGroup: Sendable, Service {
                         return .failure(ServiceGroupError.serviceFinishedUnexpectedly())
 
                     case .gracefullyShutdownGroup:
-                        self.logger?.debug(
+                        self.logger.debug(
                             "Service finished. Gracefully shutting down group.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)"
@@ -357,7 +357,7 @@ public actor ServiceGroup: Sendable, Service {
                         }
 
                     case .ignore:
-                        self.logger?.debug(
+                        self.logger.debug(
                             "Service finished.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)"
@@ -366,7 +366,7 @@ public actor ServiceGroup: Sendable, Service {
                         services[index] = nil
 
                         if services.allSatisfy({ $0 == nil }) {
-                            self.logger?.debug(
+                            self.logger.debug(
                                 "All services finished."
                             )
                             self.cancelGroupAndSpawnTimeoutIfNeeded(
@@ -380,7 +380,7 @@ public actor ServiceGroup: Sendable, Service {
                 case .serviceThrew(let service, let index, let serviceError):
                     switch service.failureTerminationBehavior.behavior {
                     case .cancelGroup:
-                        self.logger?.debug(
+                        self.logger.debug(
                             "Service threw error. Cancelling group.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)",
@@ -394,7 +394,7 @@ public actor ServiceGroup: Sendable, Service {
                         return .failure(serviceError)
 
                     case .gracefullyShutdownGroup:
-                        self.logger?.debug(
+                        self.logger.debug(
                             "Service threw error. Shutting down group.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)",
@@ -416,7 +416,7 @@ public actor ServiceGroup: Sendable, Service {
                         }
 
                     case .ignore:
-                        self.logger?.debug(
+                        self.logger.debug(
                             "Service threw error.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)",
@@ -426,7 +426,7 @@ public actor ServiceGroup: Sendable, Service {
                         services[index] = nil
 
                         if services.allSatisfy({ $0 == nil }) {
-                            self.logger?.debug(
+                            self.logger.debug(
                                 "All services finished."
                             )
 
@@ -441,7 +441,7 @@ public actor ServiceGroup: Sendable, Service {
                 case .signalCaught(let unixSignal):
                     if self.gracefulShutdownSignals.contains(unixSignal) {
                         // Let's initiate graceful shutdown.
-                        self.logger?.debug(
+                        self.logger.debug(
                             "Signal caught. Shutting down the group.",
                             metadata: [
                                 self.loggingConfiguration.keys.signalKey: "\(unixSignal)"
@@ -460,7 +460,7 @@ public actor ServiceGroup: Sendable, Service {
                         }
                     } else {
                         // Let's cancel the group.
-                        self.logger?.debug(
+                        self.logger.debug(
                             "Signal caught. Cancelling the group.",
                             metadata: [
                                 self.loggingConfiguration.keys.signalKey: "\(unixSignal)"
@@ -475,7 +475,7 @@ public actor ServiceGroup: Sendable, Service {
 
                 case .gracefulShutdownCaught:
                     // We got a manual or inherited graceful shutdown. Let's initiate graceful shutdown.
-                    self.logger?.debug("Graceful shutdown caught. Cascading shutdown to services")
+                    self.logger.debug("Graceful shutdown caught. Cascading shutdown to services")
 
                     do {
                         try await self.shutdownGracefully(
@@ -492,7 +492,7 @@ public actor ServiceGroup: Sendable, Service {
                 case .cancellationCaught:
                     // We caught cancellation in our child task so we have to spawn
                     // our cancellation timeout task if needed
-                    self.logger?.debug("Caught cancellation.")
+                    self.logger.debug("Caught cancellation.")
                     self.cancelGroupAndSpawnTimeoutIfNeeded(
                         group: &group,
                         cancellationTimeoutTask: &cancellationTimeoutTask
@@ -517,7 +517,7 @@ public actor ServiceGroup: Sendable, Service {
             return .success(())
         }
 
-        self.logger?.debug(
+        self.logger.debug(
             "Service lifecycle ended"
         )
         cancellationTimeoutTask?.cancel()
@@ -558,12 +558,12 @@ public actor ServiceGroup: Sendable, Service {
             .enumerated().reversed()
         {
             guard let service = services[gracefulShutdownIndex] else {
-                self.logger?.debug(
+                self.logger.debug(
                     "Service already finished. Skipping shutdown"
                 )
                 continue gracefulShutdownLoop
             }
-            self.logger?.debug(
+            self.logger.debug(
                 "Triggering graceful shutdown for service",
                 metadata: [
                     self.loggingConfiguration.keys.serviceKey: "\(service.service)"
@@ -583,7 +583,7 @@ public actor ServiceGroup: Sendable, Service {
 
                     guard index == gracefulShutdownIndex else {
                         // Another service exited unexpectedly
-                        self.logger?.debug(
+                        self.logger.debug(
                             "Service finished unexpectedly during graceful shutdown. Cancelling all other services now",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)"
@@ -598,7 +598,7 @@ public actor ServiceGroup: Sendable, Service {
                     }
                     // The service that we signalled graceful shutdown did exit/
                     // We can continue to the next one.
-                    self.logger?.debug(
+                    self.logger.debug(
                         "Service finished",
                         metadata: [
                             self.loggingConfiguration.keys.serviceKey: "\(service.service)"
@@ -610,7 +610,7 @@ public actor ServiceGroup: Sendable, Service {
                     services[index] = nil
                     switch service.failureTerminationBehavior.behavior {
                     case .cancelGroup:
-                        self.logger?.debug(
+                        self.logger.debug(
                             "Service threw error during graceful shutdown. Cancelling group.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)",
@@ -628,7 +628,7 @@ public actor ServiceGroup: Sendable, Service {
                         guard index == gracefulShutdownIndex else {
                             // Another service threw while we were waiting for a shutdown
                             // We have to continue the iterating the task group's result
-                            self.logger?.debug(
+                            self.logger.debug(
                                 "Another service than the service that we were shutting down threw. Continuing with the next one.",
                                 metadata: [
                                     self.loggingConfiguration.keys.serviceKey: "\(service.service)",
@@ -639,7 +639,7 @@ public actor ServiceGroup: Sendable, Service {
                         }
                         // The service that we were shutting down right now threw. Since it's failure
                         // behaviour is to shutdown the group we can continue
-                        self.logger?.debug(
+                        self.logger.debug(
                             "The service that we were shutting down threw. Continuing with the next one.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)",
@@ -652,7 +652,7 @@ public actor ServiceGroup: Sendable, Service {
                         guard index == gracefulShutdownIndex else {
                             // Another service threw while we were waiting for a shutdown
                             // We have to continue the iterating the task group's result
-                            self.logger?.debug(
+                            self.logger.debug(
                                 "Another service than the service that we were shutting down threw. Continuing with the next one.",
                                 metadata: [
                                     self.loggingConfiguration.keys.serviceKey: "\(service.service)",
@@ -663,7 +663,7 @@ public actor ServiceGroup: Sendable, Service {
                         }
                         // The service that we were shutting down right now threw. Since it's failure
                         // behaviour is to shutdown the group we can continue
-                        self.logger?.debug(
+                        self.logger.debug(
                             "The service that we were shutting down threw. Continuing with the next one.",
                             metadata: [
                                 self.loggingConfiguration.keys.serviceKey: "\(service.service)",
@@ -676,7 +676,7 @@ public actor ServiceGroup: Sendable, Service {
                 case .signalCaught(let signal):
                     if self.cancellationSignals.contains(signal) {
                         // We got signalled cancellation after graceful shutdown
-                        self.logger?.debug(
+                        self.logger.debug(
                             "Signal caught. Cancelling the group.",
                             metadata: [
                                 self.loggingConfiguration.keys.signalKey: "\(signal)"
@@ -692,7 +692,7 @@ public actor ServiceGroup: Sendable, Service {
                 case .gracefulShutdownTimedOut:
                     // Gracefully shutting down took longer than the user configured
                     // so we have to escalate it now.
-                    self.logger?.debug(
+                    self.logger.debug(
                         "Graceful shutdown took longer than allowed by the configuration. Cancelling the group now.",
                         metadata: [
                             self.loggingConfiguration.keys.serviceKey: "\(service.service)"
@@ -706,7 +706,7 @@ public actor ServiceGroup: Sendable, Service {
                 case .cancellationCaught:
                     // We caught cancellation in our child task so we have to spawn
                     // our cancellation timeout task if needed
-                    self.logger?.debug("Caught cancellation.")
+                    self.logger.debug("Caught cancellation.")
                     self.cancelGroupAndSpawnTimeoutIfNeeded(
                         group: &group,
                         cancellationTimeoutTask: &cancellationTimeoutTask
@@ -741,7 +741,7 @@ public actor ServiceGroup: Sendable, Service {
     ) {
         guard cancellationTimeoutTask == nil else {
             // We already have a cancellation timeout task running.
-            self.logger?.debug(
+            self.logger.debug(
                 "Task cancellation timeout task already running."
             )
             return
@@ -756,7 +756,7 @@ public actor ServiceGroup: Sendable, Service {
             // from being cancelled.
             cancellationTimeoutTask = Task {
                 do {
-                    self.logger?.debug(
+                    self.logger.debug(
                         "Task cancellation timeout task started."
                     )
                     try await Task.sleep(
@@ -765,7 +765,7 @@ public actor ServiceGroup: Sendable, Service {
                             attosecondsComponent: maximumCancellationDuration.attosecondsComponent
                         )
                     )
-                    self.logger?.debug(
+                    self.logger.debug(
                         "Cancellation took longer than allowed by the configuration."
                     )
                     fatalError("Cancellation took longer than allowed by the configuration.")
