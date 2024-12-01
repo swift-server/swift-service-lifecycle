@@ -80,8 +80,6 @@ struct Application {
     let fooService = FooServer()
     let barService = BarService(fooService: fooService)
 
-
-
     let serviceGroup = ServiceGroup(
       // We are encoding the dependency hierarchy here by listing the fooService first
       services: [fooService, barService],
