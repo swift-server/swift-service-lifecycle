@@ -77,9 +77,11 @@ struct Application {
         let service2 = FooService()
         
         let serviceGroup = ServiceGroup(
-            services: [service1, service2],
-            configuration: .init(gracefulShutdownSignals: [.sigterm]),
-            logger: logger
+            configuration: .init(
+                services: [service1, service2],
+                gracefulShutdownSignals: [.sigterm],
+                logger: logger
+            )
         )
         try await serviceGroup.run()
     }
