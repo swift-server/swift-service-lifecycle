@@ -69,21 +69,21 @@ on services with a lower index. The following example shows how this can be
 applied to our `BarService`.
 
 ```swift
+import ServiceLifecycle
+import Logging
+
 @main
 struct Application {
+  static let logger = Logger(label: "Application")
+
   static func main() async throws {
     let fooService = FooServer()
     let barService = BarService(fooService: fooService)
 
     let serviceGroup = ServiceGroup(
       // We are encoding the dependency hierarchy here by listing the fooService first
-      configuration: .init(
-        services: [
-          .init(service: fooService),
-          .init(service: barService)
-        ],
-        logger: logger
-      ),
+      services: [fooService, barService],
+      logger: logger
     )
 
     try await serviceGroup.run()
@@ -115,6 +115,9 @@ A common example of this is for applications that implement streaming
 behaviours.
 
 ```swift
+import ServiceLifecycle
+import Logging
+
 struct StreamingService: Service {
   struct RequestStream: AsyncSequence { ... }
   struct ResponseWriter {
@@ -140,6 +143,8 @@ struct StreamingService: Service {
 
 @main
 struct Application {
+  static let logger = Logger(label: "Application")
+
   static func main() async throws {
     let streamingService = StreamingService(streamHandler: { requestStream, responseWriter in
       for await request in requestStream {
@@ -148,11 +153,9 @@ struct Application {
     })
 
     let serviceGroup = ServiceGroup(
-      configuration: .init(
-        services: [.init(service: streamingService)],
-        gracefulShutdownSignals: [.sigterm],
-        logger: logger
-      )
+      services: [streamingService],
+      gracefulShutdownSignals: [.sigterm],
+      logger: logger
     )
 
     try await serviceGroup.run()
@@ -177,6 +180,9 @@ and what we want to do is stop the iteration. To do this we can use the
 `AsyncSequence`. The updated code looks like this:
 
 ```swift
+import ServiceLifecycle
+import Logging
+
 struct StreamingService: Service {
   struct RequestStream: AsyncSequence { ... }
   struct ResponseWriter {
@@ -202,6 +208,8 @@ struct StreamingService: Service {
 
 @main
 struct Application {
+  static let logger = Logger(label: "Application")
+
   static func main() async throws {
     let streamingService = StreamingService(streamHandler: { requestStream, responseWriter in
       for await request in requestStream.cancelOnGracefulShutdown() {
@@ -210,11 +218,9 @@ struct Application {
     })
 
     let serviceGroup = ServiceGroup(
-      configuration: .init(
-        services: [.init(service: streamingService)],
-        gracefulShutdownSignals: [.sigterm],
-        logger: logger
-      )
+      services: [streamingService],
+      gracefulShutdownSignals: [.sigterm],,
+      logger: logger
     )
 
     try await serviceGroup.run()
@@ -251,8 +257,13 @@ sure your telemetry service is gracefully shutdown after your HTTP server
 unexpectedly threw from its `run()` method. This setup could look like this:
 
 ```swift
+import ServiceLifecycle
+import Logging
+
 @main
 struct Application {
+  static let logger = Logger(label: "Application")
+
   static func main() async throws {
     let telemetryService = TelemetryService()
     let httpServer = HTTPServer()

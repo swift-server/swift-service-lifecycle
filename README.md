@@ -62,6 +62,9 @@ Furthermore, the group will setup signal listeners for the configured signals an
 on each service.
 
 ```swift
+import ServiceLifecycle
+import Logging
+
 actor FooService: Service {
     func run() async throws {
         print("FooService starting")
@@ -72,19 +75,21 @@ actor FooService: Service {
 
 @main
 struct Application {
+    static let logger = Logger(label: "Application")
+    
     static func main() async throws {
         let service1 = FooService()
         let service2 = FooService()
         
         let serviceGroup = ServiceGroup(
             services: [service1, service2],
-            configuration: .init(gracefulShutdownSignals: [.sigterm]),
+            gracefulShutdownSignals: [.sigterm],
             logger: logger
         )
+        
         try await serviceGroup.run()
     }
 }
-
 ```
 
 ## Security

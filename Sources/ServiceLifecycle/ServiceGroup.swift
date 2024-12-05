@@ -88,7 +88,7 @@ public actor ServiceGroup: Sendable, Service {
         self.init(configuration: configuration)
     }
 
-    @available(*, deprecated)
+    @available(*, deprecated, renamed: "init(services:gracefulShutdownSignals:cancellationSignals:logger:)")
     public init(
         services: [any Service],
         configuration: ServiceGroupConfiguration,
