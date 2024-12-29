@@ -4,19 +4,18 @@ A library for cleanly starting up and shutting down applications.
 
 ## Overview
 
-Applications often have to orchestrate multiple internal services such as
-clients or servers to implement their business logic. Doing this can become
-tedious; especially when the APIs of the various services are not interoping nicely
-with each other. This library tries to solve this issue by providing a ``Service`` protocol
-that services should implement and an orchestrator, the ``ServiceGroup``, that handles
-running the various services.
+Applications often have to orchestrate multiple internal services that orchestrate their business
+logic, such as clients or servers. This quickly becomes tedious; especially when the APIs of
+different services do not interoperate nicely with one another. This library sets out to solve the
+issue by providing a ``Service`` protocol for services to implement, and an orchestrator, the
+``ServiceGroup``, to handle running of various services.
 
-This library is fully based on Swift Structured Concurrency which allows it to
-safely orchestrate the individual services in separate child tasks. Furthermore, this library
-complements the cooperative task cancellation from Structured Concurrency with a new mechanism called
-_graceful shutdown_. Cancellation is indicating the tasks to stop their work as soon as possible
-whereas _graceful shutdown_ just indicates them that they should come to an end but it is up
-to their business logic if and how to do that.
+This library is fully based on Swift Structured Concurrency, allowing it to safely orchestrate the
+individual services in separate child tasks. Furthermore, the library complements the cooperative
+task cancellation from Structured Concurrency with a new mechanism called _graceful shutdown_. While
+cancellation is a signal for a task to stop its work as soon as possible, _graceful shutdown_
+indicates a task that it should eventually shutdown, but it is up to the underlying business logic
+to decide if and when that happens.
 
 ``ServiceLifecycle`` should be used by both library and application authors to create a seamless experience.
 Library authors should conform their services to the ``Service`` protocol and application authors
@@ -24,7 +23,7 @@ should use the ``ServiceGroup`` to orchestrate all their services.
 
 ## Getting started
 
-If you have a server-side Swift application or a cross-platform (e.g. Linux, macOS) application, and you would like to manage its startup and shutdown lifecycle, Swift Service Lifecycle is a great idea. Below you will find all you need to know to get started.
+If you have a server-side Swift application or a cross-platform (e.g. Linux, macOS) application, and you would like to manage its startup and shutdown lifecycle, you should use Swift Service Lifecycle. Below, you will find information to get started.
 
 ### Adding the dependency
 
@@ -34,7 +33,7 @@ To add a dependency on the package, declare it in your `Package.swift`:
 .package(url: "https://github.com/swift-server/swift-service-lifecycle.git", from: "2.3.0"),
 ```
 
-and to your application target, add `ServiceLifecycle` to your dependencies:
+and add `ServiceLifecycle` to the dependencies of your application target:
 
 ```swift
 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle")
@@ -43,7 +42,7 @@ and to your application target, add `ServiceLifecycle` to your dependencies:
 Example `Package.swift` file with `ServiceLifecycle` as a dependency:
 
 ```swift
-// swift-tools-version:5.9
+// swift-tools-version:6.0
 import PackageDescription
 
 let package = Package(
