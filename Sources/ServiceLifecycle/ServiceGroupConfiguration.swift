@@ -169,19 +169,6 @@ public struct ServiceGroupConfiguration: Sendable {
     ///
     /// - Parameters:
     ///   - services: The groups's service configurations.
-    ///   - logger: The group's logger.
-    public init(
-        services: [ServiceConfiguration],
-        logger: Logger
-    ) {
-        self.services = services
-        self.logger = logger
-    }
-
-    /// Initializes a new ``ServiceGroupConfiguration``.
-    ///
-    /// - Parameters:
-    ///   - services: The groups's service configurations.
     ///   - gracefulShutdownSignals: The signals that lead to graceful shutdown.
     ///   - cancellationSignals: The signals that lead to cancellation.
     ///   - logger: The group's logger.
