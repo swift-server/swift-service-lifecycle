@@ -81,7 +81,6 @@ public func withGracefulShutdownHandler<T>(
 #else
 // We need to retain this method with `@_unsafeInheritExecutor` otherwise we will break older
 // Swift versions since the semantics changed.
-@available(*, deprecated, message: "Use the method with the isolation parameter instead.")
 @_disfavoredOverload
 @_unsafeInheritExecutor
 public func withGracefulShutdownHandler<T>(
