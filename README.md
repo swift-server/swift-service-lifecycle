@@ -66,7 +66,7 @@ the configured signals and trigger a graceful shutdown on each service.
 import ServiceLifecycle
 import Logging
 
-actor FooService: Service {
+final class FooService: Service {
     func run() async throws {
         print("FooService starting")
         try await Task.sleep(for: .seconds(10))
