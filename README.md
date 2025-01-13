@@ -66,7 +66,8 @@ the configured signals and trigger a graceful shutdown on each service.
 import ServiceLifecycle
 import Logging
 
-actor FooService: Service {
+// A service can be implemented by a struct, class or actor. For this example we are using a struct.
+struct FooService: Service {
     func run() async throws {
         print("FooService starting")
         try await Task.sleep(for: .seconds(10))
