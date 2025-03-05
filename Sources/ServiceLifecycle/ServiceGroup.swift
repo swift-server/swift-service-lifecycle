@@ -333,7 +333,7 @@ public actor ServiceGroup: Sendable, Service {
                 "We did not create a graceful shutdown manager per service"
             )
 
-            var taskGroupThatMustNotEscape = group
+            var _unownedTaskGroupHandledCarefully = group
             group.addTask {
                 // This is the task that listens to added services and starts them while the group is running
 
@@ -356,7 +356,7 @@ public actor ServiceGroup: Sendable, Service {
                             "Mismatch between services and graceful shutdown managers"
                         )
 
-                        taskGroupThatMustNotEscape.addServiceTask(
+                        _unownedTaskGroupHandledCarefully.addServiceTask(
                             serviceConfiguration,
                             gracefulShutdownManager: gracefulShutdownManager,
                             index: services.count - 1
