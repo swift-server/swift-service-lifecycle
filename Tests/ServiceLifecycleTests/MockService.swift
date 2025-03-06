@@ -1,3 +1,17 @@
+//===----------------------------------------------------------------------===//
+//
+// This source file is part of the SwiftServiceLifecycle open source project
+//
+// Copyright (c) 2023 Apple Inc. and the SwiftServiceLifecycle project authors
+// Licensed under Apache License v2.0
+//
+// See LICENSE.txt for license information
+// See CONTRIBUTORS.txt for the list of SwiftServiceLifecycle project authors
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
 import ServiceLifecycle
 
 actor MockService: Service, CustomStringConvertible {
@@ -9,7 +23,7 @@ actor MockService: Service, CustomStringConvertible {
     }
 
     let events: AsyncStream<Event>
-    internal private(set) var hasRun: Bool = false
+    private(set) var hasRun: Bool = false
 
     private let eventsContinuation: AsyncStream<Event>.Continuation
 
@@ -24,18 +38,18 @@ actor MockService: Service, CustomStringConvertible {
         description: String
     ) {
         var eventsContinuation: AsyncStream<Event>.Continuation!
-        self.events = AsyncStream<Event> { eventsContinuation = $0 }
+        events = AsyncStream<Event> { eventsContinuation = $0 }
         self.eventsContinuation = eventsContinuation!
 
         var pingContinuation: AsyncStream<Void>.Continuation!
-        self.pings = AsyncStream<Void> { pingContinuation = $0 }
+        pings = AsyncStream<Void> { pingContinuation = $0 }
         self.pingContinuation = pingContinuation!
 
         self.description = description
     }
 
     func run() async throws {
-        self.hasRun = true
+        hasRun = true
 
         try await withTaskCancellationHandler {
             try await withGracefulShutdownHandler {
@@ -62,10 +76,10 @@ actor MockService: Service, CustomStringConvertible {
     }
 
     func resumeRunContinuation(with result: Result<Void, Error>) {
-        self.runContinuation?.resume(with: result)
+        runContinuation?.resume(with: result)
     }
 
     nonisolated func sendPing() {
-        self.pingContinuation.yield()
+        pingContinuation.yield()
     }
 }
