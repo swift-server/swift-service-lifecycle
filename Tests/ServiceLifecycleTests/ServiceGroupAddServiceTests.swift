@@ -25,7 +25,7 @@ final class ServiceGroupAddServiceTests: XCTestCase {
     func testAddService_whenNotRunning() async {
         let mockService = MockService(description: "Service1")
         let serviceGroup = self.makeServiceGroup()
-        await serviceGroup.addService(mockService)
+        await serviceGroup.addServiceUnlessShutdown(mockService)
 
         await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
@@ -59,7 +59,7 @@ final class ServiceGroupAddServiceTests: XCTestCase {
             var eventIterator2 = mockService2.events.makeAsyncIterator()
             await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
 
-            await serviceGroup.addService(mockService2)
+            await serviceGroup.addServiceUnlessShutdown(mockService2)
             await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
 
             await mockService1.resumeRunContinuation(with: .success(()))
@@ -87,7 +87,7 @@ final class ServiceGroupAddServiceTests: XCTestCase {
             await serviceGroup.triggerGracefulShutdown()
             await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
 
-            await serviceGroup.addService(mockService2)
+            await serviceGroup.addServiceUnlessShutdown(mockService2)
 
             await mockService1.resumeRunContinuation(with: .success(()))
         }
@@ -113,7 +113,7 @@ final class ServiceGroupAddServiceTests: XCTestCase {
             group.cancelAll()
 
             await XCTAsyncAssertEqual(await eventIterator1.next(), .runCancelled)
-            await serviceGroup.addService(mockService2)
+            await serviceGroup.addServiceUnlessShutdown(mockService2)
 
             await mockService1.resumeRunContinuation(with: .success(()))
         }
@@ -129,7 +129,7 @@ final class ServiceGroupAddServiceTests: XCTestCase {
             gracefulShutdownSignals: [.sigalrm]
         )
 
-        await serviceGroup.addService(.init(service: service1, successTerminationBehavior: .ignore))
+        await serviceGroup.addServiceUnlessShutdown(.init(service: service1, successTerminationBehavior: .ignore))
 
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
@@ -140,7 +140,7 @@ final class ServiceGroupAddServiceTests: XCTestCase {
             var eventIterator2 = service2.events.makeAsyncIterator()
             await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
 
-            await serviceGroup.addService(.init(service: service2, failureTerminationBehavior: .ignore))
+            await serviceGroup.addServiceUnlessShutdown(.init(service: service2, failureTerminationBehavior: .ignore))
             await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
 
             await service1.resumeRunContinuation(with: .success(()))
@@ -172,10 +172,10 @@ final class ServiceGroupAddServiceTests: XCTestCase {
             var eventIterator1 = service1.events.makeAsyncIterator()
             await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
 
-            await serviceGroup.addService(
+            await serviceGroup.addServiceUnlessShutdown(
                 .init(service: service2, successTerminationBehavior: .gracefullyShutdownGroup)
             )
-            await serviceGroup.addService(.init(service: service3))
+            await serviceGroup.addServiceUnlessShutdown(.init(service: service3))
 
             var eventIterator2 = service2.events.makeAsyncIterator()
             await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
@@ -223,7 +223,7 @@ final class ServiceGroupAddServiceTests: XCTestCase {
             var service1EventIterator = service1.events.makeAsyncIterator()
             var service2EventIterator = service2.events.makeAsyncIterator()
             await XCTAsyncAssertEqual(await service1EventIterator.next(), .run)
-            await serviceGroup.addService(service2)
+            await serviceGroup.addServiceUnlessShutdown(service2)
 
             await XCTAsyncAssertEqual(await service2EventIterator.next(), .run)
 
@@ -256,8 +256,8 @@ final class ServiceGroupAddServiceTests: XCTestCase {
             var eventIterator1 = service1.events.makeAsyncIterator()
             await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
 
-            await serviceGroup.addService(service2)
-            await serviceGroup.addService(service3)
+            await serviceGroup.addServiceUnlessShutdown(service2)
+            await serviceGroup.addServiceUnlessShutdown(service3)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
             await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
@@ -324,8 +324,8 @@ final class ServiceGroupAddServiceTests: XCTestCase {
             var eventIterator1 = service1.events.makeAsyncIterator()
             await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
 
-            await serviceGroup.addService(service2)
-            await serviceGroup.addService(service3)
+            await serviceGroup.addServiceUnlessShutdown(service2)
+            await serviceGroup.addServiceUnlessShutdown(service3)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
             await XCTAsyncAssertEqual(await eventIterator2.next(), .run)

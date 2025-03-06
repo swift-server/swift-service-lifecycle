@@ -108,13 +108,13 @@ public actor ServiceGroup: Sendable, Service {
         self.maximumCancellationDuration = configuration._maximumCancellationDuration
     }
 
-    /// Adds a service to the group.
+    /// Adds a new service to the group.
     ///
     /// If the group is currently running, the added service will be started immediately.
     /// If the group is gracefully shutting down, cancelling, or already finished, the added service will not be started.
     /// - Parameters:
     ///   - serviceConfiguration: The service configuration to add.
-    public func addService(_ serviceConfiguration: ServiceGroupConfiguration.ServiceConfiguration) async {
+    public func addServiceUnlessShutdown(_ serviceConfiguration: ServiceGroupConfiguration.ServiceConfiguration) async {
         switch self.state {
         case var .initial(services: services):
             self.state = .initial(services: [])
@@ -125,18 +125,19 @@ public actor ServiceGroup: Sendable, Service {
             await addedServiceChannel.send(serviceConfiguration)
 
         case .finished:
+            // Since this is a best effort operation we don't have to do anything here
             return
         }
     }
 
-    /// Adds a service to the group.
+    /// Adds a new service to the group.
     ///
     /// If the group is currently running, the added service will be started immediately.
     /// If the group is gracefully shutting down, cancelling, or already finished, the added service will not be started.
     /// - Parameters:
     ///   - service: The service to add.
-    public func addService(_ service: any Service) async {
-        await self.addService(ServiceGroupConfiguration.ServiceConfiguration(service: service))
+    public func addServiceUnlessShutdown(_ service: any Service) async {
+        await self.addServiceUnlessShutdown(ServiceGroupConfiguration.ServiceConfiguration(service: service))
     }
 
     /// Runs all the services by spinning up a child task per service.
@@ -225,7 +226,7 @@ public actor ServiceGroup: Sendable, Service {
         }
     }
 
-    fileprivate enum ChildTaskResult {
+    private enum ChildTaskResult {
         case serviceFinished(service: ServiceGroupConfiguration.ServiceConfiguration, index: Int)
         case serviceThrew(service: ServiceGroupConfiguration.ServiceConfiguration, index: Int, error: any Error)
         case signalCaught(UnixSignal)
@@ -318,8 +319,9 @@ public actor ServiceGroup: Sendable, Service {
                 let gracefulShutdownManager = GracefulShutdownManager()
                 gracefulShutdownManagers.append(gracefulShutdownManager)
 
-                group.addServiceTask(
-                    serviceConfiguration,
+                self.addServiceTask(
+                    group: &group,
+                    service: serviceConfiguration,
                     gracefulShutdownManager: gracefulShutdownManager,
                     index: index
                 )
@@ -342,14 +344,14 @@ public actor ServiceGroup: Sendable, Service {
             }
 
             // Adds a task that listens to added services and funnels them into the task group
-            group.addAddedServiceListenerTask(addedServiceChannel)
+            self.addAddedServiceListenerTask(group: &group, channel: addedServiceChannel)
 
             // We are going to wait for any of the services to finish or
             // the signal sequence to throw an error.
             while !group.isEmpty {
-                let nextEvent = try await group.next()
+                let result: ChildTaskResult? = try await group.next()
 
-                switch nextEvent {
+                switch result {
                 case .newServiceAdded(let serviceConfiguration):
                     self.logger.debug(
                         "Starting added service",
@@ -367,14 +369,18 @@ public actor ServiceGroup: Sendable, Service {
                         "Mismatch between services and graceful shutdown managers"
                     )
 
-                    group.addServiceTask(
-                        serviceConfiguration,
+                    self.addServiceTask(
+                        group: &group,
+                        service: serviceConfiguration,
                         gracefulShutdownManager: gracefulShutdownManager,
                         index: services.count - 1
                     )
 
                     // Each listener task can only handle a single added service, so we must add a new listener
-                    group.addAddedServiceListenerTask(addedServiceChannel)
+                    self.addAddedServiceListenerTask(
+                        group: &group,
+                        channel: addedServiceChannel
+                    )
 
                 case .serviceFinished(let service, let index):
                     if group.isCancelled {
@@ -782,8 +788,7 @@ public actor ServiceGroup: Sendable, Service {
                     break
 
                 case .newServiceAdded:
-                    // TBD: How do we treat added services during graceful shutdown?
-                    // Currently, we ignore them - but we make sure that `run` is never called
+                    // Since adding services is best effort, we simply ignore this
                     break
                 }
             }
@@ -845,17 +850,16 @@ public actor ServiceGroup: Sendable, Service {
             cancellationTimeoutTask = nil
         }
     }
-}
 
-extension ThrowingTaskGroup where Failure == Error, ChildTaskResult == ServiceGroup.ChildTaskResult {
-    mutating func addServiceTask(
-        _ serviceConfiguration: ServiceGroupConfiguration.ServiceConfiguration,
+    private func addServiceTask(
+        group: inout ThrowingTaskGroup<ChildTaskResult, Error>,
+        service serviceConfiguration: ServiceGroupConfiguration.ServiceConfiguration,
         gracefulShutdownManager: GracefulShutdownManager,
         index: Int
     ) {
         // This must be addTask and not addTaskUnlessCancelled
         // because we must run all the services for the shutdown logic to work.
-        self.addTask {
+        group.addTask {
             return await TaskLocals.$gracefulShutdownManager.withValue(gracefulShutdownManager) {
                 do {
                     try await serviceConfiguration.service.run()
@@ -867,8 +871,11 @@ extension ThrowingTaskGroup where Failure == Error, ChildTaskResult == ServiceGr
         }
     }
 
-    mutating func addAddedServiceListenerTask(_ channel: AsyncChannel<ServiceGroupConfiguration.ServiceConfiguration>) {
-        self.addTask {
+    private func addAddedServiceListenerTask(
+        group: inout ThrowingTaskGroup<ChildTaskResult, Error>,
+        channel: AsyncChannel<ServiceGroupConfiguration.ServiceConfiguration>
+    ) {
+        group.addTask {
             return await withTaskCancellationHandler {
                 var iterator = channel.makeAsyncIterator()
                 if let addedService = await iterator.next() {
