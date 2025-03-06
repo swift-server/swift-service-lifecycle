@@ -884,7 +884,8 @@ public actor ServiceGroup: Sendable, Service {
 
                 return .gracefulShutdownFinished
             } onCancel: {
-                // Without this we can get stuck in `addService` if the group
+                // Once the group is cancelled we will no longer read from the channel.
+                // This will resume any suspended producer in `addServiceUnlessShutdown`.
                 channel.finish()
             }
         }
