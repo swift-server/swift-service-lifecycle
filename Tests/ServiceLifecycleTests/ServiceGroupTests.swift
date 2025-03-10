@@ -1476,6 +1476,85 @@ final class ServiceGroupTests: XCTestCase {
         }
     }
 
+    func testPreambleService() async throws {
+        struct TestService: Service {
+            let continuation: AsyncStream<Int>.Continuation
+
+            init(continuation: AsyncStream<Int>.Continuation) {
+                self.continuation = continuation
+            }
+
+            func run() async throws {
+                continuation.yield(1)
+            }
+        }
+        let (stream, continuation) = AsyncStream.makeStream(of: Int.self)
+        let preambleService = PreambleService(service: TestService(continuation: continuation)) {
+            continuation.yield(0)
+        }
+        var logger = Logger(label: "Tests")
+        logger.logLevel = .debug
+
+        let serviceGroup = ServiceGroup(
+            services: [preambleService],
+            logger: logger
+        )
+
+        await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            var eventIterator = stream.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator.next(), 0)
+            await XCTAsyncAssertEqual(await eventIterator.next(), 1)
+
+            group.cancelAll()
+        }
+    }
+
+    func testPreambleServices() async throws {
+        struct TestService: Service {
+            let continuation: AsyncStream<Int>.Continuation
+
+            init(continuation: AsyncStream<Int>.Continuation) {
+                self.continuation = continuation
+            }
+
+            func run() async throws {
+                continuation.yield(1)
+            }
+        }
+        let (stream, continuation) = AsyncStream.makeStream(of: Int.self)
+        var logger = Logger(label: "Tests")
+        logger.logLevel = .debug
+        let preambleService = PreambleService(
+            services: [
+                TestService(continuation: continuation),
+                TestService(continuation: continuation),
+            ],
+            logger: logger
+        ) { continuation.yield(0) }
+
+        let serviceGroup = ServiceGroup(
+            services: [preambleService],
+            logger: logger
+        )
+
+        await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            var eventIterator = stream.makeAsyncIterator()
+            await XCTAsyncAssertEqual(await eventIterator.next(), 0)
+            await XCTAsyncAssertEqual(await eventIterator.next(), 1)
+            await XCTAsyncAssertEqual(await eventIterator.next(), 1)
+
+            group.cancelAll()
+        }
+    }
+
     // MARK: - Helpers
 
     private func makeServiceGroup(
