@@ -33,6 +33,7 @@ import ConcurrencyHelpers
 ///
 /// - Important: There can only be a single signal handler for a signal installed. So you should avoid creating multiple handlers
 /// for the same signal.
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public struct UnixSignalsSequence: AsyncSequence, Sendable {
     private static let queue = DispatchQueue(label: "com.service-lifecycle.unix-signals")
 
@@ -74,6 +75,7 @@ public struct UnixSignalsSequence: AsyncSequence, Sendable {
     }
 }
 
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 extension UnixSignalsSequence {
     fileprivate final class Storage: @unchecked Sendable {
         private let stateMachine: LockedValueBox<StateMachine>
@@ -169,6 +171,7 @@ extension UnixSignalsSequence {
     }
 }
 
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 extension UnixSignalsSequence {
     fileprivate struct StateMachine {
         private enum State {

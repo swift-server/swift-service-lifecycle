@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 /// This is the basic protocol that a service has to implement.
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public protocol Service: Sendable {
     /// This method is called when the ``ServiceGroup`` is starting all the services.
     ///

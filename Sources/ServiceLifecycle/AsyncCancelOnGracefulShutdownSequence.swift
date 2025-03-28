@@ -14,6 +14,7 @@
 
 import AsyncAlgorithms
 
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 extension AsyncSequence where Self: Sendable, Element: Sendable {
     /// Creates an asynchronous sequence that is cancelled once graceful shutdown has triggered.
     ///
@@ -24,6 +25,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
 }
 
 /// An asynchronous sequence that is cancelled once graceful shutdown has triggered.
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public struct AsyncCancelOnGracefulShutdownSequence<Base: AsyncSequence & Sendable>: AsyncSequence, Sendable
 where Base.Element: Sendable {
     @usableFromInline
@@ -101,6 +103,7 @@ where Base.Element: Sendable {
 /// This is just a helper extension and sequence to allow us to get the `nil` value as an element of the sequence.
 /// We need this since merge is only finishing when both upstreams are finished but we need to finish when either is done.
 /// In the future, we should move to something in async algorithms if it exists.
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 extension AsyncSequence where Self: Sendable, Element: Sendable {
     @inlinable
     func mapNil() -> AsyncMapNilSequence<Self> {
@@ -109,6 +112,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
 }
 
 @usableFromInline
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 struct AsyncMapNilSequence<Base: AsyncSequence & Sendable>: AsyncSequence, Sendable where Base.Element: Sendable {
     @usableFromInline
     enum ElementOrEnd: Sendable {
