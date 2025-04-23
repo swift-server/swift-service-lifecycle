@@ -37,6 +37,7 @@ import ConcurrencyHelpers
 ///   - handler: The handler which is invoked once graceful shutdown has been triggered.
 // Unsafely inheriting the executor is safe to do here since we are not calling any other async method
 // except the operation. This makes sure no other executor hops would occur here.
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public func withGracefulShutdownHandler<T>(
     isolation: isolated (any Actor)? = #isolation,
     operation: () async throws -> T,
@@ -58,6 +59,7 @@ public func withGracefulShutdownHandler<T>(
 }
 
 @available(*, deprecated, message: "Use the method with the isolation parameter instead.")
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 @_disfavoredOverload
 public func withGracefulShutdownHandler<T>(
     operation: () async throws -> T,
@@ -83,6 +85,7 @@ public func withGracefulShutdownHandler<T>(
 // Swift versions since the semantics changed.
 @_disfavoredOverload
 @_unsafeInheritExecutor
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public func withGracefulShutdownHandler<T>(
     operation: () async throws -> T,
     onGracefulShutdown handler: @Sendable @escaping () -> Void
@@ -127,6 +130,7 @@ public func withGracefulShutdownHandler<T>(
 ///   - handler: The handler which is invoked once graceful shutdown or task cancellation has been triggered.
 // Unsafely inheriting the executor is safe to do here since we are not calling any other async method
 // except the operation. This makes sure no other executor hops would occur here.
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public func withTaskCancellationOrGracefulShutdownHandler<T>(
     isolation: isolated (any Actor)? = #isolation,
     operation: () async throws -> T,
@@ -139,6 +143,7 @@ public func withTaskCancellationOrGracefulShutdownHandler<T>(
     }
 }
 @available(*, deprecated, message: "Use the method with the isolation parameter instead.")
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 @_disfavoredOverload
 public func withTaskCancellationOrGracefulShutdownHandler<T>(
     operation: () async throws -> T,
@@ -152,6 +157,7 @@ public func withTaskCancellationOrGracefulShutdownHandler<T>(
 }
 #else
 @available(*, deprecated, message: "Use the method with the isolation parameter instead.")
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 @_disfavoredOverload
 @_unsafeInheritExecutor
 public func withTaskCancellationOrGracefulShutdownHandler<T>(
@@ -172,6 +178,7 @@ public func withTaskCancellationOrGracefulShutdownHandler<T>(
 /// graceful shutdown is triggered then this method will throw a `CancellationError`.
 ///
 /// - Throws: `CancellationError` if the task is cancelled.
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public func gracefulShutdown() async throws {
     switch await AsyncGracefulShutdownSequence().first(where: { _ in true }) {
     case .cancelled:
@@ -193,6 +200,7 @@ enum ValueOrGracefulShutdown<T: Sendable>: Sendable {
 /// Cancels the closure when a graceful shutdown was triggered.
 ///
 /// - Parameter operation: The actual operation.
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public func cancelWhenGracefulShutdown<T: Sendable>(
     _ operation: @Sendable @escaping () async throws -> T
 ) async rethrows -> T {
@@ -243,12 +251,14 @@ public func cancelWhenGracefulShutdown<T: Sendable>(
 // renamed pattern has been shown to cause compiler crashes in 5.x compilers.
 @available(*, deprecated, message: "renamed to cancelWhenGracefulShutdown")
 #endif
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public func cancelOnGracefulShutdown<T: Sendable>(
     _ operation: @Sendable @escaping () async throws -> T
 ) async rethrows -> T? {
     return try await cancelWhenGracefulShutdown(operation)
 }
 
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 extension Task where Success == Never, Failure == Never {
     /// A Boolean value that indicates whether the task is gracefully shutting down
     ///
@@ -263,6 +273,7 @@ extension Task where Success == Never, Failure == Never {
 }
 
 @_spi(TestKit)
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public enum TaskLocals {
     @TaskLocal
     @_spi(TestKit)
@@ -270,6 +281,7 @@ public enum TaskLocals {
 }
 
 @_spi(TestKit)
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public final class GracefulShutdownManager: @unchecked Sendable {
     struct Handler {
         /// The id of the handler.

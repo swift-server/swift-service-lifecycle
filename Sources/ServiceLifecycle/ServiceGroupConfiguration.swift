@@ -18,6 +18,7 @@ import UnixSignals
 let deprecatedLoggerLabel = "service-lifecycle-deprecated-method-logger"
 
 /// The configuration for the ``ServiceGroup``.
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public struct ServiceGroupConfiguration: Sendable {
     /// The group's logging configuration.
     public struct LoggingConfiguration: Sendable {

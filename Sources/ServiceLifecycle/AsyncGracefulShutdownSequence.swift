@@ -18,6 +18,7 @@
 ///
 /// - Note: This sequence respects cancellation and thus is `throwing`.
 @usableFromInline
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 struct AsyncGracefulShutdownSequence: AsyncSequence, Sendable {
     @usableFromInline
     typealias Element = CancellationWaiter.Reason

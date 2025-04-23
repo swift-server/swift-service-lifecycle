@@ -18,6 +18,7 @@
 ///
 /// It is passed to the `operation` closure of the ``testGracefulShutdown(operation:)`` method and allows
 /// to trigger the graceful shutdown for testing purposes.
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public struct GracefulShutdownTestTrigger: Sendable {
     private let gracefulShutdownManager: GracefulShutdownManager
 
@@ -35,6 +36,7 @@ public struct GracefulShutdownTestTrigger: Sendable {
 ///
 /// Call the code that you want to test inside the `operation` closure and trigger the graceful shutdown by calling ``GracefulShutdownTestTrigger/triggerGracefulShutdown()``
 /// on the ``GracefulShutdownTestTrigger`` that is passed to the `operation` closure.
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public func testGracefulShutdown<T>(operation: (GracefulShutdownTestTrigger) async throws -> T) async rethrows -> T {
     let gracefulShutdownManager = GracefulShutdownManager()
     return try await TaskLocals.$gracefulShutdownManager.withValue(gracefulShutdownManager) {

@@ -16,6 +16,7 @@ import ServiceLifecycle
 import ServiceLifecycleTestKit
 import XCTest
 
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 final class GracefulShutdownTests: XCTestCase {
     func testWithGracefulShutdownHandler() async {
         var cont: AsyncStream<Void>.Continuation!
@@ -255,6 +256,7 @@ final class GracefulShutdownTests: XCTestCase {
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     func testWaitForGracefulShutdown() async throws {
         try await testGracefulShutdown { gracefulShutdownTestTrigger in
             try await withThrowingTaskGroup(of: Void.self) { group in
@@ -274,6 +276,7 @@ final class GracefulShutdownTests: XCTestCase {
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     func testWaitForGracefulShutdown_WhenAlreadyShutdown() async throws {
         try await testGracefulShutdown { gracefulShutdownTestTrigger in
             gracefulShutdownTestTrigger.triggerGracefulShutdown()
@@ -355,6 +358,7 @@ final class GracefulShutdownTests: XCTestCase {
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     func testCancelWhenGracefulShutdownSurvivesCancellation() async throws {
         await withTaskGroup(of: Void.self) { group in
             group.addTask {
@@ -375,6 +379,7 @@ final class GracefulShutdownTests: XCTestCase {
         }
     }
 
+    @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
     func testCancelWhenGracefulShutdownSurvivesErrorThrown() async throws {
         struct MyError: Error, Equatable {}
 

@@ -17,6 +17,7 @@ import UnixSignals
 import AsyncAlgorithms
 
 /// A ``ServiceGroup`` is responsible for running a number of services, setting up signal handling and signalling graceful shutdown to the services.
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public actor ServiceGroup: Sendable, Service {
     /// The internal state of the ``ServiceGroup``.
     private enum State {
@@ -893,6 +894,7 @@ public actor ServiceGroup: Sendable, Service {
 }
 
 // This should be removed once we support Swift 5.9+
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 extension AsyncStream {
     fileprivate static func makeStream(
         of elementType: Element.Type = Element.self,
