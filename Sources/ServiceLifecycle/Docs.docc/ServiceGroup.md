@@ -11,7 +11,7 @@
 ### Adding to a service group
 
 - ``addServiceUnlessShutdown(_:)-r47h``
-- ``addServiceUnlessShutdown(_:)-(Service)``
+- ``addServiceUnlessShutdown(_:)-9jpoj``
 
 ### Running a service group
 
