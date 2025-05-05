@@ -76,12 +76,17 @@ let package = Package(
 
 - ``ServiceGroup``
 - ``ServiceGroupConfiguration``
+- ``ServiceGroupError``
 
 ### Graceful Shutdown
 
-- ``withGracefulShutdownHandler(operation:onGracefulShutdown:)``
+- ``gracefulShutdown()``
+- ``cancelWhenGracefulShutdown(_:)``
+- ``withTaskCancellationOrGracefulShutdownHandler(isolation:operation:onCancelOrGracefulShutdown:)``
+- ``withGracefulShutdownHandler(isolation:operation:onGracefulShutdown:)``
+- ``AsyncCancelOnGracefulShutdownSequence``
+
 - ``cancelOnGracefulShutdown(_:)``
-
-### Errors
-
-- ``ServiceGroupError``
+- ``withGracefulShutdownHandler(operation:onGracefulShutdown:)``
+- ``withGracefulShutdownHandler(operation:onGracefulShutdown:)-1x21p``
+- ``withTaskCancellationOrGracefulShutdownHandler(operation:onCancelOrGracefulShutdown:)-81m01``

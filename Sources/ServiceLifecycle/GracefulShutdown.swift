@@ -58,6 +58,9 @@ public func withGracefulShutdownHandler<T>(
     return try await operation()
 }
 
+/// Execute an operation with a graceful shutdown handler that’s immediately invoked if the current task is shutting down gracefully.
+///
+/// Use ``withGracefulShutdownHandler(isolation:operation:onGracefulShutdown:)`` instead.
 @available(*, deprecated, message: "Use the method with the isolation parameter instead.")
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 @_disfavoredOverload
@@ -142,6 +145,11 @@ public func withTaskCancellationOrGracefulShutdownHandler<T>(
         handler()
     }
 }
+
+/// Execute an operation with a graceful shutdown or task cancellation handler that’s immediately invoked if the current task is
+/// shutting down gracefully or has been cancelled.
+///
+/// Use ``withTaskCancellationOrGracefulShutdownHandler(isolation:operation:onCancelOrGracefulShutdown:)`` instead.
 @available(*, deprecated, message: "Use the method with the isolation parameter instead.")
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 @_disfavoredOverload
@@ -156,6 +164,10 @@ public func withTaskCancellationOrGracefulShutdownHandler<T>(
     }
 }
 #else
+/// Execute an operation with a graceful shutdown or task cancellation handler that’s immediately invoked if the current task is
+/// shutting down gracefully or has been cancelled.
+///
+/// Use ``withTaskCancellationOrGracefulShutdownHandler(isolation:operation:onCancelOrGracefulShutdown:)`` instead.
 @available(*, deprecated, message: "Use the method with the isolation parameter instead.")
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 @_disfavoredOverload
@@ -244,6 +256,7 @@ public func cancelWhenGracefulShutdown<T: Sendable>(
 
 /// Cancels the closure when a graceful shutdown was triggered.
 ///
+/// Use ``cancelWhenGracefulShutdown(_:)`` instead.
 /// - Parameter operation: The actual operation.
 #if compiler(>=6.0)
 @available(*, deprecated, renamed: "cancelWhenGracefulShutdown")

@@ -47,7 +47,7 @@ public actor ServiceGroup: Sendable, Service {
     /// The current state of the group.
     private var state: State
 
-    /// Initializes a new ``ServiceGroup``.
+    /// Initializes a service group.
     ///
     /// - Parameters:
     ///   - configuration: The group's configuration
@@ -68,7 +68,7 @@ public actor ServiceGroup: Sendable, Service {
         self.maximumCancellationDuration = configuration._maximumCancellationDuration
     }
 
-    /// Initializes a new ``ServiceGroup``.
+    /// Initializes a service group.
     ///
     /// - Parameters:
     ///   - services: The groups's service configurations.
@@ -91,6 +91,9 @@ public actor ServiceGroup: Sendable, Service {
         self.init(configuration: configuration)
     }
 
+    /// Initializes a service group.
+    ///
+    /// Use ``init(services:gracefulShutdownSignals:cancellationSignals:logger:)`` instead.
     @available(*, deprecated, renamed: "init(services:gracefulShutdownSignals:cancellationSignals:logger:)")
     public init(
         services: [any Service],
