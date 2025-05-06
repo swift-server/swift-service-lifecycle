@@ -16,7 +16,7 @@ import Logging
 import UnixSignals
 import AsyncAlgorithms
 
-/// A ``ServiceGroup`` is responsible for running a number of services, setting up signal handling and signalling graceful shutdown to the services.
+/// A service group is responsible for running a number of services, setting up signal handling and signalling graceful shutdown to the services.
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public actor ServiceGroup: Sendable, Service {
     /// The internal state of the ``ServiceGroup``.
@@ -47,7 +47,7 @@ public actor ServiceGroup: Sendable, Service {
     /// The current state of the group.
     private var state: State
 
-    /// Initializes a new ``ServiceGroup``.
+    /// Creates a service group.
     ///
     /// - Parameters:
     ///   - configuration: The group's configuration
@@ -68,7 +68,7 @@ public actor ServiceGroup: Sendable, Service {
         self.maximumCancellationDuration = configuration._maximumCancellationDuration
     }
 
-    /// Initializes a new ``ServiceGroup``.
+    /// Creates a service group.
     ///
     /// - Parameters:
     ///   - services: The groups's service configurations.
@@ -91,6 +91,9 @@ public actor ServiceGroup: Sendable, Service {
         self.init(configuration: configuration)
     }
 
+    /// Creates a service group.
+    ///
+    /// Use ``init(services:gracefulShutdownSignals:cancellationSignals:logger:)`` instead.
     @available(*, deprecated, renamed: "init(services:gracefulShutdownSignals:cancellationSignals:logger:)")
     public init(
         services: [any Service],
@@ -109,7 +112,7 @@ public actor ServiceGroup: Sendable, Service {
         self.maximumCancellationDuration = configuration._maximumCancellationDuration
     }
 
-    /// Adds a new service to the group.
+    /// Adds a service to the group.
     ///
     /// If the group is currently running, the added service will be started immediately.
     /// If the group is gracefully shutting down, cancelling, or already finished, the added service will not be started.
@@ -131,7 +134,7 @@ public actor ServiceGroup: Sendable, Service {
         }
     }
 
-    /// Adds a new service to the group.
+    /// Adds a service to the group.
     ///
     /// If the group is currently running, the added service will be started immediately.
     /// If the group is gracefully shutting down, cancelling, or already finished, the added service will not be started.
@@ -152,8 +155,8 @@ public actor ServiceGroup: Sendable, Service {
     }
 
     /// Runs all the services by spinning up a child task per service.
-    /// Furthermore, this method sets up the correct signal handlers
-    /// for graceful shutdown.
+    ///
+    /// Furthermore, this method sets up the correct signal handlers for graceful shutdown.
     public func run(file: String = #file, line: Int = #line) async throws {
         switch self.state {
         case .initial(var services):

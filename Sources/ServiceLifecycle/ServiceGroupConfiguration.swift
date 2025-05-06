@@ -17,11 +17,12 @@ import UnixSignals
 
 let deprecatedLoggerLabel = "service-lifecycle-deprecated-method-logger"
 
-/// The configuration for the ``ServiceGroup``.
+/// The configuration for the service group.
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public struct ServiceGroupConfiguration: Sendable {
     /// The group's logging configuration.
     public struct LoggingConfiguration: Sendable {
+        /// The keys to use for logging
         public struct Keys: Sendable {
             /// The logging key used for logging the unix signal.
             public var signalKey = "sl-signal"
@@ -36,19 +37,23 @@ public struct ServiceGroupConfiguration: Sendable {
             /// The logging key used for logging an error.
             public var errorKey = "sl-error"
 
-            /// Initializes a new ``ServiceGroupConfiguration/LoggingConfiguration/Keys``.
+            /// Creates a new set of keys.
             public init() {}
         }
 
         /// The keys used for logging.
         public var keys = Keys()
 
-        /// Initializes a new ``ServiceGroupConfiguration/LoggingConfiguration``.
+        /// Creates a new logging configuration.
         public init() {}
     }
 
+    /// A service configuration.
     public struct ServiceConfiguration: Sendable {
-        /// The behavior to follow when the service finishes its ``Service/run()`` method via returning or throwing.
+
+        /// The behavior to follow when the service finishes running.
+        ///
+        /// This describes what the service lifecycle code does when a service's run method returns or throws.
         public struct TerminationBehavior: Sendable, CustomStringConvertible {
             internal enum _TerminationBehavior {
                 case cancelGroup
@@ -58,10 +63,14 @@ public struct ServiceGroupConfiguration: Sendable {
 
             internal let behavior: _TerminationBehavior
 
+            /// Cancel the service group.
             public static let cancelGroup = Self(behavior: .cancelGroup)
+            /// Gracefully shut down the service group.
             public static let gracefullyShutdownGroup = Self(behavior: .gracefullyShutdownGroup)
+            /// Ignore the completion of the service.
             public static let ignore = Self(behavior: .ignore)
 
+            /// A string representation of the behavior when a service finishes running.
             public var description: String {
                 switch self.behavior {
                 case .cancelGroup:
@@ -76,17 +85,17 @@ public struct ServiceGroupConfiguration: Sendable {
 
         /// The service to which the initialized configuration applies.
         public var service: any Service
-        /// The behavior when the service returns from its ``Service/run()`` method.
+        /// The behavior when the service returns from its run method.
         public var successTerminationBehavior: TerminationBehavior
-        /// The behavior when the service throws from its ``Service/run()`` method.
+        /// The behavior when the service throws from its run method.
         public var failureTerminationBehavior: TerminationBehavior
 
-        /// Initializes a new ``ServiceGroupConfiguration/ServiceConfiguration``.
+        /// Initializes a new service configuration.
         ///
         /// - Parameters:
         ///   - service: The service to which the initialized configuration applies.
-        ///   - successTerminationBehavior: The behavior when the service returns from its ``Service/run()`` method.
-        ///   - failureTerminationBehavior: The behavior when the service throws from its ``Service/run()`` method.
+        ///   - successTerminationBehavior: The behavior when the service returns from its run method.
+        ///   - failureTerminationBehavior: The behavior when the service throws from its run method.
         public init(
             service: any Service,
             successTerminationBehavior: TerminationBehavior = .cancelGroup,
@@ -166,7 +175,7 @@ public struct ServiceGroupConfiguration: Sendable {
 
     internal var _maximumCancellationDuration: (secondsComponent: Int64, attosecondsComponent: Int64)?
 
-    /// Initializes a new ``ServiceGroupConfiguration``.
+    /// Creates a new service group configuration from the service configurations you provide.
     ///
     /// - Parameters:
     ///   - services: The groups's service configurations.
@@ -179,7 +188,7 @@ public struct ServiceGroupConfiguration: Sendable {
         self.logger = logger
     }
 
-    /// Initializes a new ``ServiceGroupConfiguration``.
+    /// Creates a new service group configuration from service configurations you provide with cancellation and shutdown signals.
     ///
     /// - Parameters:
     ///   - services: The groups's service configurations.
@@ -198,7 +207,7 @@ public struct ServiceGroupConfiguration: Sendable {
         self.cancellationSignals = cancellationSignals
     }
 
-    /// Initializes a new ``ServiceGroupConfiguration``.
+    /// Creates a new service group configuration from services you provide.
     ///
     /// - Parameters:
     ///   - services: The groups's services.
@@ -211,7 +220,7 @@ public struct ServiceGroupConfiguration: Sendable {
         self.logger = logger
     }
 
-    /// Initializes a new ``ServiceGroupConfiguration``.
+    /// Creates a new service group configuration from services you provide with cancellation and shutdown signals..
     ///
     /// - Parameters:
     ///   - services: The groups's services.
@@ -230,6 +239,7 @@ public struct ServiceGroupConfiguration: Sendable {
         self.cancellationSignals = cancellationSignals
     }
 
+    /// Initializes a new service group configuration.
     @available(*, deprecated)
     public init(gracefulShutdownSignals: [UnixSignal]) {
         self.services = []
