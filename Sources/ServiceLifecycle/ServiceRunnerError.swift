@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// Errors thrown by the ``ServiceGroup``.
+/// Errors thrown by a service group.
 public struct ServiceGroupError: Error, Hashable, Sendable {
-    /// A struct representing the possible error codes.
+    /// A struct that represents the possible error codes.
     public struct Code: Hashable, Sendable, CustomStringConvertible {
         private enum _Code: Hashable, Sendable {
             case alreadyRunning
@@ -73,7 +73,7 @@ public struct ServiceGroupError: Error, Hashable, Sendable {
 
     /// The error code.
     ///
-    /// - Note: This is the only thing used for the `Equatable` and `Hashable` comparison.
+    /// - Note: This is the only thing used for the `Equatable` and `Hashable` comparisons for instances of `ServiceGroupError`.
     public var errorCode: Code {
         self.backing.errorCode
     }
@@ -117,6 +117,7 @@ public struct ServiceGroupError: Error, Hashable, Sendable {
 }
 
 extension ServiceGroupError: CustomStringConvertible {
+    /// A string representation of the service group error.
     public var description: String {
         "ServiceGroupError: errorCode: \(self.backing.errorCode), file: \(self.backing.file), line: \(self.backing.line)"
     }

@@ -23,7 +23,8 @@ should use the ``ServiceGroup`` to orchestrate all their services.
 
 ## Getting started
 
-If you have a server-side Swift application or a cross-platform (e.g. Linux, macOS) application, and you would like to manage its startup and shutdown lifecycle, you should use Swift Service Lifecycle. Below, you will find information to get started.
+If you have a server-side Swift application or a cross-platform (such as Linux and macOS) application, and would like to manage its startup and shutdown lifecycle, use Swift Service Lifecycle.
+Below, you will find information to get started.
 
 ### Adding the dependency
 
@@ -39,7 +40,7 @@ and add `ServiceLifecycle` to the dependencies of your application target:
 .product(name: "ServiceLifecycle", package: "swift-service-lifecycle")
 ```
 
-Example `Package.swift` file with `ServiceLifecycle` as a dependency:
+The following example `Package.swift` illustrates a package with `ServiceLifecycle` as a dependency:
 
 ```swift
 // swift-tools-version:6.0

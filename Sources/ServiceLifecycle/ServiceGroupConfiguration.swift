@@ -18,6 +18,8 @@ import UnixSignals
 let deprecatedLoggerLabel = "service-lifecycle-deprecated-method-logger"
 
 /// The configuration for the service group.
+///
+/// A service group configuration combines a set of cancellation and graceful shutdown signals with optional durations for which it expects your services to clean up and terminate.
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public struct ServiceGroupConfiguration: Sendable {
     /// The group's logging configuration.
@@ -239,7 +241,9 @@ public struct ServiceGroupConfiguration: Sendable {
         self.cancellationSignals = cancellationSignals
     }
 
-    /// Initializes a new service group configuration.
+    /// Creates a new service group configuration.
+    ///
+    /// Use ``init(services:gracefulShutdownSignals:cancellationSignals:logger:)-([Service],_,_,_)`` instead.
     @available(*, deprecated)
     public init(gracefulShutdownSignals: [UnixSignal]) {
         self.services = []

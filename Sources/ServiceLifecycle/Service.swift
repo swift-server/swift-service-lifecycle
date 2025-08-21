@@ -12,7 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// This is the basic protocol that a service has to implement.
+/// A type that represents a long-running task.
+///
+/// This is the basic protocol that a service implements.
+/// ``ServiceGroup`` calls ``Service/run()`` when it starts a service.
+/// The asynchronous `run` method is expected to stay running until the process is terminated.
+/// When implementing a service, return or throw an error from `run` to indicate the service should stop.
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public protocol Service: Sendable {
     /// This method is called when the ``ServiceGroup`` is starting all the services.
@@ -21,7 +26,7 @@ public protocol Service: Sendable {
     /// - Handling incoming connections and requests
     /// - Background refreshes
     ///
-    /// - Important: Returning or throwing from this method indicates the service should stop and will cause the
+    /// - Important: Returning or throwing from this method indicates the service should stop and causes the
     /// ``ServiceGroup`` to follow behaviors for the child tasks of all other running services specified in
     /// ``ServiceGroupConfiguration/ServiceConfiguration/successTerminationBehavior`` and
     /// ``ServiceGroupConfiguration/ServiceConfiguration/failureTerminationBehavior``.

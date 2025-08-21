@@ -1,7 +1,7 @@
 # How to adopt ServiceLifecycle in applications
 
-``ServiceLifecycle`` provides a unified API for services to streamline their
-orchestration in applications: the ``ServiceGroup`` actor.
+Service Lifecycle provides a unified API for services to streamline their
+orchestration in applications: the ServiceGroup actor.
 
 ## Why do we need this?
 
@@ -35,7 +35,7 @@ draining traffic from the old version (commonly referred to as quiescing).
 
 ### How to use ServiceGroup?
 
-Let's take a look how ``ServiceGroup`` can be used in an application. First, we
+Let's take a look at how ``ServiceGroup`` can be used in an application. First, we
 define some fictional services.
 
 ```swift
@@ -87,13 +87,13 @@ struct Application {
 
 Graceful shutdown is a concept introduced in ServiceLifecycle, with the aim to
 be a less forceful alternative to task cancellation. Graceful shutdown allows
-each services to opt-in support. For example, you might want to use graceful
+each service to opt-in support. For example, you might want to use graceful
 shutdown in containerized environments such as Docker or Kubernetes. In those
 environments, `SIGTERM` is commonly used to indicate that the application should
 shutdown. If it does not, then a `SIGKILL` is sent to force a non-graceful
 shutdown.
 
-The ``ServiceGroup`` can be setup to listen to `SIGTERM` and trigger a graceful
+The ``ServiceGroup`` can be set up to listen to `SIGTERM` and trigger a graceful
 shutdown on all its orchestrated services. Once the signal is received, it will
 gracefully shut down each service one by one in reverse startup order.
 Importantly, the ``ServiceGroup`` is going to wait for the ``Service/run()``
@@ -227,10 +227,10 @@ shutting down, and await an acknowledgment of that message.
 
 ### Customizing the behavior when a service returns or throws
 
-By default the ``ServiceGroup`` cancels the whole group, if one service returns
-or throws. However, in some scenarios this is unexpected, e.g., when the
+By default, the ``ServiceGroup`` cancels the whole group if one service returns
+or throws. However, in some scenarios, this is unexpected, e.g., when the
 ``ServiceGroup`` is used in a CLI to orchestrate some services while a command
-is handled. To customize the behavior you set the
+is handled. To customize the behavior, you set the
 ``ServiceGroupConfiguration/ServiceConfiguration/successTerminationBehavior``
 and
 ``ServiceGroupConfiguration/ServiceConfiguration/failureTerminationBehavior``.
@@ -242,9 +242,9 @@ it to
 trigger a graceful shutdown by setting it to
 ``ServiceGroupConfiguration/ServiceConfiguration/TerminationBehavior/gracefullyShutdownGroup``.
 
-Another example where you might want to use customize the behavior is when you
-have a service that should be gracefully shutdown when another service exits.
-For example, you want to make sure your telemetry service is gracefully shutdown
+Another example where you might want to customize the behavior is when you
+have a service that should be gracefully shut down when another service exits.
+For example, you want to make sure your telemetry service is gracefully shut down
 after your HTTP server unexpectedly throws from its `run()` method. This setup
 could look like this:
 
