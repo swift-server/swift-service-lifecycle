@@ -1,9 +1,9 @@
-# How to adopt ServiceLifecycle in applications
+# Adopting ServiceLifecycle in applications
 
 Service Lifecycle provides a unified API for services to streamline their
-orchestration in applications: the ServiceGroup actor.
+orchestration in applications: the Service Group actor.
 
-## Why do we need this?
+## Overview
 
 Applications often rely on fundamental observability services like logging and
 metrics, while long-running actors bundle the application's business logic in
@@ -13,8 +13,8 @@ orchestrate the various services during startup and shutdown.
 
 With the introduction of Structured Concurrency in Swift, multiple asynchronous
 services can be run concurrently with task groups. However, Structured
-Concurrency doesn't enforce consistent interfaces between the services, and it
-becomes hard to orchestrate them. To solve this issue, ``ServiceLifecycle``
+Concurrency doesn't enforce consistent interfaces between services, and it can
+become hard to orchestrate them. To solve this issue, ``ServiceLifecycle``
 provides the ``Service`` protocol to enforce a common API, as well as the
 ``ServiceGroup`` actor to orchestrate all services in an application.
 
@@ -22,7 +22,7 @@ provides the ``Service`` protocol to enforce a common API, as well as the
 
 This article focuses on how ``ServiceGroup`` works, and how you can adopt it in
 your application. If you are interested in how to properly implement a service,
-go check out the article: <doc:How-to-adopt-ServiceLifecycle-in-libraries>.
+go check out the article: <doc:Adopting-ServiceLifecycle-in-libraries>.
 
 ### How does the ServiceGroup actor work?
 
@@ -30,7 +30,7 @@ Under the hood, the ``ServiceGroup`` actor is just a complicated task group that
 runs each service in a separate child task, and handles individual services
 exiting or throwing. It also introduces the concept of graceful shutdown, which
 allows the safe teardown of all services in reverse order. Graceful shutdown is
-often used in server scenarios, i.e., when rolling out a new version and
+often used in server scenarios, for example when rolling out a new version and
 draining traffic from the old version (commonly referred to as quiescing).
 
 ### How to use ServiceGroup?

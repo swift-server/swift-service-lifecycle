@@ -1,22 +1,23 @@
-# How to adopt ServiceLifecycle in libraries
+# Adopting ServiceLifecycle in libraries
 
 Adopt the Service protocol for your service to allow a Service Group to coordinate it's operation with other services.
 
-Service Lifecycle provides a unified API to represent a long running task: the Service protocol.
+## Overview
 
-## Why do we need this?
+Service Lifecycle provides a unified API to represent a long running task: the ``Service`` protocol.
 
 Before diving into how to adopt this protocol in your library, let's take a step back and talk about why we need to have this unified API.
 Services often need to schedule long-running tasks, such as sending keep-alive pings in the background, or the handling of incoming work like new TCP connections.
 Before Swift Concurrency was introduced, services put their work into separate threads using a `DispatchQueue` or an NIO `EventLoop`.
 Services often required explicit lifetime management to make sure their resources, such as threads, were shut down correctly.
+
 With the introduction of Swift Concurrency, specifically by using Structured Concurrency, we have better tools to structure our programs and model our work as a tree of tasks.
-The ``Service`` protocol provides a common interface, a single `run()` method, for services to use when they run  their long-running work.
+The `Service` protocol provides a common interface, a single `run()` method, for services to use when they run  their long-running work.
 If all services in an application conform to this protocol, then orchestrating them becomes trivial.
 
 ## Adopting the Service protocol in your service
 
-Adopting the ``Service`` protocol is quite easy.
+Adopting the `Service` protocol is quite easy.
 The protocol's single requirement is the ``Service/run()`` method.
 Make sure that your service adheres to the important caveats addressed in the following sections.
 

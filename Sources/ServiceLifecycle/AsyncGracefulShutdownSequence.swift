@@ -14,7 +14,7 @@
 
 /// An async sequence that emits an element once graceful shutdown has been triggered.
 ///
-/// This sequence is a broadcast async sequence and will only produce one value and then finish.
+/// This sequence is a broadcast async sequence and only produces one value and then finishes.
 ///
 /// - Note: This sequence respects cancellation and thus is `throwing`.
 @usableFromInline

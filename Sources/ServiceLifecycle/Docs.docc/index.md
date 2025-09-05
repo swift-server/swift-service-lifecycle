@@ -66,8 +66,8 @@ let package = Package(
 
 ### Articles
 
-- <doc:How-to-adopt-ServiceLifecycle-in-libraries>
-- <doc:How-to-adopt-ServiceLifecycle-in-applications>
+- <doc:Adopting-ServiceLifecycle-in-libraries>
+- <doc:Adopting-ServiceLifecycle-in-applications>
 
 ### Service protocol
 

@@ -49,7 +49,7 @@ public actor ServiceGroup: Sendable, Service {
     /// The current state of the group.
     private var state: State
 
-    /// Creates a service group.
+    /// Creates a service group from a service group configuration you provide.
     ///
     /// - Parameters:
     ///   - configuration: The group's configuration
@@ -73,7 +73,7 @@ public actor ServiceGroup: Sendable, Service {
     /// Creates a service group.
     ///
     /// - Parameters:
-    ///   - services: The groups's service configurations.
+    ///   - services: The groups's services..
     ///   - gracefulShutdownSignals: The signals that lead to graceful shutdown.
     ///   - cancellationSignals: The signals that lead to cancellation.
     ///   - logger: The group's logger.
