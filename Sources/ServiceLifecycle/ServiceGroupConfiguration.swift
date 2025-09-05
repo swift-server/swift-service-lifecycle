@@ -243,7 +243,8 @@ public struct ServiceGroupConfiguration: Sendable {
 
     /// Creates a new service group configuration.
     ///
-    /// Use ``init(services:gracefulShutdownSignals:cancellationSignals:logger:)-([Service],_,_,_)`` instead.
+    /// Use ``init(services:gracefulShutdownSignals:cancellationSignals:logger:)-1noxs``
+    /// or ``init(services:gracefulShutdownSignals:cancellationSignals:logger:)-9uhzu``  instead.
     @available(*, deprecated)
     public init(gracefulShutdownSignals: [UnixSignal]) {
         self.services = []
