@@ -55,13 +55,13 @@ where Base.Element: Sendable {
             AsyncGracefulShutdownSequence().mapNil().map { _ in .gracefulShutdown }
         )
     }
-    
+
     /// Creates an iterator for the sequence.
     @inlinable
     public func makeAsyncIterator() -> AsyncIterator {
         AsyncIterator(iterator: self._merge.makeAsyncIterator())
     }
-    
+
     /// An iterator for an asynchronous sequence that cancels after graceful shutdown is triggered.
     public struct AsyncIterator: AsyncIteratorProtocol {
         @usableFromInline
@@ -74,7 +74,7 @@ where Base.Element: Sendable {
         init(iterator: Merged.AsyncIterator) {
             self._iterator = iterator
         }
-        
+
         /// Returns the next item in the sequence, or `nil` if the sequence is finished.
         @inlinable
         public mutating func next() async rethrows -> Element? {

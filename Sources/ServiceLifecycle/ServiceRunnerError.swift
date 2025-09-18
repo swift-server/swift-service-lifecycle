@@ -27,7 +27,7 @@ public struct ServiceGroupError: Error, Hashable, Sendable {
         private init(code: _Code) {
             self.code = code
         }
-        
+
         /// A string representation of a service group error.
         public var description: String {
             switch self.code {
