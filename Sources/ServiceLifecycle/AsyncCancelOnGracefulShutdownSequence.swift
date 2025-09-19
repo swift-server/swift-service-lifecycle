@@ -24,7 +24,7 @@ extension AsyncSequence where Self: Sendable, Element: Sendable {
     }
 }
 
-/// An asynchronous sequence that is cancelled once graceful shutdown has triggered.
+/// An asynchronous sequence that is cancelled after graceful shutdown has triggered.
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public struct AsyncCancelOnGracefulShutdownSequence<Base: AsyncSequence & Sendable>: AsyncSequence, Sendable
 where Base.Element: Sendable {
@@ -40,11 +40,14 @@ where Base.Element: Sendable {
         AsyncMapSequence<AsyncMapNilSequence<AsyncGracefulShutdownSequence>, _ElementOrGracefulShutdown>
     >
 
+    /// The type that the sequence produces.
     public typealias Element = Base.Element
 
     @usableFromInline
     let _merge: Merged
 
+    /// Creates a new asynchronous sequence that cancels after graceful shutdown is triggered.
+    /// - Parameter base: The asynchronous sequence to wrap.
     @inlinable
     public init(base: Base) {
         self._merge = merge(
@@ -53,11 +56,13 @@ where Base.Element: Sendable {
         )
     }
 
+    /// Creates an iterator for the sequence.
     @inlinable
     public func makeAsyncIterator() -> AsyncIterator {
         AsyncIterator(iterator: self._merge.makeAsyncIterator())
     }
 
+    /// An iterator for an asynchronous sequence that cancels after graceful shutdown is triggered.
     public struct AsyncIterator: AsyncIteratorProtocol {
         @usableFromInline
         var _iterator: Merged.AsyncIterator
@@ -70,6 +75,7 @@ where Base.Element: Sendable {
             self._iterator = iterator
         }
 
+        /// Returns the next item in the sequence, or `nil` if the sequence is finished.
         @inlinable
         public mutating func next() async rethrows -> Element? {
             guard !self._isFinished else {

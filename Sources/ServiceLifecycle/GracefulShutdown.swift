@@ -116,11 +116,11 @@ public func withGracefulShutdownHandler<T>(
 ///
 /// This doesn’t check for graceful shutdown, and always executes the passed operation.
 /// The operation executes on the calling execution context and does not suspend by itself, unless the code contained within the closure does.
-/// If graceful shutdown or task cancellation occurs while the operation is running, the cancellation/graceful shutdown handler will execute
+/// If graceful shutdown or task cancellation occurs while the operation is running, the cancellation/graceful shutdown handler executes
 /// concurrently with the operation.
 ///
 /// When `withTaskCancellationOrGracefulShutdownHandler` is used in a Task that has already been gracefully shutdown or cancelled, the
-/// `onCancelOrGracefulShutdown` handler will be executed immediately before operation gets to execute. This allows the `onCancelOrGracefulShutdown`
+/// `onCancelOrGracefulShutdown` handler is executed immediately before operation gets to execute. This allows the `onCancelOrGracefulShutdown`
 /// handler to set some external “shutdown” flag that the operation may be atomically checking for in order to avoid performing any actual work
 /// once the operation gets to run.
 ///
@@ -187,7 +187,7 @@ public func withTaskCancellationOrGracefulShutdownHandler<T>(
 /// Waits until graceful shutdown is triggered.
 ///
 /// This method suspends the caller until graceful shutdown is triggered. If the calling task is cancelled before
-/// graceful shutdown is triggered then this method will throw a `CancellationError`.
+/// graceful shutdown is triggered then this method throws a `CancellationError`.
 ///
 /// - Throws: `CancellationError` if the task is cancelled.
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
@@ -209,9 +209,9 @@ enum ValueOrGracefulShutdown<T: Sendable>: Sendable {
     case cancelled
 }
 
-/// Cancels the closure when a graceful shutdown was triggered.
+/// Cancels the closure when a graceful shutdown is triggered.
 ///
-/// - Parameter operation: The actual operation.
+/// - Parameter operation: The operation to cancel when a graceful shutdown is triggered.
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public func cancelWhenGracefulShutdown<T: Sendable>(
     _ operation: @Sendable @escaping () async throws -> T

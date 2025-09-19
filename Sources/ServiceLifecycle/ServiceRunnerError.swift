@@ -12,9 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-/// Errors thrown by the ``ServiceGroup``.
+/// Errors thrown by a service group.
 public struct ServiceGroupError: Error, Hashable, Sendable {
-    /// A struct representing the possible error codes.
+    /// A struct that represents the possible error codes.
     public struct Code: Hashable, Sendable, CustomStringConvertible {
         private enum _Code: Hashable, Sendable {
             case alreadyRunning
@@ -28,6 +28,7 @@ public struct ServiceGroupError: Error, Hashable, Sendable {
             self.code = code
         }
 
+        /// A string representation of a service group error.
         public var description: String {
             switch self.code {
             case .alreadyRunning:
@@ -73,7 +74,7 @@ public struct ServiceGroupError: Error, Hashable, Sendable {
 
     /// The error code.
     ///
-    /// - Note: This is the only thing used for the `Equatable` and `Hashable` comparison.
+    /// - Note: This is the only thing used for the `Equatable` and `Hashable` comparisons for instances of `ServiceGroupError`.
     public var errorCode: Code {
         self.backing.errorCode
     }
@@ -82,7 +83,7 @@ public struct ServiceGroupError: Error, Hashable, Sendable {
         self.backing = backing
     }
 
-    /// Indicates that the service group is already running.
+    /// An error that indicates that the service group is already running.
     public static func alreadyRunning(file: String = #fileID, line: Int = #line) -> Self {
         Self(
             .init(
@@ -93,7 +94,7 @@ public struct ServiceGroupError: Error, Hashable, Sendable {
         )
     }
 
-    /// Indicates that the service group has already finished running.
+    /// An error that indicates that the service group has already finished running.
     public static func alreadyFinished(file: String = #fileID, line: Int = #line) -> Self {
         Self(
             .init(
@@ -104,7 +105,7 @@ public struct ServiceGroupError: Error, Hashable, Sendable {
         )
     }
 
-    /// Indicates that a service finished unexpectedly even though it indicated it is a long running service.
+    /// An error that indicates that a service finished unexpectedly even though it indicated it is a long running service.
     public static func serviceFinishedUnexpectedly(file: String = #fileID, line: Int = #line) -> Self {
         Self(
             .init(
@@ -117,6 +118,7 @@ public struct ServiceGroupError: Error, Hashable, Sendable {
 }
 
 extension ServiceGroupError: CustomStringConvertible {
+    /// A string representation of the service group error.
     public var description: String {
         "ServiceGroupError: errorCode: \(self.backing.errorCode), file: \(self.backing.file), line: \(self.backing.line)"
     }
