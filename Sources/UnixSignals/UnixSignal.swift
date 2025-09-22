@@ -40,6 +40,7 @@ public struct UnixSignal: Hashable, Sendable, CustomStringConvertible {
         case sigquit
         case sigwinch
         case sigcont
+        case sigpipe
     }
 
     private let wrapped: Wrapped
@@ -75,6 +76,8 @@ public struct UnixSignal: Hashable, Sendable, CustomStringConvertible {
     /// Signal when the window is resized.
     public static let sigwinch = Self(.sigwinch)
     public static let sigcont = Self(.sigcont)
+    /// Signal when a write is performed on a closed fd
+    public static let sigpipe = Self(.sigpipe)
 }
 
 extension UnixSignal.Wrapped: Hashable {}
@@ -107,6 +110,8 @@ extension UnixSignal.Wrapped: CustomStringConvertible {
             return "SIGWINCH"
         case .sigcont:
             return "SIGCONT"
+        case .sigpipe:
+            return "SIGPIPE"
         }
     }
 }
@@ -138,6 +143,8 @@ extension UnixSignal.Wrapped {
             return SIGWINCH
         case .sigcont:
             return SIGCONT
+        case .sigpipe:
+            return SIGPIPE
         }
     }
 }
