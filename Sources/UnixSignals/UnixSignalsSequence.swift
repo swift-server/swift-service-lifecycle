@@ -15,14 +15,15 @@
 #if canImport(Darwin)
 import Darwin
 import Dispatch
-#elseif canImport(Glibc)
+#else
 @preconcurrency import Dispatch
+#endif
+
+#if canImport(Glibc)
 import Glibc
 #elseif canImport(Musl)
-@preconcurrency import Dispatch
 import Musl
 #elseif canImport(Android)
-@preconcurrency import Dispatch
 import Android
 #endif
 import ConcurrencyHelpers

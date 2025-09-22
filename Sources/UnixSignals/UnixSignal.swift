@@ -26,6 +26,8 @@ import Dispatch
 /// A struct representing a Unix signal.
 ///
 /// Signals are standardized messages sent to a running program to trigger specific behavior, such as quitting or error handling
+///
+/// - Important: Unix signals are only functional on platforms supporting signals.
 public struct UnixSignal: Hashable, Sendable, CustomStringConvertible {
     internal enum Wrapped {
         case sigabrt
@@ -118,6 +120,9 @@ extension UnixSignal.Wrapped: CustomStringConvertible {
 
 extension UnixSignal.Wrapped {
     var rawValue: Int32 {
+        #if os(Windows)
+        return -1
+        #else
         switch self {
         case .sigabrt:
             return SIGABRT
@@ -146,5 +151,6 @@ extension UnixSignal.Wrapped {
         case .sigpipe:
             return SIGPIPE
         }
+        #endif
     }
 }
