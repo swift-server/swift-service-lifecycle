@@ -50,14 +50,16 @@ public struct ServiceGroupError: Error, Hashable, Sendable {
 
     /// Internal class that contains the actual error code.
     private final class Backing: Hashable, Sendable {
+        let message: String?
         let errorCode: Code
         let file: String
         let line: Int
 
-        init(errorCode: Code, file: String, line: Int) {
+        init(errorCode: Code, file: String, line: Int, message: String?) {
             self.errorCode = errorCode
             self.file = file
             self.line = line
+            self.message = message
         }
 
         static func == (lhs: Backing, rhs: Backing) -> Bool {
@@ -83,35 +85,42 @@ public struct ServiceGroupError: Error, Hashable, Sendable {
         self.backing = backing
     }
 
-    /// An error that indicates that the service group is already running.
+    /// Indicates that the service group is already running.
     public static func alreadyRunning(file: String = #fileID, line: Int = #line) -> Self {
         Self(
             .init(
                 errorCode: .alreadyRunning,
                 file: file,
-                line: line
+                line: line,
+                message: ""
             )
         )
     }
 
-    /// An error that indicates that the service group has already finished running.
+    /// Indicates that the service group has already finished running.
     public static func alreadyFinished(file: String = #fileID, line: Int = #line) -> Self {
         Self(
             .init(
                 errorCode: .alreadyFinished,
                 file: file,
-                line: line
+                line: line,
+                message: ""
             )
         )
     }
 
-    /// An error that indicates that a service finished unexpectedly even though it indicated it is a long running service.
-    public static func serviceFinishedUnexpectedly(file: String = #fileID, line: Int = #line) -> Self {
+    /// Indicates that a service finished unexpectedly even though it indicated it is a long running service.
+    public static func serviceFinishedUnexpectedly(
+        file: String = #fileID,
+        line: Int = #line,
+        service: String? = nil
+    ) -> Self {
         Self(
             .init(
                 errorCode: .serviceFinishedUnexpectedly,
                 file: file,
-                line: line
+                line: line,
+                message: service.flatMap { "Service failed(\($0))" }
             )
         )
     }
@@ -120,6 +129,6 @@ public struct ServiceGroupError: Error, Hashable, Sendable {
 extension ServiceGroupError: CustomStringConvertible {
     /// A string representation of the service group error.
     public var description: String {
-        "ServiceGroupError: errorCode: \(self.backing.errorCode), file: \(self.backing.file), line: \(self.backing.line)"
+        "ServiceGroupError: errorCode: \(self.backing.errorCode), file: \(self.backing.file), line: \(self.backing.line) \(self.backing.message.flatMap { ", message: \($0)" } ?? "")"
     }
 }

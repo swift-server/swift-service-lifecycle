@@ -407,7 +407,7 @@ public actor ServiceGroup: Sendable, Service {
                             group: &group,
                             cancellationTimeoutTask: &cancellationTimeoutTask
                         )
-                        return .failure(ServiceGroupError.serviceFinishedUnexpectedly())
+                        return .failure(ServiceGroupError.serviceFinishedUnexpectedly(service: "\(service.service)"))
 
                     case .gracefullyShutdownGroup:
                         self.logger.debug(
@@ -670,7 +670,7 @@ public actor ServiceGroup: Sendable, Service {
                             group: &group,
                             cancellationTimeoutTask: &cancellationTimeoutTask
                         )
-                        throw ServiceGroupError.serviceFinishedUnexpectedly()
+                        throw ServiceGroupError.serviceFinishedUnexpectedly(service: "\(service.service)")
                     }
                     // The service that we signalled graceful shutdown did exit/
                     // We can continue to the next one.
