@@ -12,6 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if !os(Windows)
+
 import UnixSignals
 import XCTest
 #if canImport(Darwin)
@@ -154,3 +156,5 @@ final class UnixSignalTests: XCTestCase {
         await task.value
     }
 }
+
+#endif
