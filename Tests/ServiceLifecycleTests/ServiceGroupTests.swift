@@ -81,6 +81,7 @@ final class ServiceGroupTests: XCTestCase {
         }
     }
 
+    #if !os(Windows)
     func test_whenRun_ShutdownGracefully() async throws {
         let mockService = MockService(description: "Service1")
         let serviceGroup = self.makeServiceGroup(
@@ -694,7 +695,7 @@ final class ServiceGroupTests: XCTestCase {
             }
         }
     }
-
+    
     func testGracefulShutdownOrdering_whenServiceThrows_andServiceGracefullyShutsdown() async throws {
         let service1 = MockService(description: "Service1")
         let service2 = MockService(description: "Service2")
@@ -955,6 +956,7 @@ final class ServiceGroupTests: XCTestCase {
             await service1.resumeRunContinuation(with: .success(()))
         }
     }
+    #endif
 
     func testTriggerGracefulShutdown() async throws {
         let service1 = MockService(description: "Service1")
@@ -1014,6 +1016,7 @@ final class ServiceGroupTests: XCTestCase {
         }
     }
 
+    #if !os(Windows)
     func testGracefulShutdownEscalation() async throws {
         let mockService = MockService(description: "Service1")
         let serviceGroup = self.makeServiceGroup(
@@ -1130,6 +1133,7 @@ final class ServiceGroupTests: XCTestCase {
             try await XCTAsyncAssertNoThrow(await group.next())
         }
     }
+    #endif
 
     func testTriggerGracefulShutdown_serviceThrows_inOrder_gracefullyShutdownGroup() async throws {
         let service1 = MockService(description: "Service1")

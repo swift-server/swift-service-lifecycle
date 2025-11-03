@@ -17,6 +17,10 @@ import ServiceLifecycle
 import UnixSignals
 import XCTest
 
+#if canImport(ucrt)
+import ucrt
+#endif
+
 private struct ExampleError: Error, Hashable {}
 
 @available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *)
@@ -121,6 +125,7 @@ final class ServiceGroupAddServiceTests: XCTestCase {
         await XCTAsyncAssertEqual(await mockService2.hasRun, false)
     }
 
+    #if !os(Windows)
     func testRun_whenAddedServiceExitsEarly_andIgnore() async throws {
         let service1 = MockService(description: "Service1")
         let service2 = MockService(description: "Service2")
@@ -153,6 +158,7 @@ final class ServiceGroupAddServiceTests: XCTestCase {
             try await XCTAsyncAssertNoThrow(await group.next())
         }
     }
+    #endif
 
     func testRun_whenAddedServiceExitsEarly_andShutdownGracefully() async throws {
         let service1 = MockService(description: "Service1")
@@ -207,6 +213,7 @@ final class ServiceGroupAddServiceTests: XCTestCase {
         }
     }
 
+    #if !os(Windows)
     func testRun_whenAddedServiceThrows() async throws {
         let service1 = MockService(description: "Service1")
         let service2 = MockService(description: "Service2")
@@ -369,6 +376,7 @@ final class ServiceGroupAddServiceTests: XCTestCase {
             await service2.resumeRunContinuation(with: .success(()))
         }
     }
+    #endif
 
     // MARK: - Helpers
 

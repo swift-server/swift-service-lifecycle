@@ -22,9 +22,12 @@ import Glibc
 import Musl
 #elseif canImport(Android)
 import Android
+#elseif canImport(ucrt)
+import ucrt
 #endif
 
 final class UnixSignalTests: XCTestCase {
+    #if !os(Windows)
     func testSingleSignal() async throws {
         let signal = UnixSignal.sigalrm
         let signals = await UnixSignalsSequence(trapping: signal)
@@ -89,6 +92,7 @@ final class UnixSignalTests: XCTestCase {
             XCTAssertEqual(second, .cancelled)
         }
     }
+    #endif
 
     func testEmptySequence() async throws {
         let signals = await UnixSignalsSequence(trapping: [])
@@ -97,6 +101,7 @@ final class UnixSignalTests: XCTestCase {
         }
     }
 
+    #if !os(Windows)
     func testCorrectSignalIsGiven() async throws {
         let signals = await UnixSignalsSequence(trapping: .sigterm, .sigusr1, .sigusr2, .sighup, .sigint, .sigalrm)
         var signalIterator = signals.makeAsyncIterator()
@@ -110,7 +115,7 @@ final class UnixSignalTests: XCTestCase {
             XCTAssertEqual(trapped, signal)
         }
     }
-
+    
     func testSignalRawValue() {
         func assert(_ signal: UnixSignal, rawValue: Int32) {
             XCTAssertEqual(signal.rawValue, rawValue)
@@ -124,7 +129,7 @@ final class UnixSignalTests: XCTestCase {
         assert(.sigusr2, rawValue: SIGUSR2)
         assert(.sigterm, rawValue: SIGTERM)
     }
-
+    
     func testSignalCustomStringConvertible() {
         func assert(_ signal: UnixSignal, description: String) {
             XCTAssertEqual(String(describing: signal), description)
@@ -139,6 +144,7 @@ final class UnixSignalTests: XCTestCase {
         assert(.sigterm, description: "SIGTERM")
         assert(.sigwinch, description: "SIGWINCH")
     }
+    #endif
 
     func testCancelledTask() async throws {
         let task = Task {
