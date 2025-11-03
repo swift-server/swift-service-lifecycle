@@ -82,7 +82,8 @@ extension UnixSignalsSequence {
         private let stateMachine: LockedValueBox<StateMachine>
 
         init(signals: Set<UnixSignal>) async {
-            let sources: [Source] = signals.map { sig in
+            #if !os(Windows)
+            let sources: [Source] = signals.compactMap { sig -> Source? in
                 #if canImport(Darwin)
                 // On Darwin platforms Dispatch's signal source uses kqueue and EVFILT_SIGNAL for
                 // delivering signals. This exists alongside but with lower precedence than signal and
@@ -164,6 +165,10 @@ extension UnixSignalsSequence {
                     }
                 }
             }
+            #else
+            let stream = AsyncStream<UnixSignal> { _ in }
+            self.stateMachine = .init(.init(sources: [], stream: stream))
+            #endif
         }
 
         func makeAsyncIterator() -> AsyncStream<UnixSignal>.AsyncIterator {
