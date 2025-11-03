@@ -9,6 +9,6 @@
 
 ### Service Group Errors
 
-- ``serviceFinishedUnexpectedly(file:line:)``
+- ``serviceFinishedUnexpectedly(file:line:service:)``
 - ``alreadyRunning(file:line:)``
 - ``alreadyFinished(file:line:)``

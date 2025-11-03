@@ -124,7 +124,10 @@ final class ServiceGroupTests: XCTestCase {
             await mockService.resumeRunContinuation(with: .success(()))
 
             try await XCTAsyncAssertThrowsError(await group.next()) {
-                XCTAssertEqual($0 as? ServiceGroupError, .serviceFinishedUnexpectedly())
+                XCTAssertEqual(
+                    $0 as? ServiceGroupError,
+                    .serviceFinishedUnexpectedly(service: "Service1")
+                )
             }
         }
     }
@@ -292,7 +295,10 @@ final class ServiceGroupTests: XCTestCase {
             await longService.resumeRunContinuation(with: .success(()))
 
             try await XCTAsyncAssertThrowsError(await group.next()) {
-                XCTAssertEqual($0 as? ServiceGroupError, .serviceFinishedUnexpectedly())
+                XCTAssertEqual(
+                    $0 as? ServiceGroupError,
+                    .serviceFinishedUnexpectedly(service: "Service1")
+                )
             }
         }
     }
