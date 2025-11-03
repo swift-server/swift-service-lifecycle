@@ -15,14 +15,15 @@
 #if canImport(Darwin)
 import Darwin
 import Dispatch
-#elseif canImport(Glibc)
+#else
 @preconcurrency import Dispatch
+#endif
+
+#if canImport(Glibc)
 import Glibc
 #elseif canImport(Musl)
-@preconcurrency import Dispatch
 import Musl
 #elseif canImport(Android)
-@preconcurrency import Dispatch
 import Android
 #endif
 import ConcurrencyHelpers
@@ -81,7 +82,8 @@ extension UnixSignalsSequence {
         private let stateMachine: LockedValueBox<StateMachine>
 
         init(signals: Set<UnixSignal>) async {
-            let sources: [Source] = signals.map { sig in
+            #if !os(Windows)
+            let sources: [Source] = signals.compactMap { sig -> Source? in
                 #if canImport(Darwin)
                 // On Darwin platforms Dispatch's signal source uses kqueue and EVFILT_SIGNAL for
                 // delivering signals. This exists alongside but with lower precedence than signal and
@@ -163,6 +165,10 @@ extension UnixSignalsSequence {
                     }
                 }
             }
+            #else
+            let stream = AsyncStream<UnixSignal> { _ in }
+            self.stateMachine = .init(.init(sources: [], stream: stream))
+            #endif
         }
 
         func makeAsyncIterator() -> AsyncStream<UnixSignal>.AsyncIterator {
