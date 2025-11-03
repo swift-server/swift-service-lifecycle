@@ -24,6 +24,9 @@ import Musl
 #elseif canImport(Android)
 @preconcurrency import Dispatch
 import Android
+#elseif canImport(ucrt)
+@preconcurrency import ucrt
+@preconcurrency import Dispatch
 #endif
 import ConcurrencyHelpers
 
