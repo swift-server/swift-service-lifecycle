@@ -17,6 +17,7 @@ import Testing
 
 struct ClosureServiceTests {
     @Test
+    @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
     func runExecutesClosure() async throws {
         try await confirmation { executed in
             let service = ClosureService {
@@ -27,6 +28,7 @@ struct ClosureServiceTests {
     }
 
     @Test
+    @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
     func runPropagatesErrors() async {
         struct TestError: Error {}
 
