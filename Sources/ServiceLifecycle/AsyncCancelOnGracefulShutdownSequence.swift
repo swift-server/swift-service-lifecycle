@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 import AsyncAlgorithms
+import ConcurrencyHelpers
 
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 extension AsyncSequence where Self: Sendable, Element: Sendable {
@@ -82,7 +83,7 @@ where Base.Element: Sendable {
                 return nil
             }
 
-            let value = try await self._iterator.next()
+            let value = try await self._iterator.nonSendingNext()
 
             switch value {
             case .base(let element):
@@ -157,7 +158,7 @@ struct AsyncMapNilSequence<Base: AsyncSequence & Sendable>: AsyncSequence, Senda
 
         @inlinable
         mutating func next() async rethrows -> Element? {
-            let value = try await self._iterator.next()
+            let value = try await self._iterator.nonSendingNext()
 
             if let value {
                 return .element(value)

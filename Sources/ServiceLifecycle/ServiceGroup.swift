@@ -885,7 +885,7 @@ public actor ServiceGroup: Sendable, Service {
         group.addTask {
             return await withTaskCancellationHandler {
                 var iterator = channel.makeAsyncIterator()
-                if let addedService = await iterator.next() {
+                if let addedService = await iterator.nonSendingNext() {
                     return .newServiceAdded(addedService)
                 }
 
