@@ -14,7 +14,6 @@
 
 import ConcurrencyHelpers
 
-#if compiler(>=6.0)
 /// Execute an operation with a graceful shutdown handler that’s immediately invoked if the current task is shutting down gracefully.
 ///
 /// This doesn’t check for graceful shutdown, and always executes the passed operation.
@@ -83,34 +82,6 @@ public func withGracefulShutdownHandler<T>(
     return try await operation()
 }
 
-#else
-// We need to retain this method with `@_unsafeInheritExecutor` otherwise we will break older
-// Swift versions since the semantics changed.
-@_disfavoredOverload
-@_unsafeInheritExecutor
-@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
-public func withGracefulShutdownHandler<T>(
-    operation: () async throws -> T,
-    onGracefulShutdown handler: @Sendable @escaping () -> Void
-) async rethrows -> T {
-    guard let gracefulShutdownManager = TaskLocals.gracefulShutdownManager else {
-        return try await operation()
-    }
-
-    // We have to keep track of our handler here to remove it once the operation is finished.
-    let handlerID = gracefulShutdownManager.registerHandler(handler)
-    defer {
-        if let handlerID = handlerID {
-            gracefulShutdownManager.removeHandler(handlerID)
-        }
-    }
-
-    return try await operation()
-}
-
-#endif
-
-#if compiler(>=6.0)
 /// Execute an operation with a graceful shutdown or task cancellation handler that’s immediately invoked if the current task is
 /// shutting down gracefully or has been cancelled.
 ///
@@ -163,26 +134,6 @@ public func withTaskCancellationOrGracefulShutdownHandler<T>(
         handler()
     }
 }
-#else
-/// Execute an operation with a graceful shutdown or task cancellation handler that’s immediately invoked if the current task is
-/// shutting down gracefully or has been cancelled.
-///
-/// Use ``withTaskCancellationOrGracefulShutdownHandler(isolation:operation:onCancelOrGracefulShutdown:)`` instead.
-@available(*, deprecated, message: "Use the method with the isolation parameter instead.")
-@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
-@_disfavoredOverload
-@_unsafeInheritExecutor
-public func withTaskCancellationOrGracefulShutdownHandler<T>(
-    operation: () async throws -> T,
-    onCancelOrGracefulShutdown handler: @Sendable @escaping () -> Void
-) async rethrows -> T {
-    return try await withTaskCancellationHandler {
-        try await withGracefulShutdownHandler(operation: operation, onGracefulShutdown: handler)
-    } onCancel: {
-        handler()
-    }
-}
-#endif
 
 /// Waits until graceful shutdown is triggered.
 ///
@@ -258,12 +209,7 @@ public func cancelWhenGracefulShutdown<T: Sendable>(
 ///
 /// Use ``cancelWhenGracefulShutdown(_:)`` instead.
 /// - Parameter operation: The actual operation.
-#if compiler(>=6.0)
 @available(*, deprecated, renamed: "cancelWhenGracefulShutdown")
-#else
-// renamed pattern has been shown to cause compiler crashes in 5.x compilers.
-@available(*, deprecated, message: "renamed to cancelWhenGracefulShutdown")
-#endif
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public func cancelOnGracefulShutdown<T: Sendable>(
     _ operation: @Sendable @escaping () async throws -> T

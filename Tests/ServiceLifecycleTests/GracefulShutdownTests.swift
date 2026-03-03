@@ -132,6 +132,7 @@ final class GracefulShutdownTests: XCTestCase {
             XCTAssertNotNil(weakFoo)
             foo = nil
             XCTAssertNil(weakFoo)
+            weakFoo = nil
         }
     }
 

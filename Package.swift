@@ -1,4 +1,4 @@
-// swift-tools-version:5.8
+// swift-tools-version:6.0
 import PackageDescription
 
 let package = Package(
@@ -75,5 +75,11 @@ let package = Package(
 )
 
 for target in package.targets {
-    target.swiftSettings?.append(.enableUpcomingFeature("StrictConcurrency"))
+    #if compiler(<6.2)
+    // Needed since Sendable checking with isolated methods is not working correctly before 6.2
+    if target.swiftSettings == nil {
+        target.swiftSettings = []
+    }
+    target.swiftSettings?.append(.swiftLanguageMode(.v5))
+    #endif
 }

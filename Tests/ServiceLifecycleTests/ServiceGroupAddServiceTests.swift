@@ -239,6 +239,7 @@ final class ServiceGroupAddServiceTests: XCTestCase {
         }
     }
 
+    #if !os(Windows)
     func testGracefulShutdownOrdering_withAddedServices() async throws {
         let service1 = MockService(description: "Service1")
         let service2 = MockService(description: "Service2")
@@ -369,6 +370,7 @@ final class ServiceGroupAddServiceTests: XCTestCase {
             await service2.resumeRunContinuation(with: .success(()))
         }
     }
+    #endif
 
     // MARK: - Helpers
 
