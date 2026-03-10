@@ -34,7 +34,7 @@ final class UnixSignalTests: XCTestCase {
 
         var signalIterator = signals.makeAsyncIterator()
         kill(pid, signal.rawValue)  // ignore-unacceptable-language
-        let caught = await signalIterator.next()
+        let caught = await signalIterator.nonSendingNext()
         XCTAssertEqual(caught, signal)
     }
 
@@ -47,7 +47,7 @@ final class UnixSignalTests: XCTestCase {
         for _ in 0..<5 {
             kill(pid, signal.rawValue)  // ignore-unacceptable-language
 
-            let caught = await signalIterator.next()
+            let caught = await signalIterator.nonSendingNext()
             XCTAssertEqual(caught, signal)
         }
     }
@@ -108,7 +108,7 @@ final class UnixSignalTests: XCTestCase {
 
         for _ in 0..<10 {
             kill(pid, signal.rawValue)  // ignore-unacceptable-language
-            let trapped = await signalIterator.next()
+            let trapped = await signalIterator.nonSendingNext()
             XCTAssertEqual(trapped, signal)
         }
     }
