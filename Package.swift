@@ -24,7 +24,7 @@ let package = Package(
         ),
         .package(
             url: "https://github.com/apple/swift-async-algorithms.git",
-            from: "1.0.4"
+            from: "1.1.3"
         ),
     ],
     targets: [

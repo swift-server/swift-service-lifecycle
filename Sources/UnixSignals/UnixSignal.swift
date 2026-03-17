@@ -21,7 +21,6 @@ import Musl
 #elseif canImport(Android)
 import Android
 #endif
-import Dispatch
 
 /// A struct representing a Unix signal.
 ///
@@ -120,7 +119,7 @@ extension UnixSignal.Wrapped: CustomStringConvertible {
 
 extension UnixSignal.Wrapped {
     var rawValue: Int32 {
-        #if os(Windows)
+        #if os(Windows) || os(WASI)
         return -1
         #else
         switch self {
