@@ -15,6 +15,8 @@
 #if canImport(Darwin)
 import Darwin
 import Dispatch
+#elseif os(WASI)
+// No Dispatch or signal support on WASI.
 #else
 @preconcurrency import Dispatch
 #endif
@@ -36,12 +38,16 @@ import ConcurrencyHelpers
 /// for the same signal.
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 public struct UnixSignalsSequence: AsyncSequence, Sendable {
+    #if !os(WASI)
     private static let queue = DispatchQueue(label: "com.service-lifecycle.unix-signals")
+    #endif
 
     public typealias Element = UnixSignal
 
     fileprivate struct Source: Sendable {
+        #if !os(WASI)
         var dispatchSource: DispatchSource
+        #endif
         var signal: UnixSignal
     }
 
@@ -82,7 +88,7 @@ extension UnixSignalsSequence {
         private let stateMachine: LockedValueBox<StateMachine>
 
         init(signals: Set<UnixSignal>) async {
-            #if !os(Windows)
+            #if !os(Windows) && !os(WASI)
             let sources: [Source] = signals.compactMap { sig -> Source? in
                 #if canImport(Darwin)
                 // On Darwin platforms Dispatch's signal source uses kqueue and EVFILT_SIGNAL for
