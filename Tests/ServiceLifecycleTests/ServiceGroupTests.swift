@@ -1500,6 +1500,35 @@ final class ServiceGroupTests: XCTestCase {
         }
     }
 
+    func testRun_whenServiceExitsEarly_andServiceName() async throws {
+        var logger = Logger(label: "inner")
+        logger.logLevel = .debug
+        let services: [ServiceGroupConfiguration.ServiceConfiguration] = []
+        let innerGroup = ServiceGroup(
+            configuration: ServiceGroupConfiguration(
+                services: services,
+                logger: logger
+            )
+        )
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: innerGroup, serviceName: "InnerGroup")],
+            gracefulShutdownSignals: [.sigalrm]
+        )
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            try await XCTAsyncAssertThrowsError(await group.next()) {
+                XCTAssertEqual(
+                    $0 as? ServiceGroupError,
+                    .serviceFinishedUnexpectedly(service: "InnerGroup")
+                )
+            }
+        }
+    }
+
     // MARK: - Helpers
 
     private func makeServiceGroup(

@@ -91,6 +91,10 @@ public struct ServiceGroupConfiguration: Sendable {
         public var successTerminationBehavior: TerminationBehavior
         /// The behavior when the service throws from its run method.
         public var failureTerminationBehavior: TerminationBehavior
+        /// The name used for this service in logging metadata and error messages.
+        ///
+        /// This is eagerly computed at initialization time to avoid repeated string interpolation during logging.
+        public var serviceName: String
 
         /// Initializes a new service configuration.
         ///
@@ -106,6 +110,26 @@ public struct ServiceGroupConfiguration: Sendable {
             self.service = service
             self.successTerminationBehavior = successTerminationBehavior
             self.failureTerminationBehavior = failureTerminationBehavior
+            self.serviceName = "\(service)"
+        }
+
+        /// Initializes a new service configuration with a custom service name.
+        ///
+        /// - Parameters:
+        ///   - service: The service to which the initialized configuration applies.
+        ///   - successTerminationBehavior: The behavior when the service returns from its run method.
+        ///   - failureTerminationBehavior: The behavior when the service throws from its run method.
+        ///   - serviceName: A custom name used in logging metadata and error messages instead of the service's type name.
+        public init(
+            service: any Service,
+            successTerminationBehavior: TerminationBehavior = .cancelGroup,
+            failureTerminationBehavior: TerminationBehavior = .cancelGroup,
+            serviceName: String
+        ) {
+            self.service = service
+            self.successTerminationBehavior = successTerminationBehavior
+            self.failureTerminationBehavior = failureTerminationBehavior
+            self.serviceName = serviceName
         }
     }
 
