@@ -255,7 +255,7 @@ public actor ServiceGroup: Sendable, Service {
             metadata: [
                 self.loggingConfiguration.keys.gracefulShutdownSignalsKey: "\(self.gracefulShutdownSignals)",
                 self.loggingConfiguration.keys.cancellationSignalsKey: "\(self.cancellationSignals)",
-                self.loggingConfiguration.keys.servicesKey: "\(services.map { $0.service })",
+                self.loggingConfiguration.keys.servicesKey: "\(services.map { $0.serviceName })",
             ]
         )
 
@@ -319,7 +319,7 @@ public actor ServiceGroup: Sendable, Service {
                 self.logger.debug(
                     "Starting service",
                     metadata: [
-                        self.loggingConfiguration.keys.serviceKey: "\(serviceConfiguration.service)"
+                        self.loggingConfiguration.keys.serviceKey: "\(serviceConfiguration.serviceName)"
                     ]
                 )
 
@@ -363,7 +363,7 @@ public actor ServiceGroup: Sendable, Service {
                     self.logger.debug(
                         "Starting added service",
                         metadata: [
-                            self.loggingConfiguration.keys.serviceKey: "\(serviceConfiguration.service)"
+                            self.loggingConfiguration.keys.serviceKey: "\(serviceConfiguration.serviceName)"
                         ]
                     )
 
@@ -400,20 +400,22 @@ public actor ServiceGroup: Sendable, Service {
                         self.logger.debug(
                             "Service finished unexpectedly. Cancelling group.",
                             metadata: [
-                                self.loggingConfiguration.keys.serviceKey: "\(service.service)"
+                                self.loggingConfiguration.keys.serviceKey: "\(service.serviceName)"
                             ]
                         )
                         self.cancelGroupAndSpawnTimeoutIfNeeded(
                             group: &group,
                             cancellationTimeoutTask: &cancellationTimeoutTask
                         )
-                        return .failure(ServiceGroupError.serviceFinishedUnexpectedly(service: "\(service.service)"))
+                        return .failure(
+                            ServiceGroupError.serviceFinishedUnexpectedly(service: service.serviceName)
+                        )
 
                     case .gracefullyShutdownGroup:
                         self.logger.debug(
                             "Service finished. Gracefully shutting down group.",
                             metadata: [
-                                self.loggingConfiguration.keys.serviceKey: "\(service.service)"
+                                self.loggingConfiguration.keys.serviceKey: "\(service.serviceName)"
                             ]
                         )
                         services[index] = nil
@@ -433,7 +435,7 @@ public actor ServiceGroup: Sendable, Service {
                         self.logger.debug(
                             "Service finished.",
                             metadata: [
-                                self.loggingConfiguration.keys.serviceKey: "\(service.service)"
+                                self.loggingConfiguration.keys.serviceKey: "\(service.serviceName)"
                             ]
                         )
                         services[index] = nil
@@ -456,7 +458,7 @@ public actor ServiceGroup: Sendable, Service {
                         self.logger.debug(
                             "Service threw error. Cancelling group.",
                             metadata: [
-                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                self.loggingConfiguration.keys.serviceKey: "\(service.serviceName)",
                                 self.loggingConfiguration.keys.errorKey: "\(serviceError)",
                             ]
                         )
@@ -470,7 +472,7 @@ public actor ServiceGroup: Sendable, Service {
                         self.logger.debug(
                             "Service threw error. Shutting down group.",
                             metadata: [
-                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                self.loggingConfiguration.keys.serviceKey: "\(service.serviceName)",
                                 self.loggingConfiguration.keys.errorKey: "\(serviceError)",
                             ]
                         )
@@ -492,7 +494,7 @@ public actor ServiceGroup: Sendable, Service {
                         self.logger.debug(
                             "Service threw error.",
                             metadata: [
-                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                self.loggingConfiguration.keys.serviceKey: "\(service.serviceName)",
                                 self.loggingConfiguration.keys.errorKey: "\(serviceError)",
                             ]
                         )
@@ -642,7 +644,7 @@ public actor ServiceGroup: Sendable, Service {
             self.logger.debug(
                 "Triggering graceful shutdown for service",
                 metadata: [
-                    self.loggingConfiguration.keys.serviceKey: "\(service.service)"
+                    self.loggingConfiguration.keys.serviceKey: "\(service.serviceName)"
                 ]
             )
 
@@ -662,7 +664,7 @@ public actor ServiceGroup: Sendable, Service {
                         self.logger.debug(
                             "Service finished unexpectedly during graceful shutdown. Cancelling all other services now",
                             metadata: [
-                                self.loggingConfiguration.keys.serviceKey: "\(service.service)"
+                                self.loggingConfiguration.keys.serviceKey: "\(service.serviceName)"
                             ]
                         )
 
@@ -670,14 +672,14 @@ public actor ServiceGroup: Sendable, Service {
                             group: &group,
                             cancellationTimeoutTask: &cancellationTimeoutTask
                         )
-                        throw ServiceGroupError.serviceFinishedUnexpectedly(service: "\(service.service)")
+                        throw ServiceGroupError.serviceFinishedUnexpectedly(service: service.serviceName)
                     }
                     // The service that we signalled graceful shutdown did exit/
                     // We can continue to the next one.
                     self.logger.debug(
                         "Service finished",
                         metadata: [
-                            self.loggingConfiguration.keys.serviceKey: "\(service.service)"
+                            self.loggingConfiguration.keys.serviceKey: "\(service.serviceName)"
                         ]
                     )
                     continue gracefulShutdownLoop
@@ -689,7 +691,7 @@ public actor ServiceGroup: Sendable, Service {
                         self.logger.debug(
                             "Service threw error during graceful shutdown. Cancelling group.",
                             metadata: [
-                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                self.loggingConfiguration.keys.serviceKey: "\(service.serviceName)",
                                 self.loggingConfiguration.keys.errorKey: "\(serviceError)",
                             ]
                         )
@@ -707,7 +709,7 @@ public actor ServiceGroup: Sendable, Service {
                             self.logger.debug(
                                 "Another service than the service that we were shutting down threw. Continuing with the next one.",
                                 metadata: [
-                                    self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                    self.loggingConfiguration.keys.serviceKey: "\(service.serviceName)",
                                     self.loggingConfiguration.keys.errorKey: "\(serviceError)",
                                 ]
                             )
@@ -718,7 +720,7 @@ public actor ServiceGroup: Sendable, Service {
                         self.logger.debug(
                             "The service that we were shutting down threw. Continuing with the next one.",
                             metadata: [
-                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                self.loggingConfiguration.keys.serviceKey: "\(service.serviceName)",
                                 self.loggingConfiguration.keys.errorKey: "\(serviceError)",
                             ]
                         )
@@ -731,7 +733,7 @@ public actor ServiceGroup: Sendable, Service {
                             self.logger.debug(
                                 "Another service than the service that we were shutting down threw. Continuing with the next one.",
                                 metadata: [
-                                    self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                    self.loggingConfiguration.keys.serviceKey: "\(service.serviceName)",
                                     self.loggingConfiguration.keys.errorKey: "\(serviceError)",
                                 ]
                             )
@@ -742,7 +744,7 @@ public actor ServiceGroup: Sendable, Service {
                         self.logger.debug(
                             "The service that we were shutting down threw. Continuing with the next one.",
                             metadata: [
-                                self.loggingConfiguration.keys.serviceKey: "\(service.service)",
+                                self.loggingConfiguration.keys.serviceKey: "\(service.serviceName)",
                                 self.loggingConfiguration.keys.errorKey: "\(serviceError)",
                             ]
                         )
@@ -771,7 +773,7 @@ public actor ServiceGroup: Sendable, Service {
                     self.logger.debug(
                         "Graceful shutdown took longer than allowed by the configuration. Cancelling the group now.",
                         metadata: [
-                            self.loggingConfiguration.keys.serviceKey: "\(service.service)"
+                            self.loggingConfiguration.keys.serviceKey: "\(service.serviceName)"
                         ]
                     )
                     self.cancelGroupAndSpawnTimeoutIfNeeded(
