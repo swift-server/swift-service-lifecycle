@@ -96,3 +96,7 @@ In the case of formatting issues, you can then `git add` the formatting changes,
 ## How to contribute your work
 
 Please open a pull request at https://github.com/swift-server/swift-service-lifecycle. Make sure the CI passes, and then wait for code review.
+
+## Automated release process
+
+This repository uses automated releases based on semantic versioning labels. See the [Auto Release Workflow documentation](https://github.com/apple/swift-temporal-sdk/blob/main/.github/workflows/README.md) for details.
