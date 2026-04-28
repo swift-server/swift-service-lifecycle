@@ -3,7 +3,6 @@
 .licenseignore
 .gitattributes
 .mailfilter
-.mailmap
 .spi.yml
 .swift-format
 .editorconfig
@@ -30,7 +29,6 @@ Makefile
 Dockerfile
 **/Dockerfile
 Snippets/*
-dev/git.commit.template
 *.crt
 **/*.crt
 *.pem

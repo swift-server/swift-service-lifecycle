@@ -48,54 +48,16 @@ Linux beefy.machine 4.4.0-101-generic #124-Ubuntu SMP Fri Nov 10 18:29:59 UTC 20
 My system has IPv6 disabled.
 ```
 
-## Writing a Patch
-
-A good SwiftServiceLifecycle patch is:
-
-1. Concise, and contains as few changes as needed to achieve the end result.
-2. Tested, ensuring that any tests provided failed before the patch and pass after it.
-3. Documented, adding API documentation as needed to cover new functions and properties.
-4. Accompanied by a great commit message, using our commit message template.
-
-### Commit Message Template
-
-We require that your commit messages match our template. The easiest way to do that is to get git to help you by explicitly using the template. To do that, `cd` to the root of our repository and run:
-
-    git config commit.template dev/git.commit.template
-
-### Make sure Tests work on Linux
-
-SwiftServiceLifecycle uses XCTest to run tests on both macOS and Linux. While the macOS version of XCTest is able to use the Objective-C runtime to discover tests at execution time, the Linux version is not.
-For this reason, whenever you add new tests **you have to run a script** that generates the hooks needed to run those tests on Linux, or our CI will complain that the tests are not all present on Linux. To do this, merely execute `ruby ./scripts/generate_linux_tests.rb` at the root of the package and check the changes it made.
-
-### Run `./scripts/soundness.sh`
-
-The scripts directory contains a [soundness.sh script](scripts/soundness.sh)
-that enforces additional checks, like license headers and formatting style.
-Please make sure to `./scripts/soundness.sh` before pushing a change upstream, otherwise it is likely the PR validation will fail
-on minor changes such as a missing `self.` or similar formatting issues.
-
-> The script also executes the above mentioned `generate_linux_tests.rb`.
-
-For frequent contributors, we recommend adding the script as a [git pre-push hook](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks), which you can do via executing the following command
-in the project root directory:
-
-```bash
-cat << EOF > .git/hooks/pre-push
-#!/bin/bash
-
-if [[ -f "scripts/soundness.sh" ]]; then
-  scripts/soundness.sh
-fi
-EOF
-```
-Which makes the script execute, and only allow the `git push` to complete if the check has passed.
-
-In the case of formatting issues, you can then `git add` the formatting changes, and attempt the push again.
-
 ## How to contribute your work
 
-Please open a pull request at https://github.com/swift-server/swift-service-lifecycle. Make sure the CI passes, and then wait for code review.
+For non-trivial changes that affect the public API, it is good practice to have a discussion phase before writing code. Please follow the [proposal process](Sources/ServiceLifecycle/Docs.docc/Proposals/Proposals.md) to gather feedback and align on the approach with other contributors.
+
+1. Prepare your change, keeping in mind that a good patch is:
+  - Concise, and contains as few changes as needed to achieve the end result.
+  - Tested, ensuring that any tests provided failed before the patch and pass after it.
+  - Documented, adding API documentation as needed to cover new functions and properties.
+  - Accompanied by a great commit message.
+2. Open a pull request at https://github.com/swift-server/swift-service-lifecycle and wait for code review by the maintainers.
 
 ## Automated release process
 

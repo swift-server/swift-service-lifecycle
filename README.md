@@ -1,3 +1,8 @@
+[![](https://img.shields.io/badge/docc-read_documentation-blue)](https://swiftpackageindex.com/swift-server/swift-service-lifecycle/documentation)
+[![](https://img.shields.io/github/v/release/swift-server/swift-service-lifecycle)](https://github.com/swift-server/swift-service-lifecycle/releases)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fswift-server%2Fswift-service-lifecycle%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/swift-server/swift-service-lifecycle)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fswift-server%2Fswift-service-lifecycle%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/swift-server/swift-service-lifecycle)
+
 # Swift Service Lifecycle
 
 Swift Service Lifecycle provides a basic mechanism to cleanly start up and shut down an application, freeing resources in-order before exiting.
@@ -96,4 +101,4 @@ struct Application {
 
 ## Security
 
-Please see [SECURITY.md](SECURITY.md) for details on the security process.
+For the security process, see https://github.com/apple/swift-log?tab=security-ov-file.
