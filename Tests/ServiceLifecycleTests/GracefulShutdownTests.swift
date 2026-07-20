@@ -57,8 +57,8 @@ final class GracefulShutdownTests: XCTestCase {
 
         var iterator = stream.makeAsyncIterator()
 
-        await XCTAsyncAssertEqual(await iterator.next(), "onGracefulShutdown")
-        await XCTAsyncAssertEqual(await iterator.next(), "operation")
+        await XCTAsyncAssertEqual(await iterator.nonSendingNext(), "onGracefulShutdown")
+        await XCTAsyncAssertEqual(await iterator.nonSendingNext(), "operation")
     }
 
     func testWithGracefulShutdownHandler_whenNested() async {
@@ -96,15 +96,15 @@ final class GracefulShutdownTests: XCTestCase {
 
                     var iterator = stream.makeAsyncIterator()
 
-                    await XCTAsyncAssertEqual(await iterator.next(), "outerOperation")
-                    await XCTAsyncAssertEqual(await iterator.next(), "innerOperation")
-                    await XCTAsyncAssertEqual(await iterator.next(), "innerOperation")
+                    await XCTAsyncAssertEqual(await iterator.nonSendingNext(), "outerOperation")
+                    await XCTAsyncAssertEqual(await iterator.nonSendingNext(), "innerOperation")
+                    await XCTAsyncAssertEqual(await iterator.nonSendingNext(), "innerOperation")
 
                     gracefulShutdownTestTrigger.triggerGracefulShutdown()
 
-                    await XCTAsyncAssertEqual(await iterator.next(), "outerOnGracefulShutdown")
-                    await XCTAsyncAssertEqual(await iterator.next(), "innerOnGracefulShutdown")
-                    await XCTAsyncAssertEqual(await iterator.next(), "innerOnGracefulShutdown")
+                    await XCTAsyncAssertEqual(await iterator.nonSendingNext(), "outerOnGracefulShutdown")
+                    await XCTAsyncAssertEqual(await iterator.nonSendingNext(), "innerOnGracefulShutdown")
+                    await XCTAsyncAssertEqual(await iterator.nonSendingNext(), "innerOnGracefulShutdown")
                 }
             } onGracefulShutdown: {
                 continuation.yield("outerOnGracefulShutdown")

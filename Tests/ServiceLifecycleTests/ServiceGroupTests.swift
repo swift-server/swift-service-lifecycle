@@ -33,7 +33,7 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator = mockService.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .run)
 
             try await XCTAsyncAssertThrowsError(await serviceGroup.run()) {
                 XCTAssertEqual($0 as? ServiceGroupError, .alreadyRunning())
@@ -72,10 +72,10 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator = mockService.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .run)
 
             group.cancelAll()
-            await XCTAsyncAssertEqual(await eventIterator.next(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .runCancelled)
 
             await mockService.resumeRunContinuation(with: .success(()))
         }
@@ -95,11 +95,11 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator = mockService.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .run)
 
             let pid = getpid()
             kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
-            await XCTAsyncAssertEqual(await eventIterator.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .shutdownGracefully)
 
             await mockService.resumeRunContinuation(with: .success(()))
         }
@@ -119,7 +119,7 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator = mockService.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .run)
 
             await mockService.resumeRunContinuation(with: .success(()))
 
@@ -150,13 +150,13 @@ final class ServiceGroupTests: XCTestCase {
 
             var eventIterator1 = service1.events.makeAsyncIterator()
             var eventIterator2 = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
             await service1.resumeRunContinuation(with: .success(()))
 
             service2.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
             await service2.resumeRunContinuation(with: .failure(ExampleError()))
 
@@ -182,32 +182,32 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator1 = service1.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
             var eventIterator3 = service3.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
             await service2.resumeRunContinuation(with: .success(()))
 
             // The last service should receive the shutdown signal first
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that the remaining two are still running
             service1.sendPing()
             service3.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runPing)
 
             // Let's exit from the last service
             await service3.resumeRunContinuation(with: .success(()))
 
             // Waiting to see that the remaining is still running
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .shutdownGracefully)
             service1.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
 
             // Let's exit from the first service
             await service1.resumeRunContinuation(with: .success(()))
@@ -232,36 +232,36 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator1 = service1.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
             var eventIterator3 = service3.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
             await service3.resumeRunContinuation(with: .success(()))
 
             // The second service should receive the shutdown signal first
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that all two are still running
             service1.sendPing()
             service2.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
             // Let's exit from the second service
             await service2.resumeRunContinuation(with: .success(()))
 
             // Waiting to see that the remaining is still running
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .shutdownGracefully)
             service1.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
 
             // Waiting to see that the one remaining are still running
             service1.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
 
             // Let's exit from the first service
             await service1.resumeRunContinuation(with: .success(()))
@@ -283,14 +283,14 @@ final class ServiceGroupTests: XCTestCase {
 
             var shortServiceEventIterator = shortService.events.makeAsyncIterator()
             var longServiceEventIterator = longService.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await shortServiceEventIterator.next(), .run)
-            await XCTAsyncAssertEqual(await longServiceEventIterator.next(), .run)
+            await XCTAsyncAssertEqual(await shortServiceEventIterator.nonSendingNext(), .run)
+            await XCTAsyncAssertEqual(await longServiceEventIterator.nonSendingNext(), .run)
 
             // Finishing the short running service here
             await shortService.resumeRunContinuation(with: .success(()))
 
             // Checking that the long running service is still running
-            await XCTAsyncAssertEqual(await longServiceEventIterator.next(), .runCancelled)
+            await XCTAsyncAssertEqual(await longServiceEventIterator.nonSendingNext(), .runCancelled)
             // Finishing the long running service here
             await longService.resumeRunContinuation(with: .success(()))
 
@@ -318,17 +318,17 @@ final class ServiceGroupTests: XCTestCase {
 
             var service1EventIterator = service1.events.makeAsyncIterator()
             var service2EventIterator = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await service1EventIterator.next(), .run)
-            await XCTAsyncAssertEqual(await service2EventIterator.next(), .run)
+            await XCTAsyncAssertEqual(await service1EventIterator.nonSendingNext(), .run)
+            await XCTAsyncAssertEqual(await service2EventIterator.nonSendingNext(), .run)
             service1.sendPing()
             service2.sendPing()
-            await XCTAsyncAssertEqual(await service1EventIterator.next(), .runPing)
-            await XCTAsyncAssertEqual(await service2EventIterator.next(), .runPing)
+            await XCTAsyncAssertEqual(await service1EventIterator.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await service2EventIterator.nonSendingNext(), .runPing)
 
             // Throwing from service1 here and expect that service2 gets cancelled
             await service1.resumeRunContinuation(with: .failure(ExampleError()))
 
-            await XCTAsyncAssertEqual(await service2EventIterator.next(), .runCancelled)
+            await XCTAsyncAssertEqual(await service2EventIterator.nonSendingNext(), .runCancelled)
             await service2.resumeRunContinuation(with: .success(()))
 
             try await XCTAsyncAssertThrowsError(await group.next()) {
@@ -350,7 +350,7 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator = mockService.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .run)
 
             await mockService.resumeRunContinuation(with: .failure(ExampleError()))
 
@@ -376,38 +376,38 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator1 = service1.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
             var eventIterator3 = service3.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
             await service2.resumeRunContinuation(with: .failure(ExampleError()))
 
             // The last service should receive the shutdown signal first
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that all two are still running
             service1.sendPing()
             service3.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runPing)
 
             // Let's exit from the last service
             await service3.resumeRunContinuation(with: .success(()))
 
             // Waiting to see that the remaining is still running
             service1.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
 
             // The first service should now receive the signal
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that the one remaining are still running
             service1.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
 
             // Let's exit from the first service
             await service1.resumeRunContinuation(with: .success(()))
@@ -436,36 +436,36 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator1 = service1.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
             var eventIterator3 = service3.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
             await service2.resumeRunContinuation(with: .failure(ExampleError()))
 
             // The last service should receive the shutdown signal first
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that all two are still running
             service1.sendPing()
             service3.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runPing)
 
             // Let's exit from the last service
             await service3.resumeRunContinuation(with: .success(()))
 
             // Waiting to see that the remaining is still running
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .shutdownGracefully)
             service1.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
 
             // Waiting to see that the one remaining are still running
             service1.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
 
             // Let's throw from this service as well
             struct OtherError: Error {}
@@ -493,20 +493,20 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator1 = service1.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
             var eventIterator3 = service3.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
             let pid = getpid()
             kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
 
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runCancelled)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runCancelled)
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runCancelled)
 
             // Let's exit from all services
             await service1.resumeRunContinuation(with: .success(()))
@@ -535,33 +535,33 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator1 = service1.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
             var eventIterator3 = service3.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
             let pid = getpid()
             kill(pid, UnixSignal.sigwinch.rawValue)  // ignore-unacceptable-language
 
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that all services are still running.
             service1.sendPing()
             service2.sendPing()
             service3.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runPing)
 
             // Now we signal cancellation
             kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
 
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runCancelled)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runCancelled)
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runCancelled)
 
             // Let's exit from all services
             await service1.resumeRunContinuation(with: .success(()))
@@ -589,49 +589,49 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator1 = service1.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
             var eventIterator3 = service3.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
             let pid = getpid()
             kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
 
             // The last service should receive the shutdown signal first
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that all three are still running
             service1.sendPing()
             service2.sendPing()
             service3.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runPing)
 
             // Let's exit from the last service
             await service3.resumeRunContinuation(with: .success(()))
 
             // The middle service should now receive the signal
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that the two remaining are still running
             service1.sendPing()
             service2.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
             // Let's exit from the middle service
             await service2.resumeRunContinuation(with: .success(()))
 
             // The first service should now receive the signal
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that the one remaining are still running
             service1.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
 
             // Let's exit from the first service
             await service1.resumeRunContinuation(with: .success(()))
@@ -655,45 +655,45 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator1 = service1.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
             var eventIterator3 = service3.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
             let pid = getpid()
             kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
 
             // The last service should receive the shutdown signal first
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that all three are still running
             service1.sendPing()
             service2.sendPing()
             service3.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runPing)
 
             // Let's exit from the last service
             await service3.resumeRunContinuation(with: .success(()))
 
             // The middle service should now receive the signal
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that the two remaining are still running
             service1.sendPing()
             service2.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
             // Let's throw from the middle service
             await service2.resumeRunContinuation(with: .failure(ExampleError()))
 
             // The first service should now receive a cancellation
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runCancelled)
 
             // Let's exit from the first service
             await service1.resumeRunContinuation(with: .success(()))
@@ -725,45 +725,45 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator1 = service1.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
             var eventIterator3 = service3.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
             let pid = getpid()
             kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
 
             // The last service should receive the shutdown signal first
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that all three are still running
             service1.sendPing()
             service2.sendPing()
             service3.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runPing)
 
             // Let's exit from the last service
             await service3.resumeRunContinuation(with: .success(()))
 
             // The middle service should now receive the signal
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that the two remaining are still running
             service1.sendPing()
             service2.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
             // Let's throw from the middle service
             await service2.resumeRunContinuation(with: .failure(ExampleError()))
 
             // The first service should now receive a cancellation
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .shutdownGracefully)
 
             // Let's exit from the first service
             await service1.resumeRunContinuation(with: .success(()))
@@ -791,45 +791,45 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator1 = service1.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
             var eventIterator3 = service3.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
             let pid = getpid()
             kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
 
             // The last service should receive the shutdown signal first
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that all three are still running
             service1.sendPing()
             service2.sendPing()
             service3.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runPing)
 
             // Let's exit from the last service
             await service3.resumeRunContinuation(with: .success(()))
 
             // The middle service should now receive the signal
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that the two remaining are still running
             service1.sendPing()
             service2.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
             // Let's exit from the first service
             await service1.resumeRunContinuation(with: .success(()))
 
             // The middle service should now receive a cancellation
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runCancelled)
 
             // Let's exit from the first service
             await service2.resumeRunContinuation(with: .success(()))
@@ -857,47 +857,47 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator1 = service1.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
             var eventIterator3 = service3.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
             let pid = getpid()
             kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
 
             // The last service should receive the shutdown signal first
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that all three are still running
             service1.sendPing()
             service2.sendPing()
             service3.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runPing)
 
             // Let's exit from the last service
             await service3.resumeRunContinuation(with: .success(()))
 
             // The middle service should now receive the signal
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that the two remaining are still running
             service1.sendPing()
             service2.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
             // Let's throw from the second service
             await service2.resumeRunContinuation(with: .failure(ExampleError()))
 
             // The first service should still be running but seeing a graceful shutdown signal firsts
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .shutdownGracefully)
             service1.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
 
             // Let's throw from the first service
             await service1.resumeRunContinuation(with: .failure(ExampleError()))
@@ -944,29 +944,29 @@ final class ServiceGroupTests: XCTestCase {
             var eventIterator2 = service2.events.makeAsyncIterator()
             service1.sendPing()
             service2.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
             let pid = getpid()
             kill(pid, UnixSignal.sigalrm.rawValue)  // ignore-unacceptable-language
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .shutdownGracefully)
 
             service1.sendPing()
             service2.sendPing()
 
             // Waiting to see that the two remaining are still running
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
             // Let's exit from the second service
             await service2.resumeRunContinuation(with: .success(()))
 
             service1.sendPing()
             // Waiting to see that the remaining is still running
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
 
             // Let's exit from the first service
             await service1.resumeRunContinuation(with: .success(()))
@@ -987,44 +987,44 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator1 = service1.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
             var eventIterator3 = service3.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
             await serviceGroup.triggerGracefulShutdown()
 
             // The last service should receive the shutdown signal first
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that all three are still running
             service1.sendPing()
             service2.sendPing()
             service3.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runPing)
 
             // Let's exit from the last service
             await service3.resumeRunContinuation(with: .success(()))
 
             // The middle service should now receive the signal
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that the two remaining are still running
             service1.sendPing()
             service2.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
             // Let's exit from the first service
             await service1.resumeRunContinuation(with: .success(()))
 
             // The middle service should now receive a cancellation
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runCancelled)
 
             // Let's exit from the first service
             await service2.resumeRunContinuation(with: .success(()))
@@ -1047,13 +1047,13 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator = mockService.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .run)
 
             await serviceGroup.triggerGracefulShutdown()
 
-            await XCTAsyncAssertEqual(await eventIterator.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .shutdownGracefully)
 
-            await XCTAsyncAssertEqual(await eventIterator.next(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .runCancelled)
 
             try await Task.sleep(for: .seconds(0.2))
 
@@ -1077,11 +1077,11 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator = mockService.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .run)
 
             await serviceGroup.triggerGracefulShutdown()
 
-            await XCTAsyncAssertEqual(await eventIterator.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .shutdownGracefully)
 
             await mockService.resumeRunContinuation(with: .success(()))
 
@@ -1104,13 +1104,13 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator = mockService.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .run)
 
             await serviceGroup.triggerGracefulShutdown()
 
-            await XCTAsyncAssertEqual(await eventIterator.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .shutdownGracefully)
 
-            await XCTAsyncAssertEqual(await eventIterator.next(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .runCancelled)
 
             try await Task.sleep(for: .seconds(0.2))
 
@@ -1135,11 +1135,11 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator = mockService.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .run)
 
             group.cancelAll()
 
-            await XCTAsyncAssertEqual(await eventIterator.next(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator.nonSendingNext(), .runCancelled)
 
             try await Task.sleep(for: .seconds(0.1))
 
@@ -1168,48 +1168,48 @@ final class ServiceGroupTests: XCTestCase {
                 }
 
                 var eventIterator1 = service1.events.makeAsyncIterator()
-                await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+                await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
                 var eventIterator2 = service2.events.makeAsyncIterator()
-                await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+                await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
                 var eventIterator3 = service3.events.makeAsyncIterator()
-                await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+                await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
                 await serviceGroup.triggerGracefulShutdown()
 
                 // The last service should receive the shutdown signal first
-                await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+                await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .shutdownGracefully)
 
                 // Waiting to see that all three are still running
                 service1.sendPing()
                 service2.sendPing()
                 service3.sendPing()
-                await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-                await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
-                await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+                await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+                await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
+                await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runPing)
 
                 // Let's exit from the last service
                 await service3.resumeRunContinuation(with: .success(()))
 
                 // The middle service should now receive the signal
-                await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+                await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .shutdownGracefully)
 
                 // Waiting to see that the two remaining are still running
                 service1.sendPing()
                 service2.sendPing()
-                await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-                await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+                await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+                await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
                 // Let's exit from the second service
                 await service2.resumeRunContinuation(with: .failure(ExampleError()))
 
                 // The final service should now receive the signal
-                await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
+                await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .shutdownGracefully)
 
                 // Waiting to see that the one remaining are still running
                 service1.sendPing()
-                await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+                await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
 
                 // Let's exit from the first service
                 await service1.resumeRunContinuation(with: .success(()))
@@ -1241,48 +1241,48 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator1 = service1.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
             var eventIterator3 = service3.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
             await serviceGroup.triggerGracefulShutdown()
 
             // The last service should receive the shutdown signal first
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that all three are still running
             service1.sendPing()
             service2.sendPing()
             service3.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runPing)
 
             // Let's exit from the last service
             await service3.resumeRunContinuation(with: .success(()))
 
             // The middle service should now receive the signal
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that the two remaining are still running
             service1.sendPing()
             service2.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
             // Let's exit from the second service
             await service2.resumeRunContinuation(with: .failure(ExampleError()))
 
             // The final service should now receive the signal
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that the one remaining are still running
             service1.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
 
             // Let's exit from the first service
             await service1.resumeRunContinuation(with: .success(()))
@@ -1310,38 +1310,38 @@ final class ServiceGroupTests: XCTestCase {
                 }
 
                 var eventIterator1 = service1.events.makeAsyncIterator()
-                await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+                await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
                 var eventIterator2 = service2.events.makeAsyncIterator()
-                await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+                await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
                 var eventIterator3 = service3.events.makeAsyncIterator()
-                await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+                await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
                 await serviceGroup.triggerGracefulShutdown()
 
                 // The last service should receive the shutdown signal first
-                await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+                await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .shutdownGracefully)
 
                 // Waiting to see that all three are still running
                 service1.sendPing()
                 service2.sendPing()
                 service3.sendPing()
-                await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-                await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
-                await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+                await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+                await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
+                await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runPing)
 
                 // Let's exit from the last service
                 await service3.resumeRunContinuation(with: .success(()))
 
                 // The middle service should now receive the signal
-                await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+                await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .shutdownGracefully)
 
                 // Waiting to see that the two remaining are still running
                 service1.sendPing()
                 service2.sendPing()
-                await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-                await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+                await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+                await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
                 // Let's exit from the first service (even though the second service
                 // is gracefully shutting down)
@@ -1349,7 +1349,7 @@ final class ServiceGroupTests: XCTestCase {
 
                 // Waiting to see that the one remaining are still running
                 service2.sendPing()
-                await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+                await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
                 // Let's exit from the second service
                 await service2.resumeRunContinuation(with: .success(()))
@@ -1382,38 +1382,38 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator1 = service1.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
             var eventIterator3 = service3.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
             await serviceGroup.triggerGracefulShutdown()
 
             // The last service should receive the shutdown signal first
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that all three are still running
             service1.sendPing()
             service2.sendPing()
             service3.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runPing)
 
             // Let's exit from the last service
             await service3.resumeRunContinuation(with: .success(()))
 
             // The middle service should now receive the signal
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that the two remaining are still running
             service1.sendPing()
             service2.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
             // Let's exit from the first service (even though the second service
             // is gracefully shutting down)
@@ -1424,7 +1424,7 @@ final class ServiceGroupTests: XCTestCase {
 
             // Waiting to see that the one remaining are still running
             service2.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
             // Let's exit from the second service
             await service2.resumeRunContinuation(with: .success(()))
@@ -1456,44 +1456,44 @@ final class ServiceGroupTests: XCTestCase {
             }
 
             var eventIterator1 = service1.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .run)
 
             var eventIterator2 = service2.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .run)
 
             var eventIterator3 = service3.events.makeAsyncIterator()
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .run)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .run)
 
             await outerServiceGroup.triggerGracefulShutdown()
 
             // The last service should receive the shutdown signal first
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that all three are still running
             service1.sendPing()
             service2.sendPing()
             service3.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator3.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator3.nonSendingNext(), .runPing)
 
             // Let's exit from the last service
             await service3.resumeRunContinuation(with: .success(()))
 
             // The middle service should now receive the signal
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .shutdownGracefully)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .shutdownGracefully)
 
             // Waiting to see that the two remaining are still running
             service1.sendPing()
             service2.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator1.nonSendingNext(), .runPing)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runPing)
 
             // Let's exit from the first service
             await service1.resumeRunContinuation(with: .success(()))
 
             // The middle service should now receive a cancellation
-            await XCTAsyncAssertEqual(await eventIterator2.next(), .runCancelled)
+            await XCTAsyncAssertEqual(await eventIterator2.nonSendingNext(), .runCancelled)
 
             // Let's exit from the first service
             await service2.resumeRunContinuation(with: .success(()))
