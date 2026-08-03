@@ -24,7 +24,10 @@ public actor ServiceGroup: Sendable, Service {
     /// The internal state of the ``ServiceGroup``.
     private enum State {
         /// The initial state of the group.
-        case initial(services: [ServiceGroupConfiguration.ServiceConfiguration])
+        case initial(
+            services: [ServiceGroupConfiguration.ServiceConfiguration],
+            gracefulShutdownRequested: Bool
+        )
         /// The state once ``ServiceGroup/run()`` has been called.
         case running(
             gracefulShutdownStreamContinuation: AsyncStream<Void>.Continuation,
@@ -61,7 +64,10 @@ public actor ServiceGroup: Sendable, Service {
             "Overlapping graceful shutdown and cancellation signals"
         )
         precondition(configuration.logger.label != deprecatedLoggerLabel, "Please migrate to the new initializers")
-        self.state = .initial(services: configuration.services)
+        self.state = .initial(
+            services: configuration.services,
+            gracefulShutdownRequested: false
+        )
         self.gracefulShutdownSignals = configuration.gracefulShutdownSignals
         self.cancellationSignals = configuration.cancellationSignals
         self.logger = configuration.logger
@@ -104,7 +110,8 @@ public actor ServiceGroup: Sendable, Service {
     ) {
         precondition(configuration.services.isEmpty, "Please migrate to the new initializers")
         self.state = .initial(
-            services: Array(services.map { ServiceGroupConfiguration.ServiceConfiguration(service: $0) })
+            services: Array(services.map { ServiceGroupConfiguration.ServiceConfiguration(service: $0) }),
+            gracefulShutdownRequested: false
         )
         self.gracefulShutdownSignals = configuration.gracefulShutdownSignals
         self.cancellationSignals = configuration.cancellationSignals
@@ -122,10 +129,19 @@ public actor ServiceGroup: Sendable, Service {
     ///   - serviceConfiguration: The service configuration to add.
     public func addServiceUnlessShutdown(_ serviceConfiguration: ServiceGroupConfiguration.ServiceConfiguration) async {
         switch self.state {
-        case var .initial(services: services):
-            self.state = .initial(services: [])
+        case let .initial(services: initialServices, gracefulShutdownRequested: gracefulShutdownRequested):
+            guard !gracefulShutdownRequested else {
+                // A graceful shutdown was requested before the group started.
+                return
+            }
+
+            var services = initialServices
+            self.state = .initial(services: [], gracefulShutdownRequested: false)
             services.append(serviceConfiguration)
-            self.state = .initial(services: services)
+            self.state = .initial(
+                services: services,
+                gracefulShutdownRequested: gracefulShutdownRequested
+            )
 
         case .running(_, let addedServiceChannel):
             await addedServiceChannel.send(serviceConfiguration)
@@ -162,7 +178,7 @@ public actor ServiceGroup: Sendable, Service {
     /// Furthermore, this method sets up the correct signal handlers for graceful shutdown.
     public func run(file: String = #file, line: Int = #line) async throws {
         switch self.state {
-        case .initial(var services):
+        case .initial(var services, let gracefulShutdownRequested):
             guard !services.isEmpty else {
                 self.state = .finished
                 return
@@ -175,6 +191,11 @@ public actor ServiceGroup: Sendable, Service {
                 gracefulShutdownStreamContinuation: gracefulShutdownContinuation,
                 addedServiceChannel: addedServiceChannel
             )
+
+            if gracefulShutdownRequested {
+                gracefulShutdownContinuation.yield()
+                gracefulShutdownContinuation.finish()
+            }
 
             var potentialError: Error?
             do {
@@ -210,11 +231,15 @@ public actor ServiceGroup: Sendable, Service {
     /// Triggers the graceful shutdown of all services.
     ///
     /// This method returns immediately after triggering the graceful shutdown and doesn't wait until the service have shutdown.
+    /// If called before ``ServiceGroup/run()``, the request is remembered and delivered once the group starts.
     public func triggerGracefulShutdown() async {
         switch self.state {
-        case .initial:
-            // We aren't even running so we can stop right away.
-            self.state = .finished
+        case let .initial(services, _):
+            // Remember the request so that run() can still start the services and shut them down gracefully.
+            self.state = .initial(
+                services: services,
+                gracefulShutdownRequested: true
+            )
             return
 
         case .running(let gracefulShutdownStreamContinuation, _):

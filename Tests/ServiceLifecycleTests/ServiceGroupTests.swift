@@ -54,6 +54,35 @@ final class ServiceGroupTests: XCTestCase {
         }
     }
 
+    func testTriggerGracefulShutdown_beforeRun() async throws {
+        let mockService = MockService(description: "Service1")
+        let serviceGroup = self.makeServiceGroup(
+            services: [.init(service: mockService)]
+        )
+
+        await serviceGroup.triggerGracefulShutdown()
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await serviceGroup.run()
+            }
+
+            var eventIterator = mockService.events.makeAsyncIterator()
+            let firstEvent = await eventIterator.next()
+            let secondEvent = await eventIterator.next()
+            switch (firstEvent, secondEvent) {
+            case (.some(.run), .some(.shutdownGracefully)), (.some(.shutdownGracefully), .some(.run)):
+                break
+            default:
+                XCTFail("Expected the service to run and receive graceful shutdown")
+            }
+
+            await mockService.resumeRunContinuation(with: .success(()))
+
+            try await XCTAsyncAssertNoThrow(await group.next())
+        }
+    }
+
     func testRun_whenNoService_andNoSignal() async throws {
         let group = self.makeServiceGroup()
 
