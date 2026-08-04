@@ -60,6 +60,12 @@ final class ServiceGroupTests: XCTestCase {
         try await group.run()
     }
 
+    func testRun_withDefaultLogger() async throws {
+        let group = ServiceGroup(services: [])
+
+        try await group.run()
+    }
+
     func testRun_whenNoSignal() async throws {
         let mockService = MockService(description: "Service1")
         let serviceGroup = self.makeServiceGroup(

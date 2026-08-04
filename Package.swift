@@ -20,7 +20,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/apple/swift-log.git",
-            from: "1.5.2"
+            from: "1.14.0"
         ),
         .package(
             url: "https://github.com/apple/swift-async-algorithms.git",

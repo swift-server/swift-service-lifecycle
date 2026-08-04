@@ -81,7 +81,7 @@ public actor ServiceGroup: Sendable, Service {
         services: [any Service],
         gracefulShutdownSignals: [UnixSignal] = [],
         cancellationSignals: [UnixSignal] = [],
-        logger: Logger
+        logger: Logger = .current
     ) {
         let configuration = ServiceGroupConfiguration(
             services: services.map { ServiceGroupConfiguration.ServiceConfiguration(service: $0) },
