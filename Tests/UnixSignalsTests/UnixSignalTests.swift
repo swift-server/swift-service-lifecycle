@@ -125,14 +125,14 @@ final class UnixSignalTests: XCTestCase {
 
     func testDispatchSourcesAreReleasedWhenInitIsCancelled() async throws {
         let task = Task { () -> [WeakDispatchSource] in
-            // Returns immediately once the task is cancelled, so the init below always runs on
-            // an already-cancelled task.
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            withUnsafeCurrentTask { task in
+                task?.cancel()
+            }
+            XCTAssertTrue(Task.isCancelled)
 
             let signals = await UnixSignalsSequence(trapping: .sighup)
             return signals.dispatchSources.map(WeakDispatchSource.init)
         }
-        task.cancel()
 
         // Only weak references survive the task, so the sources are released as soon as nothing
         // else holds on to them.
