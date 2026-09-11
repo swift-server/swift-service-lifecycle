@@ -14,7 +14,8 @@
 
 #if !os(Windows)
 
-import UnixSignals
+@testable import UnixSignals
+import Dispatch
 import XCTest
 #if canImport(Darwin)
 import Darwin
@@ -25,6 +26,19 @@ import Musl
 #elseif canImport(Android)
 import Android
 #endif
+
+/// Holds a dispatch source weakly so that a test can observe it being released.
+///
+/// This is `@unchecked Sendable` because the source can be released on the dispatch queue rather
+/// than on the thread that dropped the last reference. Swift's weak loads and stores are
+/// themselves thread safe and awaiting the task orders the hand-off against our reads.
+private final class WeakDispatchSource: @unchecked Sendable {
+    weak var value: DispatchSource?
+
+    init(_ value: DispatchSource) {
+        self.value = value
+    }
+}
 
 final class UnixSignalTests: XCTestCase {
     func testSingleSignal() async throws {
@@ -90,6 +104,45 @@ final class UnixSignalTests: XCTestCase {
             let second = try await group.next()
             XCTAssertEqual(second, .cancelled)
         }
+    }
+
+    func testDispatchSourcesAreCancelledWhenSequenceIsReleased() async throws {
+        var signals: UnixSignalsSequence? = await UnixSignalsSequence(trapping: .sighup)
+        let sources = signals!.dispatchSources
+        XCTAssertFalse(sources.isEmpty)
+        XCTAssertFalse(sources.contains { $0.isCancelled })
+
+        signals = nil
+
+        // Dropping the sequence does not necessarily drop the last reference to the storage:
+        // libdispatch's registration handler holds one as well and only releases it on the
+        // dispatch queue after it has resumed us, so the deinit can still be pending here.
+        for _ in 0..<100 where !sources.allSatisfy({ $0.isCancelled }) {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        XCTAssertTrue(sources.allSatisfy { $0.isCancelled })
+    }
+
+    func testDispatchSourcesAreReleasedWhenInitIsCancelled() async throws {
+        let task = Task { () -> [WeakDispatchSource] in
+            // Returns immediately once the task is cancelled, so the init below always runs on
+            // an already-cancelled task.
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+
+            let signals = await UnixSignalsSequence(trapping: .sighup)
+            return signals.dispatchSources.map(WeakDispatchSource.init)
+        }
+        task.cancel()
+
+        // Only weak references survive the task, so the sources are released as soon as nothing
+        // else holds on to them.
+        let sources = await task.value
+        XCTAssertFalse(sources.isEmpty)
+
+        for _ in 0..<100 where sources.contains(where: { $0.value != nil }) {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        XCTAssertTrue(sources.allSatisfy { $0.value == nil })
     }
 
     func testEmptySequence() async throws {
