@@ -82,10 +82,32 @@ public struct UnixSignalsSequence: AsyncSequence, Sendable {
     }
 }
 
+#if !os(Windows) && !os(WASI)
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+extension UnixSignalsSequence {
+    /// The underlying dispatch sources, exposed for testing.
+    internal var dispatchSources: [DispatchSource] {
+        self.storage.sources.map { $0.dispatchSource }
+    }
+}
+#endif
+
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 extension UnixSignalsSequence {
     fileprivate final class Storage: @unchecked Sendable {
         private let stateMachine: LockedValueBox<StateMachine>
+        #if !os(Windows) && !os(WASI)
+        fileprivate let sources: [Source]
+
+        deinit {
+            // Dispatch sources retain their event handlers until they are cancelled, and the
+            // handler holds on to the source, so we have to cancel them here to avoid leaking
+            // a registered signal source per instance.
+            for source in self.sources {
+                source.dispatchSource.cancel()
+            }
+        }
+        #endif
 
         init(signals: Set<UnixSignal>) async {
             #if !os(Windows) && !os(WASI)
@@ -122,6 +144,7 @@ extension UnixSignalsSequence {
                 }
             }
 
+            self.sources = sources
             self.stateMachine = .init(.init(sources: sources, stream: stream))
 
             // Registering sources is async: await their registration so we don't miss early signals.
@@ -147,6 +170,11 @@ extension UnixSignalsSequence {
                             source.dispatchSource.resume()
 
                         case .resumeContinuation(let continuation):
+                            // The init was cancelled, so `cancelledInit()` has already cancelled this
+                            // source. libdispatch only runs the cancel callout - which is what releases
+                            // the handler blocks - once a source has been activated, so activate it here
+                            // to let it tear itself down instead of leaking.
+                            source.dispatchSource.resume()
                             continuation.resume()
                         }
                     }
