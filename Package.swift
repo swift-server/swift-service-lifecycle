@@ -75,11 +75,13 @@ let package = Package(
 )
 
 for target in package.targets {
-    #if compiler(<6.2)
-    // Needed since Sendable checking with isolated methods is not working correctly before 6.2
     if target.swiftSettings == nil {
         target.swiftSettings = []
     }
+    #if compiler(<6.2)
+    // Needed since Sendable checking with isolated methods is not working correctly before 6.2
     target.swiftSettings?.append(.swiftLanguageMode(.v5))
+    #else
+    target.swiftSettings?.append(.enableUpcomingFeature("NonisolatedNonsendingByDefault"))
     #endif
 }

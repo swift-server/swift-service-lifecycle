@@ -89,5 +89,5 @@ let package = Package(
 
 - ``cancelOnGracefulShutdown(_:)``
 - ``withGracefulShutdownHandler(operation:onGracefulShutdown:)``
-- ``withGracefulShutdownHandler(operation:onGracefulShutdown:)-1x21p``
-- ``withTaskCancellationOrGracefulShutdownHandler(operation:onCancelOrGracefulShutdown:)-81m01``
+- ``withGracefulShutdownHandler(isolation:operation:onGracefulShutdown:)``
+- ``withTaskCancellationOrGracefulShutdownHandler(isolation:operation:onCancelOrGracefulShutdown:)``

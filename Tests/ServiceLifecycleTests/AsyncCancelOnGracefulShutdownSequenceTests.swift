@@ -36,11 +36,11 @@ final class AsyncCancelOnGracefulShutdownSequenceTests: XCTestCase {
 
                 var iterator = resultStream.makeAsyncIterator()
 
-                await XCTAsyncAssertEqual(await iterator.next(), 1)
+                await XCTAsyncAssertEqual(await iterator.nonSendingNext(), 1)
 
                 gracefulShutdownTrigger.triggerGracefulShutdown()
 
-                await XCTAsyncAssertEqual(await iterator.next(), nil)
+                await XCTAsyncAssertEqual(await iterator.nonSendingNext(), nil)
             }
         }
     }
@@ -61,11 +61,11 @@ final class AsyncCancelOnGracefulShutdownSequenceTests: XCTestCase {
                 var iterator = resultStream.makeAsyncIterator()
                 baseContinuation.yield(1)
 
-                await XCTAsyncAssertEqual(await iterator.next(), 1)
+                await XCTAsyncAssertEqual(await iterator.nonSendingNext(), 1)
 
                 baseContinuation.finish()
 
-                await XCTAsyncAssertEqual(await iterator.next(), nil)
+                await XCTAsyncAssertEqual(await iterator.nonSendingNext(), nil)
             }
         }
     }
