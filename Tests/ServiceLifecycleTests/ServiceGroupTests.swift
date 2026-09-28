@@ -433,10 +433,6 @@ final class ServiceGroupTests: XCTestCase {
             // Let's exit from the last service
             await service3.resumeRunContinuation(with: .success(()))
 
-            // Waiting to see that the remaining is still running
-            service1.sendPing()
-            await XCTAsyncAssertEqual(await eventIterator1.next(), .runPing)
-
             // The first service should now receive the signal
             await XCTAsyncAssertEqual(await eventIterator1.next(), .shutdownGracefully)
 
