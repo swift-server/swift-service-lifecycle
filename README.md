@@ -34,7 +34,7 @@ and add `ServiceLifecycle` to the dependencies of your application target:
 Example `Package.swift` file with `ServiceLifecycle` as a dependency:
 
 ```swift
-// swift-tools-version:6.0
+// swift-tools-version:6.2
 import PackageDescription
 
 let package = Package(
