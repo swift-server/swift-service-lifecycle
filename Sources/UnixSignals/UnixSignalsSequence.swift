@@ -94,7 +94,7 @@ extension UnixSignalsSequence {
 
 @available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
 extension UnixSignalsSequence {
-    fileprivate final class Storage: @unchecked Sendable {
+    fileprivate final class Storage: Sendable {
         private let stateMachine: LockedValueBox<StateMachine>
         #if !os(Windows) && !os(WASI)
         fileprivate let sources: [Source]
