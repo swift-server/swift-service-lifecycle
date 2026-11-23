@@ -10,47 +10,29 @@ on:
 jobs:
   soundness:
     name: Soundness
-    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.18
+    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.19
     with:
       license_header_check_project_name: "SwiftServiceLifecycle"
 
-  unit-tests:
-    name: Unit tests
-    uses: apple/swift-nio/.github/workflows/unit_tests.yml@main
+  tests:
+    name: Tests
+    uses: swiftlang/github-workflows/.github/workflows/package_test.yml@f977e5189c1fcc23abb681efa9f066e8b28ba14f  # main, for https://github.com/swiftlang/github-workflows/pull/362
     with:
-      linux_6_2_arguments_override: "-Xswiftc -warnings-as-errors --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable"
-      linux_6_3_arguments_override: "-Xswiftc -warnings-as-errors --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable"
-      linux_6_4_arguments_override: "-Xswiftc -warnings-as-errors --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable"
-      linux_nightly_next_arguments_override: "--explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable"
-      linux_nightly_main_arguments_override: "--explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable"
-      windows_6_2_enabled: true
-      windows_6_3_enabled: true
-      windows_6_4_enabled: true
-      windows_6_2_arguments_override: "-Xswiftc -warnings-as-errors --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable"
-      windows_6_3_arguments_override: "-Xswiftc -warnings-as-errors --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable"
-      windows_6_4_arguments_override: "-Xswiftc -warnings-as-errors --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable"
-      windows_nightly_next_enabled: true
-      windows_nightly_main_enabled: true
-
-  cxx-interop:
-    name: Cxx interop
-    uses: apple/swift-nio/.github/workflows/cxx_interop.yml@main
-
-  static-sdk:
-    name: Static SDK
-    # Workaround https://github.com/nektos/act/issues/1875
-    uses: apple/swift-nio/.github/workflows/static_sdk.yml@main
-
-  release-builds:
-    name: Release builds
-    uses: apple/swift-nio/.github/workflows/release_builds.yml@main
-
-  wasm-sdk:
-    name: WebAssembly Swift SDK
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@main
-    with:
-      enable_wasm_sdk_build: true
-      enable_linux_checks: false
-      enable_windows_checks: false
-      swift_flags: --target ServiceLifecycle
-      swift_nightly_flags: --target ServiceLifecycle
+      linux_command: |
+        Debug-Test: swift test
+        Release-Build: swift build -c release
+      linux_version_overrides: |
+        default: -Xswiftc -warnings-as-errors --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable
+        nightly-release: --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable
+        nightly-main: --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable
+      windows_version_overrides: |
+        default: -Xswiftc -warnings-as-errors --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable
+        nightly-release: --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable
+        nightly-main: --explicit-target-dependency-import-check error -Xswiftc -require-explicit-sendable
+      windows_use_docker: true
+      wasm_sdk_command: swift build --target ServiceLifecycle
+      enable_macos: false
+      enable_macos_swiftly: false
+      enable_embedded_wasm_sdk_build: false
+      enable_android_sdk_build: false
+      enable_freebsd: false
