@@ -16,7 +16,7 @@ jobs:
 
   tests:
     name: Tests
-    uses: swiftlang/github-workflows/.github/workflows/package_test.yml@d556757ad4b83683129d74b63ba4263a400492b3  # main, for https://github.com/swiftlang/github-workflows/pull/362
+    uses: swiftlang/github-workflows/.github/workflows/package_test.yml@0339b1dad2ff0179c9440ab1b052336786eac174  # main, for https://github.com/swiftlang/github-workflows/pull/362
     with:
       linux_command: |
         Debug-Test: swift test
