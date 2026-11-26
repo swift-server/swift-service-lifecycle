@@ -30,9 +30,47 @@ import Android
 #endif
 import ConcurrencyHelpers
 
+/// Traps the given signals for the duration of `body` and delivers them on a ``UnixSignalsSequence``.
+///
+/// The signal sources are installed before `body` runs and cancelled once `body` returns or throws.
+/// The sequence finishes once `body` returns, so it must not be used outside of `body`.
+///
+/// - Note: On Darwin, the trapped signals are set to `SIG_IGN` so that Dispatch can deliver them, and they
+/// stay ignored after `body` returns.
+///
+/// ```swift
+/// await withUnixSignals([.sigterm]) { signals in
+///     for await signal in signals {
+///         // handle signal
+///     }
+/// }
+/// ```
+///
+/// - Important: There can only be a single signal handler for a signal installed. So you should avoid creating multiple handlers
+/// for the same signal.
+///
+/// - Parameters:
+///   - signals: The signals to trap.
+///   - isolation: The isolation of the method. Defaults to the isolation of the caller.
+///   - body: The closure that receives the trapped signals.
+/// - Returns: The value returned by `body`.
+@available(macOS 10.15, iOS 13.0, watchOS 6.0, tvOS 13.0, *)
+public func withUnixSignals<T>(
+    _ signals: [UnixSignal],
+    isolation: isolated (any Actor)? = #isolation,
+    body: (UnixSignalsSequence) async throws -> T
+) async rethrows -> T {
+    let sequence = await UnixSignalsSequence(signals: Set(signals))
+    defer {
+        sequence.storage.cancel()
+    }
+
+    return try await body(sequence)
+}
+
 /// An unterminated `AsyncSequence` of ``UnixSignal``s.
 ///
-/// This can be used to setup signal handlers and receive the signals on the sequence.
+/// Use ``withUnixSignals(_:isolation:body:)`` to setup signal handlers and receive the signals on the sequence.
 ///
 /// - Important: There can only be a single signal handler for a signal installed. So you should avoid creating multiple handlers
 /// for the same signal.
@@ -51,15 +89,21 @@ public struct UnixSignalsSequence: AsyncSequence, Sendable {
         var signal: UnixSignal
     }
 
-    private let storage: Storage
+    fileprivate let storage: Storage
 
+    @available(*, deprecated, message: "Use withUnixSignals(_:isolation:body:) instead.")
     public init(trapping signals: UnixSignal...) async {
-        await self.init(trapping: signals)
+        await self.init(signals: Set(signals))
     }
 
+    @available(*, deprecated, message: "Use withUnixSignals(_:isolation:body:) instead.")
     public init(trapping signals: [UnixSignal]) async {
-        // We are converting the signals to a Set here to remove duplicates
-        self.storage = await .init(signals: Set(signals))
+        await self.init(signals: Set(signals))
+    }
+
+    // We are using a Set here to remove duplicates
+    fileprivate init(signals: Set<UnixSignal>) async {
+        self.storage = await .init(signals: signals)
     }
 
     public func makeAsyncIterator() -> AsyncIterator {
@@ -103,9 +147,7 @@ extension UnixSignalsSequence {
             // Dispatch sources retain their event handlers until they are cancelled, and the
             // handler holds on to the source, so we have to cancel them here to avoid leaking
             // a registered signal source per instance.
-            for source in self.sources {
-                source.dispatchSource.cancel()
-            }
+            self.cancel()
         }
         #endif
 
@@ -207,6 +249,15 @@ extension UnixSignalsSequence {
 
         func makeAsyncIterator() -> AsyncStream<UnixSignal>.AsyncIterator {
             return self.stateMachine.withLockedValue { $0.makeAsyncIterator() }
+        }
+
+        /// Cancels the dispatch sources, which finishes the stream.
+        func cancel() {
+            #if !os(Windows) && !os(WASI)
+            for source in self.sources {
+                source.dispatchSource.cancel()
+            }
+            #endif
         }
     }
 }

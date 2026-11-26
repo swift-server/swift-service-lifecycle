@@ -41,6 +41,7 @@ private final class WeakDispatchSource: @unchecked Sendable {
 }
 
 final class UnixSignalTests: XCTestCase {
+    @available(*, deprecated, message: "Tests the deprecated UnixSignalsSequence initializers.")
     func testSingleSignal() async throws {
         let signal = UnixSignal.sigalrm
         let signals = await UnixSignalsSequence(trapping: signal)
@@ -52,6 +53,7 @@ final class UnixSignalTests: XCTestCase {
         XCTAssertEqual(caught, signal)
     }
 
+    @available(*, deprecated, message: "Tests the deprecated UnixSignalsSequence initializers.")
     func testCatchingMultipleSignals() async throws {
         let signal = UnixSignal.sigalrm
         let signals = await UnixSignalsSequence(trapping: signal)
@@ -66,6 +68,7 @@ final class UnixSignalTests: XCTestCase {
         }
     }
 
+    @available(*, deprecated, message: "Tests the deprecated UnixSignalsSequence initializers.")
     func testCancelOnSignal() async throws {
         enum GroupResult {
             case timedOut
@@ -106,6 +109,7 @@ final class UnixSignalTests: XCTestCase {
         }
     }
 
+    @available(*, deprecated, message: "Tests the deprecated UnixSignalsSequence initializers.")
     func testDispatchSourcesAreCancelledWhenSequenceIsReleased() async throws {
         var signals: UnixSignalsSequence? = await UnixSignalsSequence(trapping: .sighup)
         let sources = signals!.dispatchSources
@@ -123,6 +127,7 @@ final class UnixSignalTests: XCTestCase {
         XCTAssertTrue(sources.allSatisfy { $0.isCancelled })
     }
 
+    @available(*, deprecated, message: "Tests the deprecated UnixSignalsSequence initializers.")
     func testDispatchSourcesAreReleasedWhenInitIsCancelled() async throws {
         let task = Task { () -> [WeakDispatchSource] in
             withUnsafeCurrentTask { task in
@@ -145,6 +150,7 @@ final class UnixSignalTests: XCTestCase {
         XCTAssertTrue(sources.allSatisfy { $0.value == nil })
     }
 
+    @available(*, deprecated, message: "Tests the deprecated UnixSignalsSequence initializers.")
     func testEmptySequence() async throws {
         let signals = await UnixSignalsSequence(trapping: [])
         for await _ in signals {
@@ -152,6 +158,7 @@ final class UnixSignalTests: XCTestCase {
         }
     }
 
+    @available(*, deprecated, message: "Tests the deprecated UnixSignalsSequence initializers.")
     func testCorrectSignalIsGiven() async throws {
         let signals = await UnixSignalsSequence(trapping: .sigterm, .sigusr1, .sigusr2, .sighup, .sigint, .sigalrm)
         var signalIterator = signals.makeAsyncIterator()
@@ -164,6 +171,63 @@ final class UnixSignalTests: XCTestCase {
             let trapped = await signalIterator.next()
             XCTAssertEqual(trapped, signal)
         }
+    }
+
+    func testWithUnixSignalsDeliversSignal() async throws {
+        let signal = UnixSignal.sigalrm
+        let caught = await withUnixSignals([signal]) { signals in
+            var signalIterator = signals.makeAsyncIterator()
+            kill(getpid(), signal.rawValue)  // ignore-unacceptable-language
+            return await signalIterator.next()
+        }
+        XCTAssertEqual(caught, signal)
+    }
+
+    func testWithUnixSignalsCancelsSourcesWhenBodyReturns() async throws {
+        let signals = await withUnixSignals([.sighup]) { signals in
+            XCTAssertFalse(signals.dispatchSources.isEmpty)
+            XCTAssertFalse(signals.dispatchSources.contains { $0.isCancelled })
+            return signals
+        }
+
+        XCTAssertTrue(signals.dispatchSources.allSatisfy { $0.isCancelled })
+    }
+
+    func testWithUnixSignalsCancelsSourcesWhenBodyThrows() async throws {
+        struct TestError: Error {}
+        var escaped: UnixSignalsSequence?
+
+        do {
+            try await withUnixSignals([.sighup]) { signals in
+                escaped = signals
+                throw TestError()
+            }
+            XCTFail("Expected an error")
+        } catch {
+            XCTAssert(error is TestError)
+        }
+
+        let signals = try XCTUnwrap(escaped)
+        XCTAssertFalse(signals.dispatchSources.isEmpty)
+        XCTAssertTrue(signals.dispatchSources.allSatisfy { $0.isCancelled })
+    }
+
+    func testWithUnixSignalsCancelsSourcesWhenTaskIsCancelled() async throws {
+        let (started, startedContinuation) = AsyncStream.makeStream(of: Void.self)
+        let task = Task {
+            await withUnixSignals([.sighup]) { signals in
+                startedContinuation.yield()
+                for await _ in signals {}
+                return signals
+            }
+        }
+
+        await started.first { _ in true }
+        task.cancel()
+
+        let signals = await task.value
+        XCTAssertFalse(signals.dispatchSources.isEmpty)
+        XCTAssertTrue(signals.dispatchSources.allSatisfy { $0.isCancelled })
     }
 
     func testSignalRawValue() {
@@ -195,6 +259,7 @@ final class UnixSignalTests: XCTestCase {
         assert(.sigwinch, description: "SIGWINCH")
     }
 
+    @available(*, deprecated, message: "Tests the deprecated UnixSignalsSequence initializers.")
     func testCancelledTask() async throws {
         let task = Task {
             try? await Task.sleep(nanoseconds: 1_000_000_000)

@@ -275,6 +275,27 @@ public actor ServiceGroup: Sendable, Service {
         gracefulShutdownStream: AsyncStream<Void>,
         addedServiceChannel: AsyncChannel<ServiceGroupConfiguration.ServiceConfiguration>
     ) async throws {
+        // First we have to register our signals.
+        try await withUnixSignals(self.gracefulShutdownSignals) { gracefulShutdownSignals in
+            try await withUnixSignals(self.cancellationSignals) { cancellationSignals in
+                try await self._run(
+                    services: &services,
+                    gracefulShutdownStream: gracefulShutdownStream,
+                    addedServiceChannel: addedServiceChannel,
+                    gracefulShutdownSignals: gracefulShutdownSignals,
+                    cancellationSignals: cancellationSignals
+                )
+            }
+        }
+    }
+
+    private func _run(
+        services: inout [ServiceGroupConfiguration.ServiceConfiguration],
+        gracefulShutdownStream: AsyncStream<Void>,
+        addedServiceChannel: AsyncChannel<ServiceGroupConfiguration.ServiceConfiguration>,
+        gracefulShutdownSignals: UnixSignalsSequence,
+        cancellationSignals: UnixSignalsSequence
+    ) async throws {
         self.logger.debug(
             "Starting service lifecycle",
             metadata: [
@@ -292,10 +313,6 @@ public actor ServiceGroup: Sendable, Service {
         // but the body itself is throwing
         let result = try await withThrowingTaskGroup(of: ChildTaskResult.self, returning: Result<Void, Error>.self) {
             group in
-            // First we have to register our signals.
-            let gracefulShutdownSignals = await UnixSignalsSequence(trapping: self.gracefulShutdownSignals)
-            let cancellationSignals = await UnixSignalsSequence(trapping: self.cancellationSignals)
-
             // This is the task that listens to graceful shutdown signals
             group.addTask {
                 for await signal in gracefulShutdownSignals {
