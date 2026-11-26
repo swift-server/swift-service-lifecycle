@@ -278,3 +278,31 @@ struct Application {
   }
 }
 ```
+
+### Set finite shutdown timeouts
+
+For long-running applications, we recommend setting finite limits for both
+graceful shutdown and cancellation. This prevents a service that does not
+respond to shutdown or cancellation from leaving the application in a
+half-working state indefinitely. Choose values appropriate for your services;
+for example, a server might allow 15 seconds for graceful shutdown and up to
+60 seconds for cancellation:
+
+```swift
+var configuration = ServiceGroupConfiguration(
+  services: [.init(service: streamingService)],
+  gracefulShutdownSignals: [.sigterm],
+  logger: logger
+)
+configuration.maximumGracefulShutdownDuration = .seconds(15)
+configuration.maximumCancellationDuration = .seconds(60)
+
+let serviceGroup = ServiceGroup(configuration: configuration)
+try await serviceGroup.run()
+```
+
+When the graceful-shutdown limit is reached, the group escalates to task
+cancellation. If cancellation also exceeds its limit, the application exits
+with a fatal error. These limits are especially useful in supervised
+environments, where restarting a clearly broken process can restore a healthy
+service more reliably than leaving it running indefinitely.
